@@ -1,0 +1,51 @@
+<?php
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\{AuthController,AdminController,JobsController,IntegrationController,AiController,CvController,ApplicationController,AnalyticsController,CareerController};
+Route::get('/',fn()=>response()->file(public_path('console.html')));
+Route::get('/api/csrf',fn()=>['token'=>csrf_token()]);
+Route::prefix('api')->middleware('throttle:api')->group(function(){
+ Route::post('analytics/events',[AnalyticsController::class,'store'])->middleware('throttle:120,1,analytics-events:');
+ Route::post('register',[AuthController::class,'register'])->middleware('throttle:register');
+ Route::post('login',[AuthController::class,'login'])->middleware('throttle:login');
+ Route::post('otp/request',[AuthController::class,'code'])->middleware('throttle:otp-send');
+ Route::post('otp/verify',[AuthController::class,'verify'])->middleware('throttle:otp-verify');
+ Route::get('cv-templates',[\App\Http\Controllers\CvTemplateController::class,'published']);
+ Route::middleware('member')->group(function(){
+ Route::get('me',fn(\Illuminate\Http\Request $r)=>$r->user());
+ Route::patch('me',[AuthController::class,'profile']);
+ Route::post('password',[AuthController::class,'password']);
+ Route::post('logout',[AuthController::class,'logout']);
+ Route::post('jobs/search',[JobsController::class,'search'])->middleware('throttle:20,1,jobs-search:');
+ Route::get('jobs/links',[JobsController::class,'links']);
+ Route::get('cv',[CvController::class,'index']);Route::get('cv/{cv}/download',[CvController::class,'download']);Route::post('cv',[CvController::class,'store'])->middleware('throttle:10,1,cv:');Route::post('cv/{cv}/analyze',[CvController::class,'analyze']);Route::delete('cv/{cv}',[CvController::class,'destroy']);
+ Route::apiResource('applications',ApplicationController::class)->except(['show']);
+ Route::get('career/library',[CareerController::class,'library']);
+ Route::get('career/interviews/{session}',[CareerController::class,'interview']);
+ Route::get('career/workspaces/{workspace}',[CareerController::class,'workspace']);
+ Route::get('career/cv-versions/{version}',[CareerController::class,'version']);
+ Route::patch('career/cv-versions/{version}',[CareerController::class,'updateVersion']);
+ Route::get('career/dashboard',[CareerController::class,'dashboard']);Route::get('career/workspaces',[CareerController::class,'workspaces']);Route::post('career/workspaces',[CareerController::class,'storeWorkspace']);
+ Route::get('career/cv-versions',[CareerController::class,'versions']);Route::post('career/cv-versions',[CareerController::class,'storeVersion']);Route::delete('career/cv-versions/{version}',[CareerController::class,'destroyVersion']);Route::get('career/analytics',[CareerController::class,'analytics']);
+ Route::post('career/recruiter-view',[CareerController::class,'recruiterView'])->middleware('throttle:10,1,career-recruiter-view:');Route::post('career/tailor-cv',[CareerController::class,'tailorCv'])->middleware('throttle:8,1,career-tailor-cv:');Route::post('career/application-pack',[CareerController::class,'applicationPack'])->middleware('throttle:6,1,career-application-pack:');Route::post('career/skill-gap',[CareerController::class,'skillGap'])->middleware('throttle:10,1,career-skill-gap:');Route::post('career/portfolio',[CareerController::class,'portfolio'])->middleware('throttle:10,1,career-portfolio:');Route::post('career/follow-up',[CareerController::class,'followUp'])->middleware('throttle:10,1,career-follow-up:');Route::post('career/diagnostic',[CareerController::class,'diagnostic'])->middleware('throttle:5,1,career-diagnostic:');
+ Route::post('career/interviews',[CareerController::class,'startInterview'])->middleware('throttle:10,1,career-interviews:');Route::post('career/interviews/{session}/reply',[CareerController::class,'replyInterview'])->middleware('throttle:20,1,career-interviews--session--reply:');Route::post('career/interviews/{session}/finish',[CareerController::class,'finishInterview'])->middleware('throttle:5,1,career-interviews--session--finish:');
+ Route::post('ai/chat',[AiController::class,'chat'])->middleware('throttle:20,1,ai-chat:');Route::post('ai/improve-cv',[AiController::class,'improveCv'])->middleware('throttle:10,1,ai-improve-cv:');
+ Route::post('ai/ats-analysis',[AiController::class,'atsAnalysis'])->middleware('throttle:10,1,ai-ats-analysis:');Route::post('ai/cover-letter',[AiController::class,'coverLetter'])->middleware('throttle:10,1,ai-cover-letter:');
+ Route::prefix('admin')->middleware('admin')->group(function(){
+ Route::get('summary',[AdminController::class,'summary']);
+ Route::get('users',[AdminController::class,'users']);
+ Route::get('users/{user}',[AdminController::class,'detail']);
+ Route::post('users/{user}/warning',[AdminController::class,'warning'])->middleware('throttle:10,1,warning:');
+ Route::get('applications',[AdminController::class,'applications']);
+ Route::get('uploads/{cv}',[AdminController::class,'download']);
+ Route::get('smtp',[\App\Http\Controllers\MailSettingsController::class,'show']);
+ Route::put('smtp',[\App\Http\Controllers\MailSettingsController::class,'save']);
+ Route::post('smtp/test',[\App\Http\Controllers\MailSettingsController::class,'test'])->middleware('throttle:3,1,smtp-test:');
+ Route::get('cv-templates',[\App\Http\Controllers\CvTemplateController::class,'index']);
+ Route::post('cv-templates',[\App\Http\Controllers\CvTemplateController::class,'store']);
+ Route::patch('cv-templates/{template}',[\App\Http\Controllers\CvTemplateController::class,'update']);
+ Route::delete('cv-templates/{template}',[\App\Http\Controllers\CvTemplateController::class,'destroy']);
+ Route::patch('users/{user}',[AdminController::class,'suspend']);
+ Route::get('logs',[AdminController::class,'logs']);
+ Route::get('analytics',[AnalyticsController::class,'report']);
+ Route::get('integrations',[IntegrationController::class,'index']);Route::post('integrations',[IntegrationController::class,'store']);Route::patch('integrations/{integration}',[IntegrationController::class,'update']);Route::post('integrations/{integration}/test',[IntegrationController::class,'test'])->middleware('throttle:10,1,integrations--integration--test:');Route::delete('integrations/{integration}',[IntegrationController::class,'destroy']);
+ });});});
