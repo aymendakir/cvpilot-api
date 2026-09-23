@@ -24,9 +24,4 @@ until php artisan migrate --force; do
   sleep 5
 done
 
-# Run the minute scheduler in the web container so expired uploads are actually removed.
-if [ "${RUN_SCHEDULER:-true}" = "true" ] && [ "${1:-}" = "apache2-foreground" ]; then
-  su -s /bin/sh www-data -c 'php artisan schedule:work' &
-fi
-
 exec docker-php-entrypoint "$@"

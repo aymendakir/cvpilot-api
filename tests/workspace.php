@@ -6,7 +6,7 @@ putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:'); putenv('SESSION_
 $app=require __DIR__.'/../bootstrap/app.php';
 $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);$kernel->bootstrap();
 $root=sys_get_temp_dir().'/cvpilot-test-'.bin2hex(random_bytes(6));mkdir($root,0700,true);
-config(['cache.default'=>'array','cache.stores.array'=>['driver'=>'array'],'session.driver'=>'array','session.secure'=>false,'filesystems.disks.local.root'=>$root,'hashing.bcrypt.rounds'=>4]);
+config(['database.default'=>'sqlite','database.connections.sqlite'=>['driver'=>'sqlite','database'=>':memory:','prefix'=>'','foreign_key_constraints'=>true],'cache.default'=>'array','cache.stores.array'=>['driver'=>'array'],'session.driver'=>'array','session.secure'=>false,'filesystems.disks.local.root'=>$root,'hashing.bcrypt.rounds'=>4]);
 Illuminate\Support\Facades\Artisan::call('migrate',['--force'=>true]);
 class FakeMail extends App\Services\PlatformMail {public array $messages=[];public function send(string $to,string $subject,string $view,array $data):void{$this->messages[]=compact('to','subject','view','data');}}
 $mail=new FakeMail;$app->instance(App\Services\PlatformMail::class,$mail);

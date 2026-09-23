@@ -3,9 +3,9 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 return Application::configure(basePath:dirname(__DIR__))
- ->withRouting(web:__DIR__.'/../routes/web.php',health:'/up',commands:__DIR__.'/../routes/console.php')
- ->withSchedule(function(\Illuminate\Console\Scheduling\Schedule $schedule){$schedule->call(new App\Services\TemporaryDataCleanup)->name('cvpilot-prune-temporary')->everyMinute()->withoutOverlapping();})
+ ->withRouting(web:__DIR__.'/../routes/web.php',health:'/up')
  ->withMiddleware(function(Middleware $middleware){
+  $middleware->validateCsrfTokens(except:['api/*']);
   $middleware->append(App\Http\Middleware\SecurityHeaders::class);
   $middleware->alias(['member'=>App\Http\Middleware\Member::class,'admin'=>App\Http\Middleware\Admin::class]);
  })
