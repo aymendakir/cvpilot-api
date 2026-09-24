@@ -7,7 +7,6 @@ RUN apt-get update && apt-get install -y libonig-dev libzip-dev libpng-dev libjp
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . .
-ENV APP_URL=http://localhost
 RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs && composer install --no-dev --optimize-autoloader --no-interaction && chown -R www-data:www-data storage bootstrap/cache
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf \
  && sed -ri 's!Listen 80!Listen 8080!' /etc/apache2/ports.conf \

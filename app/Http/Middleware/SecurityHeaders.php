@@ -10,7 +10,7 @@ class SecurityHeaders {
   $response=$next($request);
   $response->headers->set('X-Content-Type-Options','nosniff');
   $response->headers->set('X-Frame-Options','DENY');
-  $response->headers->set('Referrer-Policy','strict-origin-when-cross-origin');
+  if(!$response->headers->has('Referrer-Policy'))$response->headers->set('Referrer-Policy','strict-origin-when-cross-origin');
   $response->headers->set('Permissions-Policy','camera=(), microphone=(), geolocation=()');
   if($request->is('api/*'))$response->headers->set('Cache-Control','no-store, private');
   if($request->isSecure())$response->headers->set('Strict-Transport-Security','max-age=31536000; includeSubDomains');

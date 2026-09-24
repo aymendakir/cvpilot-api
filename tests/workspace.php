@@ -4,6 +4,10 @@ require __DIR__.'/../vendor/autoload.php';
 putenv('APP_ENV=testing'); putenv('APP_KEY=base64:'.base64_encode(random_bytes(32)));
 putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:'); putenv('SESSION_SECURE_COOKIE=false');
 $app=require __DIR__.'/../bootstrap/app.php';
+// Keep boot-time rate limiters out of the application's file cache.
+$app->afterBootstrapping(Illuminate\Foundation\Bootstrap\LoadConfiguration::class, function () {
+    config(['cache.default'=>'array', 'cache.stores.array'=>['driver'=>'array']]);
+});
 $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);$kernel->bootstrap();
 $root=sys_get_temp_dir().'/cvpilot-test-'.bin2hex(random_bytes(6));mkdir($root,0700,true);
 config(['database.default'=>'sqlite','database.connections.sqlite'=>['driver'=>'sqlite','database'=>':memory:','prefix'=>'','foreign_key_constraints'=>true],'cache.default'=>'array','cache.stores.array'=>['driver'=>'array'],'session.driver'=>'array','session.secure'=>false,'filesystems.disks.local.root'=>$root,'hashing.bcrypt.rounds'=>4]);
