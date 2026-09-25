@@ -109,6 +109,58 @@ check(str_contains($gmailFailure, 'App Password') && !str_contains($gmailFailure
 check(str_contains($mail->failureMessage(new RuntimeException('Connection could not be established')), 'hosting provider'), 'connection errors explain hosting SMTP restrictions');
 check(str_contains($mail->failureMessage(new RuntimeException('certificate verify failed')), 'certificate'), 'TLS errors explain certificate failure');
 check(!str_contains($mail->failureMessage(new RuntimeException('Unknown failure SECRET')), 'SECRET'), 'unclassified errors never echo credentials');
+// Brevo uses a technical login and a separately verified sender address.
+$brevo = array_replace($gmail, ['host'=>'smtp-relay.brevo.com', 'port'=>587, 'encryption'=>'tls',
+    'username'=>'12345@smtp-brevo.com', 'password'=>"  xsmtpsib-test-smtp-key \n", 'from_address'=>'verified@example.test']);
+check(api('PUT', 'admin/smtp', $brevo, $owner)[0] === 200, 'Brevo saves a separate SMTP login and verified sender');
+check(MailSetting::first()->password === 'xsmtpsib-test-smtp-key', 'Brevo SMTP key is trimmed without truncation');
+check(!str_contains(json_encode(api('GET', 'admin/smtp', [], $owner)[1]), 'xsmtpsib-test-smtp-key') &&
+    !str_contains(DB::table('mail_settings')->value('password'), 'xsmtpsib-test-smtp-key'), 'Brevo SMTP key encrypted and absent from settings response');
+$brevo['password'] = '';
+check(api('PUT', 'admin/smtp', $brevo, $owner)[0] === 200 && MailSetting::first()->password === 'xsmtpsib-test-smtp-key', 'Brevo blank key preserves the saved SMTP key');
+foreach ([
+    ['username'=>'smtp-relay.brevo.com', 'password'=>'new-key'],
+    ['password'=>'xkeysib-api-key'],
+    ['from_address'=>'12345@smtp-brevo.com'],
+    ['from_address'=>'12345@SMTP-BREVO.COM'],
+    ['port'=>25],
+    ['port'=>2525, 'encryption'=>'ssl'],
+    ['username'=>'other@smtp-brevo.com', 'password'=>'   '],
+] as $invalid) {
+    check(api('PUT', 'admin/smtp', array_replace($brevo, $invalid), $owner)[0] === 422, 'Brevo rejects invalid '.implode('/', array_keys($invalid)));
+    check(MailSetting::first()->username === $brevo['username'] && MailSetting::first()->password === 'xsmtpsib-test-smtp-key', 'invalid Brevo settings preserve the saved configuration');
+}
+foreach ([587=>'tls', 2525=>'tls', 465=>'ssl'] as $port=>$encryption) {
+    $brevo['port'] = $port; $brevo['encryption'] = $encryption;
+    check(api('PUT', 'admin/smtp', $brevo, $owner)[0] === 200, "Brevo port $port configuration saves");
+    $mail->send('recipient@example.test', 'Brevo test', 'emails.notice', ['name'=>'Test', 'heading'=>'Test', 'noticeMessage'=>'Test']);
+    $transport = $manager->built->getSymfonyTransport();
+    check($transport->isTlsRequired() && $transport->getStream()->getPort() === $port &&
+        $transport->getStream()->isTLS() === ($port === 465), "Brevo port $port uses the matching TLS transport");
+    check($transport->getUsername() === $brevo['username'] && $transport->getPassword() === 'xsmtpsib-test-smtp-key' &&
+        $lastMessage->getFrom()[0]->getAddress() === 'verified@example.test', 'Brevo sends using SMTP credentials and the separate verified sender');
+}
+foreach ([
+    '535 Failed to authenticate secret-value'=>'SMTP key',
+    'Failed to authenticate username 123525452@smtp-brevo.com, code 535'=>'SMTP key',
+    '525 Failed to authenticate: unauthorized IP secret-value'=>'outbound IP',
+    'Connection could not be established'=>'2525',
+    '550 Invalid sender'=>'Verify the sender',
+    '550 sending quota exceeded'=>'quota',
+    '550 transactional account not activated'=>'activation',
+] as $failure=>$expected) {
+    $message = $mail->failureMessage(new RuntimeException($failure));
+    check(str_contains($message, $expected) && !str_contains($message, 'secret-value'), 'Brevo reports safe guidance for '.substr($failure, 0, 3));
+}
+$stored = MailSetting::first(); $stored->from_address = $stored->username; $stored->save();
+try {
+    $mail->send('recipient@example.test', 'Invalid saved sender', 'emails.notice', []);
+    throw new LogicException('Expected Brevo sender rejection');
+} catch (App\Services\MailConfigurationException $error) {
+    check(str_contains($error->getMessage(), 'sender'), 'previously saved Brevo technical sender is rejected before transport');
+}
+$legacyLogin = array_replace($brevo, ['username'=>'verified@example.test', 'password'=>'legacy-smtp-key']);
+check(api('PUT', 'admin/smtp', $legacyLogin, $owner)[0] === 200, 'Brevo legacy email login can match a real verified sender');
 $outlook = array_replace($gmail, ['host'=>'smtp-mail.outlook.com', 'username'=>'sender@outlook.com', 'from_address'=>'sender@outlook.com', 'password'=>'wrong-password']);
 check(api('PUT', 'admin/smtp', $outlook, $owner)[0] === 422, 'Outlook.com rejects password-only configuration');
 $outlook = array_replace($outlook, ['auth_mode'=>'microsoft', 'password'=>'', 'oauth_tenant'=>'common',
@@ -172,4 +224,20 @@ check(api('GET', 'admin/smtp/microsoft/callback?'.http_build_query(['state'=>$qu
 $outlook['oauth_client_id'] = '98765432-1234-4123-8123-123456789012';
 check(api('PUT', 'admin/smtp', $outlook, $owner)[0] === 422, 'changing Microsoft application requires its own secret');
 check(!array_key_exists('password', api('GET', 'admin/smtp', [], $owner)[1]), 'API does not include a password value');
+// Environment-only configuration uses the same Brevo checks as saved settings.
+MailSetting::query()->delete();
+config(['mail.mailers.smtp.host'=>'smtp-relay.brevo.com', 'mail.mailers.smtp.username'=>'12345@smtp-brevo.com',
+    'mail.mailers.smtp.password'=>" xsmtpsib-environment-key \n", 'mail.from.address'=>'verified@example.test']);
+$mail->send('recipient@example.test', 'Environment Brevo test', 'emails.notice', ['name'=>'Test', 'heading'=>'Test', 'noticeMessage'=>'Test']);
+check($manager->built->getSymfonyTransport()->getPassword() === 'xsmtpsib-environment-key' &&
+    $lastMessage->getFrom()[0]->getAddress() === 'verified@example.test', 'Brevo environment fallback trims the SMTP key and uses the separate sender');
+config(['mail.from.address'=>'12345@smtp-brevo.com']);
+try {
+    $mail->send('recipient@example.test', 'Invalid environment sender', 'emails.notice', []);
+    throw new LogicException('Expected invalid Brevo environment sender');
+} catch (App\Services\MailConfigurationException $error) {
+    check(str_contains($error->getMessage(), 'sender'), 'Brevo environment technical sender is rejected before transport');
+}
+Illuminate\Support\Facades\Schema::drop('mail_settings');
+check(!str_contains($mail->failureMessage(new RuntimeException('Unknown failure SECRET')), 'SECRET'), 'error reporting remains safe when the settings table is unavailable');
 echo "All SMTP regression checks passed.\n";

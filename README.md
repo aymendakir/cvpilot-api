@@ -90,10 +90,27 @@ or username requires that account's password; changing Microsoft account/applica
 
 | Provider | Server | Port / encryption | Authentication |
 |---|---|---|---|
+| Brevo | `smtp-relay.brevo.com` | 587 or 2525 / STARTTLS, or 465 / SSL/TLS | Login and SMTP key from the Brevo SMTP tab; separate verified sender |
 | Gmail / Google Workspace | `smtp.gmail.com` | 587 / STARTTLS, or 465 / SSL/TLS | Full email address and Google App Password |
 | Outlook.com / Hotmail / Live | `smtp-mail.outlook.com` | 587 / STARTTLS | Microsoft sign-in (OAuth2) |
 | Microsoft 365 work/school | `smtp.office365.com` | 587 / STARTTLS | Microsoft sign-in; SMTP password only where tenant policy allows |
 | Custom SMTP | Provider's hostname | Provider's secure SMTP port | Provider credentials, or no username for an authorized relay |
+
+### Brevo
+
+Select **Brevo** in the SMTP form. In Brevo **Settings > SMTP & API > SMTP**, copy the exact
+**Login** and an **SMTP key**. The key is the SMTP password; an API key or Brevo account password
+will not work. Surrounding whitespace is removed when saving the key.
+
+Enter a sender verified in Brevo, or an address on an authenticated sender domain. A technical
+login ending in `@smtp-brevo.com` cannot be used as the sender. The form keeps these fields separate.
+Previously saved invalid sender addresses must also be corrected.
+
+Use **587 / STARTTLS**, **2525 / STARTTLS** if the host blocks 587, or **465 / SSL/TLS**.
+For error **535**, verify the SMTP login/key. For **525**, authorize the backend's outbound IP
+in Brevo. The dashboard now identifies these errors separately. If SMTP accepts the message but
+it does not arrive, check Brevo transactional logs, sender verification, account activation,
+sending credits and blocked contacts. See [Brevo SMTP troubleshooting](https://help.brevo.com/hc/en-us/articles/115000188150-Troubleshooting-Issues-with-Brevo-SMTP).
 
 ### Gmail
 

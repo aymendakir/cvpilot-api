@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MailSetting;
+use App\Services\BrevoSmtp;
 use App\Services\MicrosoftSmtpOAuth;
 use App\Services\PlatformMail;
 use Illuminate\Http\Request;
@@ -63,6 +64,7 @@ class MailSettingsController {
             validator($data, ['username'=>'required|email'])->validate();
             if (isset($data['password'])) $data['password'] = preg_replace('/\s+/', '', $data['password']);
         }
+        if ($data['host'] === BrevoSmtp::HOST && isset($data['password'])) $data['password'] = trim($data['password']);
         $identityChanged = $settings->host !== $data['host'] ||
             (string) $settings->username !== (string) ($data['username'] ?? '') || $settings->auth_mode !== $data['auth_mode'];
         $applicationChanged = (string) $settings->oauth_client_id !== (string) ($data['oauth_client_id'] ?? $settings->oauth_client_id) ||
@@ -80,6 +82,9 @@ class MailSettingsController {
             if (empty($settings->getAttributes()['oauth_client_secret'])) {
                 throw ValidationException::withMessages(['oauth_client_secret'=>'Enter the Microsoft application client secret value.']);
             }
+        } elseif ($settings->host === BrevoSmtp::HOST) {
+            $errors = BrevoSmtp::validationErrors($settings->only(['host', 'port', 'encryption', 'username', 'password', 'from_address']));
+            if ($errors) throw ValidationException::withMessages($errors);
         } elseif ($settings->username && empty($settings->getAttributes()['password'])) {
             throw ValidationException::withMessages(['password'=>'Enter the SMTP password for this account. Gmail requires an App Password.']);
         }
