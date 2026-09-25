@@ -5,7 +5,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 return Application::configure(basePath:dirname(__DIR__))
  ->withRouting(web:__DIR__.'/../routes/web.php',health:'/up')
  ->withMiddleware(function(Middleware $middleware){
-  $middleware->validateCsrfTokens(except:['api/*']);
+  $middleware->validateCsrfTokens(except:['api/analytics/events','api/contact']);
   $middleware->append(App\Http\Middleware\SecurityHeaders::class);
   $middleware->alias(['member'=>App\Http\Middleware\Member::class,'admin'=>App\Http\Middleware\Admin::class]);
  })

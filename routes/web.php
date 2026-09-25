@@ -4,6 +4,8 @@ use App\Http\Controllers\{AuthController,AdminController,JobsController,Integrat
 Route::get('/',fn()=>response()->file(public_path('console.html')));
 Route::get('/api/csrf',fn()=>['token'=>csrf_token()]);
 Route::prefix('api')->group(function(){
+ Route::get('site-settings',[\App\Http\Controllers\SiteSettingsController::class,'show']);
+ Route::post('contact',[\App\Http\Controllers\SupportController::class,'store'])->middleware('throttle:3,10,contact:');
  Route::post('analytics/events',[AnalyticsController::class,'store'])->middleware('throttle:120,1,analytics-events:');
  Route::post('register',[AuthController::class,'register'])->middleware('throttle:register');
  Route::post('login',[AuthController::class,'login'])->middleware('throttle:login');
@@ -11,6 +13,8 @@ Route::prefix('api')->group(function(){
  Route::post('otp/verify',[AuthController::class,'verify'])->middleware('throttle:otp-verify');
  Route::get('cv-templates',[\App\Http\Controllers\CvTemplateController::class,'published'])->middleware('throttle:60,1,cv-templates:');
  Route::middleware(['throttle:api','member'])->group(function(){
+ Route::get('me/export',[\App\Http\Controllers\AccountDataController::class,'export'])->middleware('throttle:3,1,account-export:');
+ Route::delete('me',[\App\Http\Controllers\AccountDataController::class,'destroy'])->middleware('throttle:3,10,account-delete:');
  Route::get('me',fn(\Illuminate\Http\Request $r)=>$r->user());
  Route::patch('me',[AuthController::class,'profile']);
  Route::post('password',[AuthController::class,'password']);
@@ -33,6 +37,11 @@ Route::prefix('api')->group(function(){
  Route::post('ai/chat',[AiController::class,'chat'])->middleware('throttle:20,1,ai-chat:');Route::post('ai/improve-cv',[AiController::class,'improveCv'])->middleware('throttle:10,1,ai-improve-cv:');
  Route::post('ai/ats-analysis',[AiController::class,'atsAnalysis'])->middleware('throttle:10,1,ai-ats-analysis:');Route::post('ai/cover-letter',[AiController::class,'coverLetter'])->middleware('throttle:10,1,ai-cover-letter:');
  Route::prefix('admin')->middleware('admin')->group(function(){
+ Route::get('site-settings',[\App\Http\Controllers\SiteSettingsController::class,'show']);
+ Route::put('site-settings',[\App\Http\Controllers\SiteSettingsController::class,'save']);
+ Route::get('system',[\App\Http\Controllers\SiteSettingsController::class,'system']);
+ Route::get('contact-messages',[\App\Http\Controllers\SupportController::class,'index']);
+ Route::patch('contact-messages/{message}',[\App\Http\Controllers\SupportController::class,'update']);
  Route::get('summary',[AdminController::class,'summary']);
  Route::get('cv-templates',[\App\Http\Controllers\CvTemplateController::class,'index']);
  Route::post('cv-templates',[\App\Http\Controllers\CvTemplateController::class,'store']);

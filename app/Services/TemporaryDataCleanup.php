@@ -12,6 +12,7 @@ class TemporaryDataCleanup {
                 $doc->delete();
             }
         });
+        \App\Models\SupportMessage::where('created_at', '<=', now()->subDays(90))->delete();
         AdminReviewItem::where('expires_at','<=',now())->delete();
     }
 }
