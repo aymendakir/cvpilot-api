@@ -93,6 +93,15 @@ class MailSettingsController {
         return ['message'=>'SMTP settings saved.'];
     }
 
+    public function check(PlatformMail $mail) {
+        try {
+            $mail->checkConnection();
+        } catch (\Throwable $error) {
+            return response()->json($mail->failureResponse($error, 'connection'), 422);
+        }
+        return ['message'=>'SMTP connection, TLS and configured authentication succeeded. No email was sent. Send a test email next to check sender acceptance and delivery.'];
+    }
+
     public function test(Request $request, PlatformMail $mail) {
         try {
             $mail->send($request->user()->email, 'CVPilot · SMTP test', 'emails.notice', [
@@ -100,7 +109,7 @@ class MailSettingsController {
                 'noticeMessage'=>'This test confirms CVPilot can send email with your saved SMTP settings.',
             ]);
         } catch (\Throwable $error) {
-            return response()->json(['message'=>$mail->failureMessage($error)], 422);
+            return response()->json($mail->failureResponse($error, 'send'), 422);
         }
         return ['message'=>'The SMTP server accepted the test email for '.$request->user()->email.'. Check the inbox and spam folder.'];
     }

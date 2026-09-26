@@ -148,6 +148,15 @@ check PHP OpenSSL support and certificate trust. Saving settings alone does not 
 Dashboard settings take precedence over `MAIL_*` environment values. The environment fallback honors
 `MAIL_ENCRYPTION` (`tls` or `ssl`) and `MAIL_FROM_NAME`; set the matching port and run `php artisan config:clear`.
 
+Use **Save & check connection** to verify the saved SMTP connection, TLS and configured login
+without submitting an email. If that succeeds and **Save & send test email** fails, inspect the
+sender/recipient or backend template/runtime diagnostic returned by the test.
+
+Failed checks include an `smtp-…` reference. Search that reference in `storage/logs/laravel.log`
+for the operation, exception type, source filename/line and numeric SMTP response code. These
+entries intentionally exclude passwords, raw exceptions and SMTP transcripts. Deploy both the
+frontend and backend for the new button and `/api/admin/smtp/check` endpoint.
+
 SMTP regression checks: `php tests/smtp.php`. They use an in-memory SQLite database, fake Microsoft HTTP
 responses, and intercepted mail delivery; they never send real emails or require provider credentials.
 

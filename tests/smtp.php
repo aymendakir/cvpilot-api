@@ -50,7 +50,12 @@ function account(string $email, string $role): App\Models\User {
 }
 class InspectMailManager extends Illuminate\Mail\MailManager {
     public ?Illuminate\Mail\Mailer $built = null;
-    public function build($config) { return $this->built = parent::build($config); }
+    public ?Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport $probeTransport = null;
+    public function build($config) {
+        $this->built = parent::build($config);
+        if ($this->probeTransport) $this->built->setSymfonyTransport($this->probeTransport);
+        return $this->built;
+    }
 }
 $manager = new InspectMailManager($app);
 Mail::swap($manager);
@@ -75,6 +80,8 @@ foreach (['GET'=>'admin/smtp', 'PUT'=>'admin/smtp', 'POST'=>'admin/smtp/microsof
     $denied = api($method, $path, [], $member);
     check($denied[0] === 403, "$method $path denies non-admin (status ".$denied[0].")");
 }
+check(api('POST', 'admin/smtp/check', [], $guest)[0] === 401, 'guest cannot check SMTP credentials');
+check(api('POST', 'admin/smtp/check', [], $member)[0] === 403, 'member cannot check SMTP credentials');
 $guestTest = api('POST', 'admin/smtp/test', [], $guest);
 check($guestTest[0] === 401, 'guest cannot send tests (status '.$guestTest[0].')');
 $settings = api('GET', 'admin/smtp', [], $owner)[1];
@@ -152,6 +159,56 @@ foreach ([
     $message = $mail->failureMessage(new RuntimeException($failure));
     check(str_contains($message, $expected) && !str_contains($message, 'secret-value'), 'Brevo reports safe guidance for '.substr($failure, 0, 3));
 }
+// Match real Symfony failure strings that previously fell through to the generic message.
+foreach ([
+    'Connection to "smtp-relay.brevo.com:587" has been closed unexpectedly.',
+    'Unable to read from connection to "smtp-relay.brevo.com:587"',
+    'Unable to write bytes on the wire.',
+    'Expected response code "220" but got empty code.',
+] as $failure) {
+    check(str_contains($mail->failureMessage(new Symfony\Component\Mailer\Exception\TransportException($failure)), 'Cannot connect to Brevo'), 'disconnected or empty SMTP response is classified as connection failure');
+}
+check(str_contains($mail->failureMessage(new Symfony\Component\Mailer\Exception\TransportException('Provider rejected command', 535)), 'SMTP key'), 'numeric SMTP authentication code works without keyword matching');
+check(str_contains($mail->failureMessage(new Symfony\Component\Mailer\Exception\TransportException('Failed to find an authenticator supported by the SMTP server', 504)), 'login method'), 'unsupported authenticators are diagnosed');
+check(str_contains($mail->failureMessage(new Symfony\Component\Mailer\Exception\TransportException('Provider unavailable SECRET', 451)), 'SMTP 451'), 'unclassified SMTP rejection retains its numeric response code');
+$originalLogger = Illuminate\Support\Facades\Log::getFacadeRoot();
+$logger = new class extends Psr\Log\AbstractLogger {
+    public array $records = [];
+    public function log($level, string|Stringable $message, array $context = []): void { $this->records[] = compact('level', 'message', 'context'); }
+};
+Illuminate\Support\Facades\Log::swap($logger);
+$probe = new class extends Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport {
+    public array $calls = [];
+    public ?Throwable $failure = null;
+    public function start(): void { $this->calls[] = 'start'; if ($this->failure) throw $this->failure; }
+    public function stop(): void { $this->calls[] = 'stop'; }
+};
+// Keep this endpoint scenario independent of earlier authorization probes.
+Cache::flush();
+$manager->probeTransport = $probe;
+$beforeMessage = $lastMessage;
+$result = api('POST', 'admin/smtp/check', [], $owner);
+check($result[0] === 200 && str_contains($result[1]['message'], 'No email was sent') && $lastMessage === $beforeMessage &&
+    $probe->calls === ['start', 'stop'], 'connection check starts and stops SMTP without rendering or sending a message');
+$probe->calls = [];
+$probe->failure = new Symfony\Component\Mailer\Exception\TransportException('Connection closed unexpectedly secret-value', 0);
+$result = api('POST', 'admin/smtp/check', [], $owner);
+check($result[0] === 422 && str_contains($result[1]['message'], 'Cannot connect to Brevo') && $probe->calls === ['start', 'stop'], 'failed connection check disconnects and returns an actionable error');
+check($result[1]['diagnostic']['operation'] === 'connection' &&
+    $result[1]['diagnostic']['reference'] === $logger->records[array_key_last($logger->records)]['context']['reference'], 'connection failure includes a reference matching safe backend logs');
+$manager->probeTransport = null;
+app()->instance(PlatformMail::class, new class extends PlatformMail {
+    public function send(string $to, string $subject, string $view, array $data): void { throw new Error('Sensitive runtime failure secret-value'); }
+});
+$result = api('POST', 'admin/smtp/test', [], $owner);
+check($result[0] === 422 && str_contains($result[1]['message'], 'PHP runtime error') &&
+    $result[1]['diagnostic']['type'] === 'Error' && $result[1]['diagnostic']['operation'] === 'send', 'test email distinguishes runtime failures from SMTP login failures');
+app()->forgetInstance(PlatformMail::class);
+$wrapped = new Illuminate\View\ViewException('Email view failed secret-value', 0, E_ERROR, __FILE__, __LINE__, new Error('Missing extension secret-value'));
+$details = $mail->failureResponse($wrapped, 'send');
+check(str_contains($details['message'], 'email template') && $details['diagnostic']['type'] === 'Error', 'view failure identifies email rendering and the root exception');
+check(!str_contains(json_encode([$result[1], $details, $logger->records]), 'secret-value'), 'responses and diagnostic logs exclude raw exceptions and credentials');
+Illuminate\Support\Facades\Log::swap($originalLogger);
 $stored = MailSetting::first(); $stored->from_address = $stored->username; $stored->save();
 try {
     $mail->send('recipient@example.test', 'Invalid saved sender', 'emails.notice', []);

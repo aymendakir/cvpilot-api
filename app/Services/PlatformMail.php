@@ -8,6 +8,23 @@ use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
 
 class PlatformMail {
     public function send(string $to, string $subject, string $view, array $data): void {
+        [$mailer, $from, $name] = $this->configuredMailer();
+        $mailer->send($view, $data, fn ($message) => $message->from($from, $name)->to($to)->subject($subject));
+    }
+
+    public function checkConnection(): void {
+        [$mailer] = $this->configuredMailer();
+        $transport = $mailer->getSymfonyTransport();
+        if (!$transport instanceof EsmtpTransport) throw new MailConfigurationException('The SMTP transport is unavailable.');
+        try {
+            // start() negotiates TLS and authenticates; it does not submit a message.
+            $transport->start();
+        } finally {
+            $transport->stop();
+        }
+    }
+
+    private function configuredMailer(): array {
         $settings = MailSetting::first();
         if ($settings) {
             $password = $settings->auth_mode === 'microsoft'
@@ -41,32 +58,74 @@ class PlatformMail {
             // Do not send OAuth access tokens through LOGIN/PLAIN authentication.
             $transport->setAuthenticators([new XOAuth2Authenticator]);
         }
-        $mailer->send($view, $data, fn ($message) => $message->from($from, $name)->to($to)->subject($subject));
+        return [$mailer, $from, $name];
+    }
+
+    public function failureResponse(\Throwable $error, string $operation): array {
+        $root = $error;
+        for ($depth = 0; $depth < 10 && $root->getPrevious(); $depth++) $root = $root->getPrevious();
+        $reflection = new \ReflectionClass($root);
+        $type = $reflection->isAnonymous() ? 'InternalError' : $reflection->getShortName();
+        $diagnostic = [
+            'reference'=>'smtp-'.bin2hex(random_bytes(6)), 'operation'=>$operation,
+            'type'=>$type, 'source'=>basename($root->getFile()), 'line'=>$root->getLine(),
+            'smtp_code'=>$root instanceof \Symfony\Component\Mailer\Exception\TransportExceptionInterface &&
+                $root->getCode() >= 400 && $root->getCode() <= 599 ? (int) $root->getCode() : null,
+        ];
+        // Never log raw exception messages, traces or SMTP debug transcripts: they may contain credentials.
+        try { \Illuminate\Support\Facades\Log::warning('SMTP diagnostic', $diagnostic); } catch (\Throwable) {
+            // A logging failure must not hide the mail failure from the administrator.
+        }
+        $message = $this->failureMessage($error);
+        if (str_starts_with($message, 'Email delivery failed.') || $root instanceof \Error ||
+            $error instanceof \Illuminate\View\ViewException) {
+            $message .= ' Backend detail: '.$type.' at '.$diagnostic['source'].':'.$diagnostic['line'].'.';
+        }
+        return ['message'=>$message.' Reference: '.$diagnostic['reference'].'.', 'diagnostic'=>$diagnostic];
     }
 
     public function failureMessage(\Throwable $error): string {
+        if ($error instanceof \Illuminate\View\ViewException) {
+            return 'The backend could not render the email template. Check the backend view files, installed PHP extensions and storage/framework/views permissions. Use Check connection to verify SMTP separately.';
+        }
+        if ($error instanceof \Illuminate\Database\QueryException) {
+            return 'The backend could not read the saved SMTP settings. Check the database connection and apply pending backend migrations.';
+        }
+        if ($error instanceof \Symfony\Component\Mime\Exception\RfcComplianceException) {
+            return 'An email address is invalid. Check the sender and the signed-in administrator’s recipient address.';
+        }
+        if ($error instanceof \Error) {
+            return 'The backend encountered a PHP runtime error while preparing email. Check the deployed dependencies and PHP extensions using the diagnostic reference.';
+        }
         if ($error instanceof MailConfigurationException) return $error->getMessage();
         if ($error instanceof \Illuminate\Contracts\Encryption\DecryptException) {
             return 'Saved SMTP credentials cannot be decrypted. Restore the original backend APP_KEY or re-enter and save the credentials.';
         }
         $message = strtolower($error->getMessage());
+        $smtpCode = $error instanceof \Symfony\Component\Mailer\Exception\TransportExceptionInterface ? (int) $error->getCode() : 0;
         $host = config('mail.mailers.smtp.host');
         try { $host = MailSetting::value('host') ?: $host; } catch (\Illuminate\Database\QueryException) {
             // Error reporting must still work if the settings database is unavailable.
         }
         if (str_contains($message, 'timed out') || str_contains($message, 'connection refused') ||
             str_contains($message, 'could not be established') || str_contains($message, 'getaddrinfo') ||
-            str_contains($message, 'network is unreachable')) {
+            str_contains($message, 'network is unreachable') || str_contains($message, 'closed unexpectedly') ||
+            str_contains($message, 'connection reset') || str_contains($message, 'broken pipe') ||
+            str_contains($message, 'unable to read from connection') || str_contains($message, 'unable to write bytes') ||
+            str_contains($message, 'got empty code')) {
             if ($host === BrevoSmtp::HOST) {
                 return 'Cannot connect to Brevo. Use smtp-relay.brevo.com with STARTTLS on port 587 or 2525, or SSL/TLS on port 465. Confirm your backend hosting allows outbound connections on that port.';
             }
             return 'Cannot connect to the SMTP server. Check its hostname and port, and confirm your hosting provider allows outbound SMTP connections.';
         }
+        if ($smtpCode === 504 || str_contains($message, 'failed to find an authenticator')) {
+            return 'The SMTP server did not offer a supported login method. Check the server hostname, authentication mode and TLS settings.';
+        }
         if (str_contains($message, 'certificate') || str_contains($message, 'starttls') || str_contains($message, 'crypto') || str_contains($message, 'ssl operation')) {
             return 'The secure SMTP connection failed. Use STARTTLS on port 587 or SSL/TLS on port 465, and check the server certificate and PHP OpenSSL support.';
         }
         if ($host === BrevoSmtp::HOST) {
-            if (preg_match('/\b525\b/', $message) || str_contains($message, 'unauthorized ip')) {
+            if ($smtpCode === 525 || preg_match('/\b525\b/', $message) || str_contains($message, 'unauthorized ip')) {
                 return 'Brevo blocked the backend server’s outbound IP. Add that IP to the authorized IP list in Brevo Settings > SMTP & API, then retry.';
             }
             if (str_contains($message, 'quota') || str_contains($message, 'credit') || str_contains($message, 'limit exceeded') || preg_match('/\b452\b/', $message)) {
@@ -76,7 +135,7 @@ class PlatformMail {
                 return 'Brevo transactional sending is inactive or suspended. Check the account status in Brevo and complete its activation or contact Brevo support.';
             }
         }
-        if (str_contains($message, 'authenticate') || str_contains($message, '535') || str_contains($message, '534') || str_contains($message, '5.7.57')) {
+        if (in_array($smtpCode, [530, 534, 535, 538], true) || str_contains($message, 'authenticate') || str_contains($message, '535') || str_contains($message, '534') || str_contains($message, '5.7.57')) {
             return match ($host) {
                 BrevoSmtp::HOST=>'Brevo rejected the login. Copy the exact Login and SMTP key from Brevo Settings > SMTP & API > SMTP. Use an SMTP key, not an API key or your account password; regenerate the SMTP key if necessary.',
                 'smtp.gmail.com'=>'Gmail rejected the login. Use your full Gmail address and a 16-character App Password created after enabling 2-Step Verification.',
@@ -93,6 +152,9 @@ class PlatformMail {
         if (str_contains($message, 'quota') || str_contains($message, 'limit exceeded') || str_contains($message, '452')) {
             return 'The email provider has reached its sending limit. Wait for the limit to reset or use another SMTP provider.';
         }
-        return 'Email delivery failed. Check the saved SMTP configuration and your provider’s account permissions, then retry.';
+        if ($error instanceof \Symfony\Component\Mailer\Exception\TransportExceptionInterface) {
+            return 'The SMTP server interrupted or rejected the mail transaction'.($smtpCode >= 400 && $smtpCode <= 599 ? ' (SMTP '.$smtpCode.')' : '').'. Use Check connection, then check the provider’s transactional logs and account status.';
+        }
+        return 'Email delivery failed. Use Check connection to separate SMTP connection failures from backend email preparation errors.';
     }
 }

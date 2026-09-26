@@ -51,6 +51,7 @@ Route::prefix('api')->group(function(){
  Route::post('smtp/microsoft/connect',[\App\Http\Controllers\MailSettingsController::class,'connectMicrosoft'])->middleware('throttle:5,1,smtp-connect:');
  Route::get('smtp/microsoft/callback',[\App\Http\Controllers\MailSettingsController::class,'microsoftCallback']);
  Route::put('smtp',[\App\Http\Controllers\MailSettingsController::class,'save']);
+ Route::post('smtp/check',[\App\Http\Controllers\MailSettingsController::class,'check'])->middleware('throttle:3,1,smtp-check:');
  Route::post('smtp/test',[\App\Http\Controllers\MailSettingsController::class,'test'])->middleware('throttle:3,1,smtp-test:');
  Route::get('users',[AdminController::class,'users']);
  Route::get('users/{user}',[AdminController::class,'detail']);
