@@ -21,6 +21,7 @@ Route::prefix('api')->group(function(){
  Route::post('logout',[AuthController::class,'logout']);
  Route::post('jobs/search',[JobsController::class,'search'])->middleware('throttle:20,1,jobs-search:');
  Route::get('jobs/links',[JobsController::class,'links']);Route::get('jobs/saved-searches',[JobsController::class,'saved']);Route::post('jobs/saved-searches',[JobsController::class,'save']);Route::delete('jobs/saved-searches/{search}',[JobsController::class,'destroySaved']);
+ Route::post('cv/extract',[CvController::class,'extract'])->middleware('throttle:6,1,cv-extract:');
  Route::get('cv',[CvController::class,'index']);Route::post('cv',[CvController::class,'store'])->middleware('throttle:10,1,cv:');Route::post('cv/{cv}/analyze',[CvController::class,'analyze']);Route::delete('cv/{cv}',[CvController::class,'destroy']);
  Route::apiResource('applications',ApplicationController::class)->except(['show']);
  Route::get('career/library',[CareerController::class,'library']);
