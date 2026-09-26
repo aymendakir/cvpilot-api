@@ -6,6 +6,7 @@ class SiteSetting extends \Illuminate\Database\Eloquent\Model {
     protected $casts = ['data'=>'array'];
 
     public const PUBLIC_PATHS = [
+        "/blog",
         '/', '/about', '/contact', '/privacy', '/terms', '/career-guides', '/cv-builder', '/ats-checker', '/cover-letter',
         '/career-guides/write-a-clear-cv', '/career-guides/tailor-a-cv-to-a-job', '/career-guides/prepare-for-an-interview',
     ];

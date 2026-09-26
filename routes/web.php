@@ -5,6 +5,8 @@ Route::get('/',fn()=>response()->file(public_path('console.html')));
 Route::get('/api/csrf',fn()=>['token'=>csrf_token()]);
 Route::prefix('api')->group(function(){
  Route::get('site-settings',[\App\Http\Controllers\SiteSettingsController::class,'show']);
+ Route::get('blog',[\App\Http\Controllers\BlogController::class,'published'])->middleware('throttle:60,1,blog:');
+ Route::get('blog/{slug}',[\App\Http\Controllers\BlogController::class,'show'])->middleware('throttle:60,1,blog:');
  Route::post('contact',[\App\Http\Controllers\SupportController::class,'store'])->middleware('throttle:3,10,contact:');
  Route::post('analytics/events',[AnalyticsController::class,'store'])->middleware('throttle:120,1,analytics-events:');
  Route::post('register',[AuthController::class,'register'])->middleware('throttle:register');
@@ -43,6 +45,11 @@ Route::prefix('api')->group(function(){
  Route::get('system',[\App\Http\Controllers\SiteSettingsController::class,'system']);
  Route::get('contact-messages',[\App\Http\Controllers\SupportController::class,'index']);
  Route::patch('contact-messages/{message}',[\App\Http\Controllers\SupportController::class,'update']);
+ Route::get('blog',[\App\Http\Controllers\BlogController::class,'index']);
+ Route::post('blog',[\App\Http\Controllers\BlogController::class,'store']);
+ Route::put('blog/{post}',[\App\Http\Controllers\BlogController::class,'update']);
+ Route::delete('blog/{post}',[\App\Http\Controllers\BlogController::class,'destroy']);
+ Route::post('users',[AdminController::class,'storeUser'])->middleware('throttle:10,1,admin-create-user:');
  Route::get('summary',[AdminController::class,'summary']);
  Route::get('cv-templates',[\App\Http\Controllers\CvTemplateController::class,'index']);
  Route::post('cv-templates',[\App\Http\Controllers\CvTemplateController::class,'store']);
