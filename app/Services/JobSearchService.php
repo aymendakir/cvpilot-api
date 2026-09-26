@@ -5,16 +5,16 @@ use App\Models\Integration;
 use Illuminate\Support\Facades\{Cache, Http};
 
 class JobSearchService {
+    private const ADZUNA_COUNTRIES = ['gb', 'us', 'at', 'au', 'be', 'br', 'ca', 'ch', 'de', 'es', 'fr', 'in', 'it', 'mx', 'nl', 'nz', 'pl', 'ru', 'sg', 'za'];
     public function search(array $d): array {
         $providers = $this->providers($d);
         $cacheInput = $d;
         unset($cacheInput['cv_text'], $cacheInput['cv_document_id']);
-        $key = 'jobs:' . sha1(json_encode([$cacheInput, $providers->pluck('provider')->all()]));
+        $key = 'jobs:location-v2:' . sha1(json_encode([$cacheInput, $providers->pluck('provider')->all()]));
 
         return Cache::remember($key, now()->addMinutes(5), function () use ($d, $providers) {
             $attempts = [];
             $allJobs = [];
-            $lastError = null;
             $limit = min(100, max(1, (int)($d['limit'] ?? 100)));
 
             foreach ($providers as $cfg) {
@@ -29,8 +29,8 @@ class JobSearchService {
                         }
                     }
                 } catch (\Throwable $e) {
-                    $lastError = $e;
-                    $attempts[] = ['provider' => $cfg->provider, 'ok' => false, 'count' => 0];
+                    $attempts[] = ['provider' => $cfg->provider, 'ok' => false, 'count' => 0,
+                        'status' => $e instanceof \Illuminate\Http\Client\RequestException ? $e->response->status() : null];
                 }
             }
 
@@ -41,12 +41,17 @@ class JobSearchService {
 
             $activeProvider = !empty($uniqueJobs)
                 ? implode(', ', array_unique(array_column($uniqueJobs, 'source')))
-                : ($attempts[0]['provider'] ?? 'remotive');
+                : '';
 
+            $sourceFailed = collect($attempts)->contains(fn ($attempt) => !$attempt['ok']);
             return [
                 'provider' => $activeProvider,
                 'data' => $uniqueJobs,
                 'attempts' => $attempts,
+                'message' => empty($uniqueJobs)
+                    ? ($sourceFailed ? 'A connected job source is unavailable. Search Indeed or LinkedIn directly while its API access is restored.'
+                        : 'No imported offers matched this location. Search Indeed or LinkedIn directly with the same role and city.')
+                    : null,
                 'cached_for_seconds' => 300,
             ];
         });
@@ -59,6 +64,11 @@ class JobSearchService {
         // Check if database has enabled job integrations (e.g. JSearch, Adzuna, Jooble)
         $enabled = Integration::where('type', 'jobs')->where('enabled', true)->orderBy('priority')->orderBy('id')->get();
 
+        $eligible = fn ($cfg) => !($cfg->provider === 'arbeitnow' && !in_array($country, ['DE', 'ALL'], true))
+            && !($cfg->provider === 'adzuna' && !in_array(strtolower($country), self::ADZUNA_COUNTRIES, true));
+        $enabled = $enabled->filter($eligible);
+
+        if ($requested === 'arbeitnow' && !in_array($country, ['DE', 'ALL'], true)) return collect();
         if ($requested) {
             $chosen = $enabled->firstWhere('provider', $requested);
             if ($chosen) {
@@ -67,6 +77,7 @@ class JobSearchService {
             if (in_array($requested, ['remotive', 'jobicy', 'arbeitnow'], true)) {
                 return collect([(object)['provider' => $requested, 'secret' => 'public', 'settings' => []]]);
             }
+            return collect();
         }
 
         $list = collect();
@@ -76,26 +87,20 @@ class JobSearchService {
             $list->push($int);
         }
 
-        // Public Providers depending on country:
-        // 1. If Germany: include Arbeitnow + Remotive + Jobicy
-        // 2. If Worldwide or other countries: include Remotive + Jobicy (+ Arbeitnow if remote or European)
-        if ($country === 'DE') {
-            $list->push((object)['provider' => 'arbeitnow', 'secret' => 'public', 'settings' => []]);
-            $list->push((object)['provider' => 'remotive', 'secret' => 'public', 'settings' => []]);
-            $list->push((object)['provider' => 'jobicy', 'secret' => 'public', 'settings' => []]);
-        } else {
-            $list->push((object)['provider' => 'remotive', 'secret' => 'public', 'settings' => []]);
-            $list->push((object)['provider' => 'jobicy', 'secret' => 'public', 'settings' => []]);
-            if (in_array($country, ['FR', 'ES', 'IT', 'NL', 'AT', 'CH', 'PL', 'BE', 'UK', 'GB', 'ALL', ''], true)) {
-                $list->push((object)['provider' => 'arbeitnow', 'secret' => 'public', 'settings' => []]);
-            }
-        }
+        // Morocco local searches use location-aware integrations, not unrelated remote feeds.
+        if ($country === 'MA' && ($d['work_mode'] ?? 'any') !== 'remote') return $list->filter($eligible)->unique('provider')->values();
 
-        return $list->unique('provider')->values();
+        if (in_array($country, ['DE', 'ALL'], true)) {
+            $list->push((object)['provider' => 'arbeitnow', 'secret' => 'public', 'settings' => []]);
+        }
+        $list->push((object)['provider' => 'remotive', 'secret' => 'public', 'settings' => []]);
+        $list->push((object)['provider' => 'jobicy', 'secret' => 'public', 'settings' => []]);
+
+        return $list->filter($eligible)->unique('provider')->values();
     }
 
     private function collectPages($cfg, array $d): array {
-        $pages = min(3, max(1, (int)($d['pages'] ?? 2)));
+        $pages = in_array($cfg->provider, ['remotive', 'jobicy'], true) ? 1 : min(3, max(1, (int)($d['pages'] ?? 2)));
         $limit = min(100, max(1, (int)($d['limit'] ?? 100)));
         $all = [];
 
@@ -109,11 +114,12 @@ class JobSearchService {
                 'jsearch' => $this->jsearch($cfg, $pageData),
                 'adzuna' => $this->adzuna($cfg, $pageData),
                 'jooble' => $this->jooble($cfg, $pageData),
-                default => $this->arbeitnow($pageData),
+                'arbeitnow' => $this->arbeitnow($pageData),
+                default => [],
             };
 
             if (!$result) break;
-            $all = array_merge($all, $result);
+            $all = array_merge($all, array_values(array_filter($result, fn ($job) => JobLocation::matches($job, $d))));
         }
 
         return collect($all)->filter(fn($j) => !empty($j['title']) && !empty($j['url']))->values()->all();
@@ -126,13 +132,10 @@ class JobSearchService {
             'limit' => 30,
         ]);
 
-        if (!$r->successful()) return [];
+        $r->throw();
 
-        $country = strtoupper(trim((string)($d['country'] ?? '')));
-        $countryName = strtolower(trim((string)($d['country_name'] ?? '')));
-
-        return collect($r->json('jobs', []))->map(function ($j) use ($country, $countryName) {
-            $loc = $j['candidate_required_location'] ?: 'Worldwide (Remote)';
+        return collect($r->json('jobs', []))->map(function ($j) {
+            $loc = $j['candidate_required_location'] ?? 'Location not specified';
             $isRemote = true;
 
             return $this->job([
@@ -164,10 +167,10 @@ class JobSearchService {
             'tag' => $primaryTag,
         ]);
 
-        if (!$r->successful()) return [];
+        $r->throw();
 
         return collect($r->json('jobs', []))->map(function ($j) {
-            $loc = $j['jobGeo'] ?: 'Remote (Worldwide)';
+            $loc = $j['jobGeo'] ?? 'Location not specified';
             return $this->job([
                 'external_id' => 'jobicy-' . ($j['id'] ?? null),
                 'title' => $j['jobTitle'] ?? '',
@@ -190,7 +193,9 @@ class JobSearchService {
     }
 
     private function jsearch($c, array $d): array {
-        $loc = trim(($d['city'] ?? '') . ' ' . ($d['country_name'] ?? $d['country']));
+        $country = strtoupper($d['country']);
+        $locationName = $country === 'MA' ? 'Morocco' : ($country === 'ALL' ? 'Remote' : ($d['country_name'] ?? $country));
+        $loc = trim(($d['city'] ?? '') . ' ' . $locationName);
         $query = trim($d['q'] . ($loc ? " in $loc" : ""));
         $params = [
             'query' => $query,
@@ -198,14 +203,16 @@ class JobSearchService {
             'num_pages' => 1,
             'date_posted' => $d['date'] ?? 'month',
         ];
-        if (($d['work_mode'] ?? 'any') === 'remote') $params['remote_jobs_only'] = 'true';
+        if ($country !== 'ALL') $params['country'] = strtolower($country === 'GB' ? 'UK' : $country);
+        if ($country === 'MA') $params['language'] = 'fr';
+        if (($d['work_mode'] ?? 'any') === 'remote' || $country === 'ALL') $params['remote_jobs_only'] = 'true';
 
         $r = Http::timeout(25)->withHeaders([
             'X-RapidAPI-Key' => $c->secret,
             'X-RapidAPI-Host' => 'jsearch.p.rapidapi.com',
         ])->get('https://jsearch.p.rapidapi.com/search', $params);
 
-        if (!$r->successful()) return [];
+        $r->throw();
 
         return collect($r->json('data', []))->map(fn($j) => $this->job([
             'external_id' => $j['job_id'] ?? null,
@@ -217,7 +224,8 @@ class JobSearchService {
             'remote' => (bool)($j['job_is_remote'] ?? false),
             'work_mode' => ($j['job_is_remote'] ?? false) ? 'remote' : $this->detectMode(($j['job_title'] ?? '') . ' ' . ($j['job_description'] ?? '')),
             'published_at' => $j['job_posted_at_datetime_utc'] ?? null,
-            'source' => 'JSearch',
+            'source' => $j['job_publisher'] ?? 'JSearch',
+            'country_code' => $j['job_country'] ?? null,
             'tags' => $j['job_required_skills'] ?? [],
             'contract_type' => $this->contract($j['job_employment_type'] ?? null),
             'salary_min' => $j['job_min_salary'] ?? null,
@@ -233,11 +241,7 @@ class JobSearchService {
         if (!$appId) return [];
 
         $cc = strtolower($d['country']);
-        // Adzuna only supports specific country codes
-        $supportedAdzuna = ['gb', 'us', 'at', 'au', 'be', 'br', 'ca', 'ch', 'de', 'es', 'fr', 'in', 'it', 'mx', 'nl', 'nz', 'pl', 'ru', 'sg', 'za'];
-        if (!in_array($cc, $supportedAdzuna, true)) {
-            $cc = 'us'; // Fallback for Adzuna
-        }
+        if (!in_array($cc, self::ADZUNA_COUNTRIES, true)) return [];
 
         $days = ['today' => 1, '3days' => 3, 'week' => 7, 'month' => 30, 'all' => null];
         $params = [
@@ -251,7 +255,7 @@ class JobSearchService {
         if ($days[$d['date'] ?? 'month']) $params['max_days_old'] = $days[$d['date'] ?? 'month'];
 
         $r = Http::timeout(25)->get("https://api.adzuna.com/v1/api/jobs/$cc/search/{$d['page']}", $params);
-        if (!$r->successful()) return [];
+        $r->throw();
 
         return collect($r->json('results', []))->map(fn($j) => $this->job([
             'external_id' => $j['id'] ?? null,
@@ -264,6 +268,7 @@ class JobSearchService {
             'work_mode' => $this->detectMode(($j['title'] ?? '') . ' ' . ($j['description'] ?? '')),
             'published_at' => $j['created'] ?? null,
             'source' => 'Adzuna',
+            'country_code' => strtoupper($cc),
             'contract_type' => $this->contract($j['contract_time'] ?? $j['contract_type'] ?? null),
             'salary_min' => $j['salary_min'] ?? null,
             'salary_max' => $j['salary_max'] ?? null,
@@ -274,10 +279,10 @@ class JobSearchService {
     private function jooble($c, array $d): array {
         $r = Http::timeout(25)->post('https://jooble.org/api/' . rawurlencode($c->secret), [
             'keywords' => $d['q'],
-            'location' => trim(($d['city'] ?? '') . ' ' . ($d['country_name'] ?? $d['country'])),
+            'location' => trim(($d['city'] ?? '') . ' ' . ($d['country'] === 'MA' ? 'Morocco' : ($d['country_name'] ?? $d['country']))),
             'page' => $d['page'],
         ]);
-        if (!$r->successful()) return [];
+        $r->throw();
 
         return collect($r->json('jobs', []))->map(fn($j) => $this->job([
             'external_id' => $j['id'] ?? null,
@@ -298,7 +303,7 @@ class JobSearchService {
 
     private function arbeitnow(array $d): array {
         $r = Http::timeout(25)->get('https://www.arbeitnow.com/api/job-board-api', ['page' => $d['page']]);
-        if (!$r->successful()) return [];
+        $r->throw();
 
         $terms = array_filter(preg_split('/\s+/', strtolower($d['q'])), fn($x) => strlen($x) > 2);
 

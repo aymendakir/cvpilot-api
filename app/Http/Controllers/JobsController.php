@@ -2,7 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\{CvDocument, JobSearch};
-use App\Services\{JobSearchService, AtsScorer};
+use App\Services\{JobSearchService, JobLocation, AtsScorer};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -55,12 +55,7 @@ class JobsController {
                     return false;
                 }
 
-                // If user selected a specific non-German country (e.g. Morocco, France, US), exclude strict on-site German listings
-                if ($country !== 'DE' && $country !== 'ALL' && !empty($country)) {
-                    if (($job['source'] ?? '') === 'Arbeitnow' && empty($job['remote']) && ($job['work_mode'] ?? '') === 'onsite') {
-                        return false;
-                    }
-                }
+                if (!JobLocation::matches($job, $d)) return false;
 
                 return true;
             })->take($d['limit'] ?? 100)->map(function ($job) use ($cv, $ats) {
@@ -84,22 +79,29 @@ class JobsController {
         $d = $r->validate([
             'q' => 'required|string|max:120',
             'location' => 'nullable|string|max:180',
+            'city' => 'nullable|string|max:120',
             'country' => 'nullable|string|max:10',
         ]);
 
         $q = urlencode($d['q']);
-        $l = urlencode($d['location'] ?? '');
+        $location = trim($d['city'] ?? $d['location'] ?? '');
+        if (strtoupper($d['country'] ?? '') === 'MA') {
+            $location = $location === '' ? 'Morocco' : $location;
+            if (!preg_match('/\b(morocco|maroc)\b/i', $location)) $location .= ', Morocco';
+        }
+        $l = urlencode($location);
         $country = strtoupper(trim((string)($d['country'] ?? '')));
 
         $links = [
             'linkedin' => "https://www.linkedin.com/jobs/search/?keywords=$q&location=$l",
-            'indeed' => "https://www.indeed.com/jobs?q=$q&l=$l",
+            'indeed' => ($country === 'MA' ? 'https://ma.indeed.com' : 'https://www.indeed.com')."/jobs?q=$q&l=$l",
             'google' => "https://www.google.com/search?q=$q+jobs+$l",
             'remoteok' => "https://remoteok.com/remote-$q-jobs",
         ];
 
         // Add local top career portals based on target country
         if ($country === 'MA') {
+            if (empty($d['city']) && empty($d['location'])) $links['linkedin'] .= '&geoId=102787409';
             $links['rekrute'] = "https://www.rekrute.com/offres-emploi-maroc.html?keyword=$q";
             $links['bayt'] = "https://www.bayt.com/en/morocco/jobs/?q=$q";
         } elseif ($country === 'FR') {

@@ -9,7 +9,7 @@ Production-oriented Laravel 12 + MySQL API for the CVPilot frontend.
 - Private PDF/DOCX/TXT CV uploads and text extraction.
 - Local ATS scoring with keyword, section, readability and impact breakdowns.
 - AI gateway for OpenAI, Anthropic, Gemini, Groq, Mistral and OpenRouter.
-- Job gateway for JSearch, Adzuna, Jooble and a no-key Arbeitnow fallback.
+- Location-aware job search through JSearch, Adzuna and Jooble, plus eligible public remote feeds and country-specific LinkedIn/Indeed searches.
 - Job match scores, direct employer URLs and LinkedIn/Indeed/Google fallback links.
 - Application tracking states: saved, prepared, applied, interview, rejected and offer.
 - Consent-based traffic analytics (visitors, sessions, page views, bounce rate, pages, sources, countries and devices).
@@ -71,9 +71,24 @@ Model identifiers change over time; use a model enabled on your provider account
 | JSearch | RapidAPI key | Worldwide search |
 | Adzuna | API key + App ID | Supported country indexes |
 | Jooble | API key | Broad international search |
-| Arbeitnow | No key | European and remote fallback |
+| Arbeitnow | No key | Germany; remote listings only for worldwide remote searches |
 
-The backend selects the newest enabled job provider unless the request names one. When no configured job provider exists, it uses the backend-side Arbeitnow fallback, avoiding browser CORS failures.
+The backend tries enabled job providers in priority order. Morocco searches send `country=ma`,
+`language=fr` and the Moroccan city/country to JSearch. Work restricted to another country is excluded,
+even when marked remote. Arbeitnow is skipped for Morocco, and Adzuna never substitutes US listings
+for unsupported countries. Public remote feeds are considered for Morocco only when remote work is
+explicitly requested, with location eligibility checked before result limits.
+
+Job Apply starts in Morocco and provides prominent **LinkedIn Maroc** and **Indeed Maroc** searches
+using the entered role and city. Indeed uses `ma.indeed.com`; LinkedIn receives the Moroccan location.
+These links open the selected website. Imported offers inside CVPilot require a working job integration;
+JSearch can aggregate publishers including LinkedIn and Indeed and preserves their source labels.
+See [JSearch country targeting and publisher coverage](https://www.openwebninja.com/api/jsearch).
+A failed provider is reported as unavailable rather than as proof that no jobs exist. An HTTP 403 from
+JSearch requires checking the RapidAPI subscription and API key in Dashboard > API keys.
+
+Job search regression checks: `php tests/jobs.php`. Frontend portal links: from the repository root,
+run `node tests/job-links.mjs` with Node 22.13+ (native TypeScript stripping).
 
 ## SMTP email setup
 
