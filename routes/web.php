@@ -36,6 +36,7 @@ Route::prefix('api')->group(function(){
  Route::post('career/interviews',[CareerController::class,'startInterview'])->middleware('throttle:10,1,career-interviews:');Route::post('career/interviews/{session}/reply',[CareerController::class,'replyInterview'])->middleware('throttle:20,1,career-interviews--session--reply:');Route::post('career/interviews/{session}/finish',[CareerController::class,'finishInterview'])->middleware('throttle:5,1,career-interviews--session--finish:');
  Route::post('ai/chat',[AiController::class,'chat'])->middleware('throttle:20,1,ai-chat:');Route::post('ai/improve-cv',[AiController::class,'improveCv'])->middleware('throttle:10,1,ai-improve-cv:');
  Route::post('ai/ats-analysis',[AiController::class,'atsAnalysis'])->middleware('throttle:10,1,ai-ats-analysis:');Route::post('ai/cover-letter',[AiController::class,'coverLetter'])->middleware('throttle:10,1,ai-cover-letter:');
+ Route::post('ats/document',[\App\Http\Controllers\AtsDocumentController::class,'analyze'])->middleware('throttle:20,1,ats-document:');
  Route::prefix('admin')->middleware('admin')->group(function(){
  Route::get('site-settings',[\App\Http\Controllers\SiteSettingsController::class,'show']);
  Route::put('site-settings',[\App\Http\Controllers\SiteSettingsController::class,'save']);
