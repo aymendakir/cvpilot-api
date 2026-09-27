@@ -8,6 +8,10 @@ $data=['summary'=>'Clear contributions.','suggestions'=>[['original'=>'Built 3 a
 foreach(['clarity','specificity','relevance','organization'] as $key) $data['rubric'][$key]=['level'=>3,'reason'=>'Clear evidence','evidence'=>'Built 3 applications.'];
 $read=fn($d,$text=null,$job='React required')=>ResumeAudit::parse(json_encode($d),$text ?? $cv,$job);
 expectAudit($read($data)['score']===75);
+$spaced=$data;$spaced['rubric']['clarity']['evidence']='Maintained useful client portal features  with the development team.';
+expectAudit($read($spaced)['score']===75);
+$shorter='Experience'."\nBuilt 3 applications.\n".str_repeat('Maintained useful client portal features with the development team. ',7);
+expectAudit($read($data,$shorter)['score']===75);
 expectAudit(count($read($data)['suggestions'])===1);
 expectAudit($read($data,'Built 3 applications.')['score']===null);
 expectAudit($read($data,$cv,'')['requirements']===[]);
@@ -17,4 +21,4 @@ $bad=$data;$bad['strengths'][0]['evidence']='Made up';expectAudit($read($bad)['s
 $bad=$data;$bad['suggestions'][0]['replacement']='Delivered 30 applications.';expectAudit($read($bad)['suggestions']===[]);
 $bad=$data;$bad['requirements'][0]['requirement']='AWS required';expectAudit($read($bad)['requirements']===[]);
 expectAudit(ResumeAudit::parse('invalid JSON',$cv)===null);
-echo "10 ResumeAudit checks passed.\n";
+echo "12 ResumeAudit checks passed.\n";
