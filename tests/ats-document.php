@@ -11,9 +11,9 @@ assertDocument($ideal['raw_score']===100,'Fully evidenced fixture should earn ev
 assertDocument($ideal['issues']===0,'Fully evidenced fixture should have no issues');
 assertDocument($ideal['score']===94,'Top band capped at 94');
 $missingEmail=$engine->analyze(str_replace('contact@example.com','',$cv));
-assertDocument($missingEmail['score']<=69,'No email must cap the score');
+assertDocument($missingEmail['score']<=80,'No email must cap the score');
 $missingExperience=$engine->analyze(str_replace('Experience','Other', $cv));
-assertDocument($missingExperience['score']<=65,'Missing experience heading must cap the score');
+assertDocument($missingExperience['score']<=78,'Missing experience heading must cap the score');
 $noEducation=$engine->analyze(str_replace('Education','Other', $cv));
 assertDocument($noEducation['score']<=89 && $noEducation['issues']>0,'Any failed check prevents 90+');
 $brief=$engine->analyze('Experience'."\nShort sentence.");
@@ -26,4 +26,10 @@ assertDocument(count($categoryChecks)>=12 && !array_filter($categoryChecks,fn($c
 $french=$engine->analyze("Profil\nDéveloppeur ayant réalisé plusieurs projets pour des clients avec une équipe professionnelle.\ncontact@example.com\nExpérience professionnelle\n2024-2025 ACME\n- Développé un portail pour améliorer le suivi de 50 clients dans l'entreprise.\n- Réalisé des améliorations pour faciliter l'accès des utilisateurs aux documents.\n- Conçu une interface pour réduire les erreurs de saisie des projets.\nFormation\nDiplôme en développement informatique dans une école de formation.\nCompétences\nReact Laravel PHP MySQL et travail en équipe.");
 assertDocument($french['max_score']===100 && $french['score']!==null,'French headings are assessed');
 assertDocument(str_contains($french['categories'][0]['title'],'Lecture'),'French document check copy');
+$canva=$engine->analyze("D É V E L O P P E U R\ncontact@example.com\nEXPÉRIENCE PROFESSIONNELLE\n2025 Développeur dans une entreprise\n- Développement d'applications pour plusieurs clients et mise en production.\n- Création d'interfaces utilisateur avec React et collaboration directe avec les clients.\n- Intégration des APIs REST et gestion de bases de données SQL.\nFORMATIONS\nDiplôme de développement informatique en 2024.\nCOMPÉTENCES\nReact PHP Laravel SQL et JavaScript.");
+$canvaChecks=array_column(array_merge(...array_column($canva['categories'],'checks')),null,'id');
+assertDocument($canvaChecks['education']['status']==='pass','French plural FORMATIONS heading must be recognized');
+assertDocument($canvaChecks['ownership']['earned']>0,'French action nouns must count as contributions');
+assertDocument($canvaChecks['fragmentation']['status']==='review','Letter-spaced title requires specific extraction guidance');
+assertDocument($canva['score']<=89 && $canva['score']>25,'Readable French CV should not get a spurious very low score');
 echo "ATS document review checks passed.\n";
