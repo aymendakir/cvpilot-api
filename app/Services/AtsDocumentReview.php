@@ -51,6 +51,7 @@ class AtsDocumentReview
         $unique=array_values($unique);
         $missingChars=array_values(array_filter($lines,static fn(string $line):bool => str_contains($line,"\u{FFFD}")));
         $fragmented=array_values(array_filter($lines, static fn(string $line):bool => preg_match('/^\p{L}$/u',$line)===1));
+        $letterSpaced=array_values(array_filter($lines,static fn(string $line):bool => preg_match('/(?:\b\p{L}\s+){5,}\p{L}\b/u',$line)===1));
         $email=array_values(array_filter($lines,static fn(string $line):bool=>preg_match('/[\w.+-]+@[\w.-]+\.[a-z]{2,}/iu',$line)===1));
         $dated=array_values(array_filter($sections['experience'],static fn(string $line):bool=>preg_match('/\b(?:19|20)\d{2}\b/',$line)===1));
 
@@ -74,7 +75,10 @@ class AtsDocumentReview
             .'|enseigné|enseignée|encadré|encadrée|supervisé|supervisée'
             .'|recruté|recrutée|embauché|embauchée|évalué|évaluée'
             .')\b/iu';
-        $actions=array_values(array_filter($unique,static fn(string $line):bool=>preg_match($actionVerbPattern,$line)===1));
+        // French CVs commonly describe work with action nouns ("Création", "Gestion").
+        // Inspect experience contributions only; do not require made-up numerical results.
+        $actionNouns='/\b(?:développement|création|intégration|conception|collaboration|utilisation|résolution|maintenance|participation|gestion|coordination|organisation|analyse|réalisation|préparation|formation|enseignement|vente|négociation|recrutement|supervision|accompagnement|assistance|amélioration|traitement|livraison|suivi|mise en place)\b/iu';
+        $actions=array_values(array_filter($unique,static fn(string $line):bool=>preg_match($actionVerbPattern,$line)===1 || preg_match($actionNouns,$line)===1));
         $weak=array_values(array_filter($unique,static fn(string $line):bool=>preg_match('/\b(?:responsible for|duties included|in charge of|tasked with|responsable de|chargé de|chargée de)\b/iu',$line)===1));
         $concise=array_values(array_filter($unique,static fn(string $line):bool=>$wordCountOf($line)<=45));
         $outcomes=array_values(array_filter($unique,static fn(string $line):bool=>preg_match('/\b(?:resulting in|enabled|reduced|increased|improved|saved|to improve|to reduce|to enable|to simplify|permettant|réduit|amélioré|facilité|optimisé|afin de|pour améliorer|pour faciliter)\b|\d+(?:[.,]\d+)?\s*(?:%|clients?|users?|utilisateurs?|projets?|projects?|heures?|hours?|patients?|élèves?|students?|k\$?|€|\$|k€)\b/iu',$line)===1));
@@ -84,7 +88,7 @@ class AtsDocumentReview
         $group('extraction',$french?'Lecture du fichier':'Extracted text',$french?'Qualité du texte extrait; la mise en page visuelle reste à vérifier.':'Text extraction quality; visual layout still needs your review.');
         $add('readable',$french?'Texte exploitable':'Readable text',5,$wordCount>=60?1:$wordCount/60,[], $french?"{$wordCount} mots lisibles détectés.":"{$wordCount} readable words detected.",$french?'Vérifiez le texte extrait : un scan image nécessite un OCR.':'Review extracted text; image scans need OCR.');
         $add('characters',$french?'Caractères lisibles':'Character integrity',5,$missingChars?0:1,$missingChars,$missingChars?($french?'Caractères illisibles trouvés.':'Unreadable replacement characters found.'):($french?'Aucun caractère de remplacement détecté.':'No replacement characters detected.'),$french?'Réexportez le PDF avec une couche de texte.':'Export a text-based PDF.');
-        $add('fragmentation',$french?'Ordre de lecture':'Reading continuity',5,count($fragmented)<=2?1:0,$fragmented,$french?count($fragmented).' lettres isolées détectées.':count($fragmented).' isolated letters detected.',$french?'Vérifiez colonnes et mots dans le texte extrait.':'Inspect columns and word order in extracted text.');
+        $add('fragmentation',$french?'Ordre de lecture':'Reading continuity',5,count($fragmented)<=2 && !$letterSpaced?1:0,[...$fragmented,...$letterSpaced],$french?count($fragmented).' lettres isolées, '.count($letterSpaced).' ligne(s) avec des mots espacés lettre par lettre.':count($fragmented).' isolated letters, '.count($letterSpaced).' line(s) with letter-spaced words.',$french?'Vérifiez les colonnes et remplacez les titres espacés lettre par lettre par du texte normal.':'Inspect columns and replace letter-spaced headings with normal selectable text.');
 
         $group('contact',$french?'Coordonnées':'Contact',$french?'Ce que le texte permet de trouver; coordonnées non vérifiées.':'Only observable contact text; delivery is not verified.');
         $add('email',$french?'Adresse e-mail':'Email address',10,$email?1:0,$email,$email?($french?'Adresse détectée.':'Address detected.'):($french?'Aucune adresse e-mail lisible trouvée.':'No readable email found.'),$french?'Ajoutez une adresse e-mail visible dans le CV.':'Add a visible email address.');
