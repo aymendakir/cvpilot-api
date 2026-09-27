@@ -4,7 +4,7 @@ namespace App\Services;
 /** Observable text checks; this cannot emulate any employer's proprietary ATS. */
 class AtsDocumentReview
 {
-    public const VERSION = 'document-4';
+    public const VERSION = 'document-3';
 
     public function analyze(string $text, ?string $fileName = null): array
     {
@@ -52,7 +52,6 @@ class AtsDocumentReview
         $missingChars=array_values(array_filter($lines,static fn(string $line):bool => str_contains($line,"\u{FFFD}")));
         $fragmented=array_values(array_filter($lines, static fn(string $line):bool => preg_match('/^\p{L}$/u',$line)===1));
         $email=array_values(array_filter($lines,static fn(string $line):bool=>preg_match('/[\w.+-]+@[\w.-]+\.[a-z]{2,}/iu',$line)===1));
-        $phone=array_values(array_filter($lines,static fn(string $line):bool=>preg_match('/(?:\+?\d[\d\s().-]{7,}\d)/u',$line)===1));
         $dated=array_values(array_filter($sections['experience'],static fn(string $line):bool=>preg_match('/\b(?:19|20)\d{2}\b/',$line)===1));
 
         // --- Action verbs: broadened across sales, marketing, finance, healthcare,
@@ -80,12 +79,6 @@ class AtsDocumentReview
         $concise=array_values(array_filter($unique,static fn(string $line):bool=>$wordCountOf($line)<=45));
         $outcomes=array_values(array_filter($unique,static fn(string $line):bool=>preg_match('/\b(?:resulting in|enabled|reduced|increased|improved|saved|to improve|to reduce|to enable|to simplify|permettant|réduit|amélioré|facilité|optimisé|afin de|pour améliorer|pour faciliter)\b|\d+(?:[.,]\d+)?\s*(?:%|clients?|users?|utilisateurs?|projets?|projects?|heures?|hours?|patients?|élèves?|students?|k\$?|€|\$|k€)\b/iu',$line)===1));
 
-        // --- Clichés / buzzwords that add no verifiable signal, in any domain ---
-        $clicheLines=array_values(array_filter($unique,static fn(string $line):bool=>preg_match('/\b(?:hardworking|hard-working|team player|detail[- ]oriented|self[- ]motivated|go[- ]getter|think outside the box|fast learner|results[- ]driven|passionate about|excellent communication skills|dynamique|motivé(?:e)?|rigoureux(?:se)?|autonome|esprit d.équipe|excellent relationnel|force de proposition|proactif(?:ve)?)\b/iu',$line)===1));
-
-        // --- First-person pronoun overuse (ATS-style resumes usually drop "I"/"Je") ---
-        $pronounLines=array_values(array_filter($contributions,static fn(string $line):bool=>preg_match('/^(?:i|je|j\')\b/iu',trim($line))===1));
-
         $count=count($unique);
 
         $group('extraction',$french?'Lecture du fichier':'Extracted text',$french?'Qualité du texte extrait; la mise en page visuelle reste à vérifier.':'Text extraction quality; visual layout still needs your review.');
@@ -95,7 +88,6 @@ class AtsDocumentReview
 
         $group('contact',$french?'Coordonnées':'Contact',$french?'Ce que le texte permet de trouver; coordonnées non vérifiées.':'Only observable contact text; delivery is not verified.');
         $add('email',$french?'Adresse e-mail':'Email address',10,$email?1:0,$email,$email?($french?'Adresse détectée.':'Address detected.'):($french?'Aucune adresse e-mail lisible trouvée.':'No readable email found.'),$french?'Ajoutez une adresse e-mail visible dans le CV.':'Add a visible email address.');
-        $add('phone',$french?'Numéro de téléphone':'Phone number',5,$phone?1:0,$phone,$phone?($french?'Numéro détecté.':'Phone number detected.'):($french?'Aucun numéro de téléphone lisible trouvé.':'No readable phone number found.'),$french?'Ajoutez un numéro de téléphone joignable.':'Add a reachable phone number.');
 
         $group('structure',$french?'Structure des rubriques':'Sections',$french?'Une rubrique compte seulement si du contenu lisible la suit.':'A heading counts only with readable content beneath it.');
         $add('experience',$french?'Expérience ou projets':'Experience or projects',10,count($sections['experience'])>=2?1:0,[$headings['experience']??'',...$sections['experience']],isset($headings['experience'])?($french?'Rubrique reconnue; '.count($sections['experience']).' ligne(s) dessous.':'Heading recognized; '.count($sections['experience']).' lines beneath it.'):($french?'Rubrique Expérience / Projets introuvable.':'Experience / Projects heading not recognized.'),$french?'Utilisez une rubrique standard et ajoutez rôles, projets et réalisations.':'Use a standard heading and add roles, projects and contributions.');
@@ -111,19 +103,15 @@ class AtsDocumentReview
         $add('repetition',$french?'Sans répétition':'No duplicates',5,$contributions?1-count($dupes)/count($contributions):0,$dupes,$dupes?($french?'Lignes identiques trouvées.':'Repeated contribution lines found.'):($french?'Aucune contribution répétée.':'No repeated contribution lines.'),$french?'Supprimez les doublons, gardez des preuves variées.':'Remove duplicate lines; keep varied evidence.');
         $add('outcomes',$french?'Résultats ou contexte':'Outcomes or context',10,min(count($outcomes)/2,1),$outcomes,$french?count($outcomes).' lignes évoquent un résultat ou une échelle.':count($outcomes).' lines mention an outcome or scale.',$french?'Ajoutez des résultats concrets, même qualitatifs et véridiques.':'Add truthful outcomes, including qualitative ones.');
 
-        $group('language',$french?'Qualité rédactionnelle':'Writing quality',$french?'Formulations qui aident ou nuisent à la lisibilité, indépendamment du secteur.':'Wording that helps or hurts readability, regardless of industry.');
-        $add('cliches',$french?'Peu de formules toutes faites':'Low on buzzwords',5,$count?1-count($clicheLines)/$count:1,$clicheLines,$clicheLines?($french?'Formules génériques ("dynamique", "motivé"...) détectées.':'Generic buzzwords ("hardworking", "team player"...) detected.'):($french?'Peu ou pas de formules toutes faites.':'Little to no generic buzzwords.'),$french?'Remplacez les qualificatifs vagues par des faits vérifiables.':'Swap vague self-descriptions for verifiable facts.');
-        $add('voice',$french?'Style CV (sans "je")':'Resume voice (no "I")',5,$contributions?1-count($pronounLines)/count($contributions):1,$pronounLines,$pronounLines?($french?'Certaines lignes commencent par "je".':'Some lines start with "I".'):($french?'Style sans pronom personnel, conforme aux usages ATS.':'Pronoun-free style, consistent with ATS conventions.'),$french?'Retirez "je" en début de ligne ("Je gère..." → "Gère...").':'Drop leading "I" ("I managed..." → "Managed...").');
-
         foreach($categories as &$category) { $category['score']=array_sum(array_column($category['checks'],'earned'));$category['max']=array_sum(array_column($category['checks'],'max')); }unset($category);
         $checks=array_merge(...array_column($categories,'checks'));
         $raw=array_sum(array_column($checks,'earned'));
         $issues=array_values(array_filter($checks,static fn($c)=>$c['status']==='review'));
         $score=$wordCount<40?null:min(94,$issues?min($raw,89):$raw);
-        if ($score!==null && !$email) $score=min($score,69);
-        if ($score!==null && !isset($headings['experience'])) $score=min($score,65);
-        if ($score!==null && $count<2) $score=min($score,74);
-        if ($score!==null && ($missingChars || count($fragmented)>2)) $score=min($score,59);
+        if ($score!==null && !$email) $score=min($score,80);
+        if ($score!==null && !isset($headings['experience'])) $score=min($score,78);
+        if ($score!==null && $count<2) $score=min($score,82);
+        if ($score!==null && ($missingChars || count($fragmented)>2)) $score=min($score,72);
         $priorities=$issues;
         usort($priorities,static fn($a,$b)=>($b['max']-$b['earned'])<=>($a['max']-$a['earned']));
         $scoreReason=$score===null?($french?'Texte insuffisant : au moins 40 mots lisibles sont nécessaires.':'Insufficient text: at least 40 readable words are needed.'):($issues?($french?'Score plafonné : des problèmes restent à corriger.':'Score capped while document issues remain.'):($french?'Tous les contrôles textuels passent ; le plafond rappelle que le rendu chez un employeur reste inconnu.':'All text checks pass; the ceiling reflects unknown employer parsing.'));
