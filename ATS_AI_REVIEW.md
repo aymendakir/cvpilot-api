@@ -5,11 +5,11 @@ Based on main ce031a76d546436e4e9d54a69a43208f437b2ada (user's latest ATS change
 ## Behavior
 - Sign in before displaying results. File extraction is available before sign-in.
 - AI assessment is the primary report: summary, three priorities, strengths with source quotes, explicit before/after line edits and four explained quality dimensions.
-- Score is an **AI quality estimate**, not an employer ATS score, calibrated success probability or guarantee. Model judgements can vary. Four validated levels (0–4) produce round(sum / 16 * 100). Missing evidence/dimensions or under 80 words produces no score. No fabricated fallback score.
+- Score is an **AI quality estimate**, not an employer ATS score, calibrated success probability or guarantee. Model judgements can vary. Four validated levels (0–4) produce round(sum / 16 * 100). Missing evidence/dimensions or under 60 readable words produces no AI estimate. A separately labelled document check score appears when the extracted CV meets its own evidence gate. Otherwise the UI explains which input is missing.
 - Document checks remain deterministic and separate. Common English/French text headings are supported; this cannot establish visual PDF quality or extraction completeness.
 - No offer is necessary. Job comparisons quote requirements from the supplied job and distinguish supported, partial and not found in CV. Absence in CV is not proof of missing ability.
 - Suggested edits need acceptance, preserve numeric facts, and only modify a text draft. Source PDFs are unchanged; export draft as TXT or save the review with browser printing.
-- AI failure has a visible retry state. New scans clear stale results.
+- AI failure has a visible retry state. New scans clear stale results. The CV text determines the language of human-facing suggestions; the job description does not override it. French responses that remain clearly English after one correction attempt are rejected.
 - PDF reads use the actual parser or authenticated server extraction, not raw PDF stream regex extraction.
 
 ## Deploy

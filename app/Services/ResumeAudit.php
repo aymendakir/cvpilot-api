@@ -12,7 +12,9 @@ class ResumeAudit
         if (!$base || !is_array($data)) return null;
         $quote = static function ($value, string $source): ?string {
             if (!is_string($value) || trim($value) === '' || mb_strlen($value) > 600) return null;
-            return str_contains($source, trim($value)) ? trim($value) : null;
+            // PDF extraction often turns a line break or multiple spaces into one space.
+            $compact = static fn(string $text): string => preg_replace('/\s+/u', ' ', trim($text));
+            return str_contains($compact($source), $compact($value)) ? trim($value) : null;
         };
         $strengths = [];
         foreach (array_slice(is_array($data['strengths'] ?? null) ? $data['strengths'] : [], 0, 4) as $item) {
@@ -31,7 +33,7 @@ class ResumeAudit
             if ($evidence = $quote($item['evidence'] ?? null, $cv)) $rubric[] = ['id'=>$key, 'level'=>$item['level'], 'reason'=>mb_substr($item['reason'],0,700), 'evidence'=>$evidence];
         }
         preg_match_all('/[\p{L}\p{N}]+/u', $cv, $words);
-        $score = count($rubric) === 4 && count($words[0]) >= 80 ? (int) round(array_sum(array_column($rubric,'level')) / 16 * 100) : null;
+        $score = count($rubric) === 4 && count($words[0]) >= 60 ? (int) round(array_sum(array_column($rubric,'level')) / 16 * 100) : null;
         $requirements = [];
         if (trim($job) !== '') foreach (array_slice(is_array($data['requirements'] ?? null) ? $data['requirements'] : [],0,8) as $item) {
             if (!is_array($item) || !in_array($item['status'] ?? '', ['supported','partial','not_found'], true)) continue;
