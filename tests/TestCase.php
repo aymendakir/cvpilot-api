@@ -5,12 +5,12 @@ namespace Tests;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Bootstrap\LoadConfiguration;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Tests\Concerns\MigratesDatabase;
 
 abstract class TestCase extends BaseTestCase
 {
-    use MigratesDatabase;
+    use RefreshDatabase;
 
     /**
      * Boot the application with an in-memory SQLite database and array
