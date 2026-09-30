@@ -29,17 +29,18 @@ Branch `refactor/api-s0-harness`. Detail and acceptance criteria: `tasks/plan.md
 
 ## Phase C — Legacy tests, audit, style, CI
 
-- [ ] T7 Move `tests/*.php` → `tests/legacy/` (paths only), `run.php` runner with known-failure allow-list, `composer test:scripts`
+- [x] T6b (added, approved) Security fix: Gemini key in x-goog-api-key header; App\Support\Redactor on provider errors (ai_usage.error, last_error, logs, responses); WART tests flipped
+- [x] T7 Move `tests/*.php` → `tests/legacy/` (paths only), `run.php` runner with known-failure allow-list, `composer test:scripts`
   - Verify: 6 pass, `ats-document.php` = KNOWN FAILURE, exit 0
-- [ ] T8 `composer update league/commonmark --with-dependencies`; `composer audit` exits 0
-- [ ] T9 `pint.json` (Laravel preset)
-- [ ] T10 Format codebase with Pint (format-only commit); verify `php -l`, route list identical, all tests green
-- [ ] T11 `.github/workflows/ci.yml` (lint, test, test:scripts, audit) + README Development section
-- [ ] T12 Push, open S0 PR, **STOP** (do not start S1)
+- [x] T8 `composer update league/commonmark --with-dependencies`; `composer audit` exits 0
+- [x] T9 `pint.json` (Laravel preset)
+- [x] T10 Format codebase with Pint (format-only commit); verify `php -l`, route list identical, all tests green
+- [x] T11 `.github/workflows/ci.yml` (lint, test, test:scripts, audit) + README Development section
+- [x] T12 Push, open S0 PR, **STOP** (do not start S1)
 
 ### Checkpoint C (final)
 
 - [ ] CI green on the PR
-- [ ] App/routes/config/database diff is formatting-only
-- [ ] Known legacy failure visible in CI output
+- [x] App diff = security fix commit + format-only commit (AST-compared)
+- [x] Known legacy failure visible in runner output
 - [ ] Maintainer merges S0 before S1 is planned
