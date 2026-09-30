@@ -14,9 +14,9 @@ Branch `refactor/api-s0-harness`. Detail and acceptance criteria: `tasks/plan.md
 ## Phase B — Harness and characterization
 
 - [x] T3 `RefreshDatabase` on SQLite, `CreatesUsers` helpers, fake mail, harness test (`/api/me` 401 vs signed in)
-- [ ] T4 Characterize auth: register, otp, login (401/403), me, password, logout, revoked session
-- [ ] T5 Characterize errors/status: 401, 403, 404 (unknown + non-owner), 422 shape, 405, 419, 429, generic 500
-- [ ] T6 Characterize resources/admin: applications, career, public endpoints, admin access matrix, no secrets in responses
+- [x] T4 Characterize auth: register, otp, login (401/403), me, password, logout, revoked session
+- [x] T5 Characterize errors/status: 401, 403, 404 (unknown + non-owner), 422 shape, 405, 419, 429, generic 500
+- [x] T6 Characterize resources/admin: applications, career, public endpoints, admin access matrix, no secrets in responses
 
 ### Checkpoint A (after T1–T3)
 
@@ -24,7 +24,7 @@ Branch `refactor/api-s0-harness`. Detail and acceptance criteria: `tasks/plan.md
 
 ### Checkpoint B (after T4–T6)
 
-- [ ] Characterization green on unmodified app code (`git diff origin/main -- app routes config` empty)
+- [x] Characterization green on unmodified app code (`git diff origin/main -- app routes config` empty)
 - [ ] Review with maintainer
 
 ## Phase C — Legacy tests, audit, style, CI
