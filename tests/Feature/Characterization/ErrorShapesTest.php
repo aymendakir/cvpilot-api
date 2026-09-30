@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Integration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Tests\Concerns\CreatesUsers;
 use Tests\TestCase;
@@ -192,6 +193,29 @@ class ErrorShapesTest extends TestCase
             ->assertExactJson(['message' => 'Service temporarily unavailable.']);
 
         $this->assertDatabaseHas('ai_usage', ['provider' => 'openai', 'success' => false]);
+    }
+
+    public function test_provider_errors_are_redacted_before_they_are_stored_or_logged(): void
+    {
+        Integration::create([
+            'provider' => 'gemini', 'type' => 'ai', 'secret' => 'GEMINI-KEY-123', 'model' => 'gemini-2.5-flash',
+            'enabled' => true, 'priority' => 1,
+        ]);
+        Http::fake(fn () => throw new \Illuminate\Http\Client\ConnectionException(
+            'cURL error 28: timed out for https://generativelanguage.googleapis.com/v1beta/models/m:generateContent?key=GEMINI-KEY-123'
+        ));
+        Log::spy();
+
+        $response = $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
+            ->assertStatus(500)
+            ->assertExactJson(['message' => 'Service temporarily unavailable.']);
+
+        $this->assertStringNotContainsString('GEMINI-KEY-123', $response->getContent());
+        $usage = \DB::table('ai_usage')->first();
+        $this->assertStringContainsString('cURL error 28', $usage->error);
+        $this->assertStringNotContainsString('GEMINI-KEY-123', $usage->error);
+        $this->assertStringNotContainsString('GEMINI-KEY-123', (string) Integration::first()->last_error);
+        Log::shouldHaveReceived('warning')->withArgs(fn ($message) => ! str_contains((string) $message, 'GEMINI-KEY-123'))->once();
     }
 
     public function test_api_responses_carry_security_headers_and_no_store(): void

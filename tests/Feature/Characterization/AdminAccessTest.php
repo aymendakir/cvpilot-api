@@ -134,7 +134,7 @@ class AdminAccessTest extends TestCase
         $this->assertNotSame('sk-super-secret', \DB::table('integrations')->value('secret'), 'stored encrypted at rest');
     }
 
-    public function test_the_gemini_key_is_sent_in_the_request_url(): void
+    public function test_the_gemini_key_is_sent_in_a_header_not_the_url(): void
     {
         $integration = Integration::create([
             'provider' => 'gemini', 'type' => 'ai', 'secret' => 'GEMINI-KEY-123', 'model' => 'gemini-2.5-flash', 'enabled' => true, 'priority' => 1,
@@ -143,10 +143,12 @@ class AdminAccessTest extends TestCase
 
         $this->signIn($this->makeAdmin())->postJson("/api/admin/integrations/{$integration->id}/test")->assertOk();
 
-        Http::assertSent(fn ($request) => str_contains($request->url(), '?key=GEMINI-KEY-123')); // WART: key in the URL
+        Http::assertSent(fn ($request) => ! str_contains($request->url(), 'GEMINI-KEY-123')
+            && ! str_contains($request->url(), 'key=')
+            && $request->header('x-goog-api-key') === ['GEMINI-KEY-123']);
     }
 
-    public function test_integration_test_puts_the_provider_error_text_in_the_response_and_last_error(): void
+    public function test_integration_test_redacts_secrets_from_the_provider_error(): void
     {
         $integration = Integration::create([
             'provider' => 'gemini', 'type' => 'ai', 'secret' => 'GEMINI-KEY-123', 'model' => 'gemini-2.5-flash', 'enabled' => true, 'priority' => 1,
@@ -158,8 +160,8 @@ class AdminAccessTest extends TestCase
         $response = $this->signIn($this->makeAdmin())->postJson("/api/admin/integrations/{$integration->id}/test")->assertStatus(422);
 
         $this->assertStringContainsString('Connection failed: cURL error 28', $response->json('message'));
-        $this->assertStringContainsString('GEMINI-KEY-123', $response->json('message')); // WART: secret leaks via provider error
-        $this->assertStringContainsString('GEMINI-KEY-123', (string) $integration->refresh()->last_error); // WART
+        $this->assertStringNotContainsString('GEMINI-KEY-123', $response->getContent());
+        $this->assertStringNotContainsString('GEMINI-KEY-123', (string) $integration->refresh()->last_error);
     }
 
     public function test_cache_clear_is_a_closure_route_returning_200(): void

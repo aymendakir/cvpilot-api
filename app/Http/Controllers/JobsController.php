@@ -70,7 +70,7 @@ class JobsController {
             $this->logSearch($r, $d, $result, (int)((microtime(true) - $started) * 1000), true);
             return $result;
         } catch (\Throwable $e) {
-            $this->logSearch($r, $d, ['provider' => $d['provider'] ?? null, 'data' => []], (int)((microtime(true) - $started) * 1000), false, $e->getMessage());
+            $this->logSearch($r, $d, ['provider' => $d['provider'] ?? null, 'data' => []], (int)((microtime(true) - $started) * 1000), false, \App\Support\Redactor::scrub($e->getMessage()));
             throw $e;
         }
     }

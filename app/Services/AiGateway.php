@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use App\Models\Integration;
+use App\Support\Redactor;
 use Illuminate\Support\Facades\{Http, DB, Log};
 
 class AiGateway {
@@ -79,7 +80,7 @@ class AiGateway {
                 ];
             } catch (\Throwable $e) {
                 $latency = (int) ((microtime(true) - $started) * 1000);
-                $errorMsg = mb_substr($e->getMessage(), 0, 500);
+                $errorMsg = mb_substr(Redactor::scrub($e->getMessage(), [$cfg->secret]), 0, 500);
                 $lastError = $e;
                 $attemptErrors[] = "{$cfg->provider} (priority {$cfg->priority}): {$errorMsg}";
 
@@ -124,8 +125,8 @@ class AiGateway {
         }
 
         if ($c->provider === 'gemini') {
-            $r = Http::timeout(45)->post(
-                'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent?key=' . rawurlencode($key),
+            $r = Http::timeout(45)->withHeaders(['x-goog-api-key' => $key])->post(
+                'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent',
                 ['contents' => [['parts' => [['text' => $prompt]]]]]
             );
             $r->throw();

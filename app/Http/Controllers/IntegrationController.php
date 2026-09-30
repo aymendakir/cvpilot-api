@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Integration;
 use App\Services\AiGateway;
+use App\Support\Redactor;
 use Illuminate\Http\Request;
 
 class IntegrationController {
@@ -118,7 +119,7 @@ class IntegrationController {
             $integration->update(['tested_at' => now(), 'last_error' => null]);
             return $result;
         } catch (\Throwable $e) {
-            $err = mb_substr($e->getMessage(), 0, 500);
+            $err = mb_substr(Redactor::scrub($e->getMessage(), [$integration->secret]), 0, 500);
             $integration->update(['last_error' => $err]);
             return response()->json([
                 'ok' => false,
