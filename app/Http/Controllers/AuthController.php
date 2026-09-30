@@ -68,7 +68,7 @@ class AuthController
             }
         }
 
-return ['message' => 'If this account exists, a code has been sent.'];
+        return ['message' => 'If this account exists, a code has been sent.'];
     }
 
     public function verify(Request $r)
@@ -124,8 +124,8 @@ return ['message' => 'If this account exists, a code has been sent.'];
         $u->session_version++;
         $u->save();
         $r->session()->regenerate();
-        $r->session()->put('session_version',$u->session_version);
-        self::audit($r,'password_changed',$u->id);
+        $r->session()->put('session_version', $u->session_version);
+        self::audit($r, 'password_changed', $u->id);
 
         return ['message' => 'Password changed.'];
     }

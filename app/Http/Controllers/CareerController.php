@@ -226,7 +226,7 @@ class CareerController
             $q->where('type', 'cover_letter');
         }
 
-return ['counts' => $counts, 'items' => $q->latest()->paginate(12)];
+        return ['counts' => $counts, 'items' => $q->latest()->paginate(12)];
     }
 
     public function version(Request $r, CvVersion $version)
@@ -267,15 +267,15 @@ return ['counts' => $counts, 'items' => $q->latest()->paginate(12)];
             $rules += ['title' => 'required|string|max:180', 'company' => 'nullable|string|max:180'];
         }
 
-return $r->validate($rules);
+        return $r->validate($rules);
     }
 
     private function report(Request $r, AiGateway $ai, string $type, string $prompt, array $input): array
     {
-        $result = $ai->chat($prompt,$type,$r->user()->id);
+        $result = $ai->chat($prompt, $type, $r->user()->id);
         $row = CareerReport::create(['user_id' => $r->user()->id, 'type' => $type, 'input' => $input, 'output' => $result['answer']]);
-        AdminReview::record('report',$row);
-        AuthController::audit($r,$type.'_generated',$r->user()->id);
+        AdminReview::record('report', $row);
+        AuthController::audit($r, $type.'_generated', $r->user()->id);
 
         return $result + ['report_id' => $row->id];
     }

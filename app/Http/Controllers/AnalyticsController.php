@@ -62,7 +62,7 @@ class AnalyticsController
     {
         $device = preg_match('/bot|crawler|spider/i', $ua) ? 'Bot' : (preg_match('/ipad|tablet/i', $ua) ? 'Tablet' : (preg_match('/mobile|iphone|android/i', $ua) ? 'Mobile' : 'Desktop'));
         $browser = preg_match('/Edg\//', $ua) ? 'Edge' : (preg_match('/OPR\//', $ua) ? 'Opera' : (preg_match('/Chrome\//', $ua) ? 'Chrome' : (preg_match('/Firefox\//', $ua) ? 'Firefox' : (preg_match('/Safari\//', $ua) ? 'Safari' : 'Other'))));
-        $os = preg_match('/Windows/i', $ua) ? 'Windows' : (preg_match('/Android/i', $ua) ? 'Android' : (preg_match('/iPhone|iPad/i', $ua) ? 'iOS' : (preg_match('/Mac OS/i',$ua) ? 'macOS' : (preg_match('/Linux/i',$ua) ? 'Linux' : 'Other'))));
+        $os = preg_match('/Windows/i', $ua) ? 'Windows' : (preg_match('/Android/i', $ua) ? 'Android' : (preg_match('/iPhone|iPad/i', $ua) ? 'iOS' : (preg_match('/Mac OS/i', $ua) ? 'macOS' : (preg_match('/Linux/i', $ua) ? 'Linux' : 'Other'))));
 
         return [$device, $browser, $os];
     }

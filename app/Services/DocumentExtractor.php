@@ -81,6 +81,6 @@ class DocumentExtractor
         $text = trim(preg_replace('/[ \t]+/', ' ', preg_replace('/\R{3,}/', "\n\n", $text)));
         abort_if(mb_strlen($text) < 30, 422, 'No readable CV text found. Scanned PDFs require OCR before upload.');
 
-        return mb_substr($text,0,100000);
+        return mb_substr($text, 0, 100000);
     }
 }

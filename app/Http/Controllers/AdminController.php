@@ -104,8 +104,8 @@ class AdminController
     public function integration(Request $r)
     {
         $d = $r->validate(['provider' => 'required|in:openai', 'secret' => 'required|string|max:500', 'model' => 'required|string|max:100', 'enabled' => 'required|boolean']);
-        DB::table('integrations')->updateOrInsert(['provider' => $d['provider']],['secret' => Crypt::encryptString($d['secret']), 'model' => $d['model'], 'enabled' => $d['enabled'], 'updated_at' => now(), 'created_at' => now()]);
-        AuthController::audit($r,'integration_updated',$r->user()->id);
+        DB::table('integrations')->updateOrInsert(['provider' => $d['provider']], ['secret' => Crypt::encryptString($d['secret']), 'model' => $d['model'], 'enabled' => $d['enabled'], 'updated_at' => now(), 'created_at' => now()]);
+        AuthController::audit($r, 'integration_updated', $r->user()->id);
 
         return ['message' => 'Encrypted credentials saved. Connection has not been tested.'];
     }

@@ -107,7 +107,7 @@ Route::prefix('api')->group(function () {
             Route::post('integrations/reorder', [IntegrationController::class, 'reorder']);
             Route::patch('integrations/{integration}', [IntegrationController::class, 'update']);
             Route::post('integrations/{integration}/test', [IntegrationController::class, 'test'])->middleware('throttle:10,1,integrations--integration--test:');
-            Route::delete('integrations/{integration}',[IntegrationController::class, 'destroy']);
+            Route::delete('integrations/{integration}', [IntegrationController::class, 'destroy']);
             Route::post('cache/clear', function () {
                 Artisan::call('cache:clear');
 
