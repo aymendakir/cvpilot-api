@@ -12,3 +12,5 @@ storage/app/*
 !storage/app/private/
 storage/app/private/*
 !storage/app/private/.gitkeep
+.phpunit.cache/
+.phpunit.result.cache
