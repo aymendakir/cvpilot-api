@@ -5,3 +5,10 @@ storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
+
+# uploaded documents and other runtime files
+storage/app/*
+!storage/app/.gitkeep
+!storage/app/private/
+storage/app/private/*
+!storage/app/private/.gitkeep
