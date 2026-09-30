@@ -213,3 +213,18 @@ The API supports BazaarLink as an OpenAI-compatible AI provider. In the admin da
 - Configure backups, log rotation, retention and monitoring.
 - Set a retention policy for `traffic_events` and `audit_events`; country data is approximate and analytics never stores raw visitor IP addresses.
 - Never expose MySQL or the Laravel admin console without authentication.
+
+## Development
+
+```bash
+composer install
+composer test           # PHPUnit feature/unit tests (php artisan test --env=testing, in-memory SQLite)
+composer test:scripts   # standalone regression scripts in tests/legacy (one known failure is reported, not hidden)
+composer lint           # Pint style check (composer lint:fix to apply)
+composer audit          # dependency advisories
+```
+
+Tests use an in-memory SQLite database and never touch MySQL; `.env.testing` contains no secrets.
+CI (`.github/workflows/ci.yml`) runs lint, tests, legacy scripts and the audit on every pull request.
+`tests/legacy/ats-document.php` currently fails on purpose-tracked grounds (scoring caps; fixed in Phase 3)
+and is listed in `tests/legacy/run.php`.
