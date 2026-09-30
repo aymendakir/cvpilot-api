@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y libonig-dev libzip-dev libpng-dev libjp
  && docker-php-ext-install -j$(nproc) pdo_mysql mbstring zip gd \
  && a2enmod rewrite headers \
  && rm -rf /var/lib/apt/lists/*
+RUN printf 'upload_max_filesize=16M\npost_max_size=20M\nmax_file_uploads=5\n' > /usr/local/etc/php/conf.d/uploads.ini
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . .
