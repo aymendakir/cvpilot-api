@@ -1,7 +1,7 @@
 # Spec: Phase 2 — API contract refactor
 
 - **Repo:** `cvpilot-api` (Laravel 12 / PHP 8.3 / MySQL 8.4). A frontend follow-up lands in `cv-ai` (see §10).
-- **Status:** DRAFT — waiting for approval. No code has been changed. Next steps after approval: `/plan`, then `/build`.
+- **Status:** **APPROVED** (answers recorded in §18). Delivery is **one branch + one PR per slice (S0–S7)**, merged by the maintainer before the next slice starts. Plan: `tasks/plan.md`, task list: `tasks/todo.md`.
 - **Inputs:** `AUDIT.md` (§3.1, §3.3, §3.5, §4.3 in `cv-ai/docs/AUDIT.md`), a read of all 87 routes, and the frontend's actual calls.
 - **Capability map (Phase 0 of the spec skill):** not needed. The five concerns below are layers of one API contract, not independent modules; they ship as ordered slices in one PR (§9).
 
@@ -27,8 +27,8 @@ Make `cvpilot-api` a predictable, safe JSON API whose contract the frontend can 
 1. Session-cookie + CSRF auth stays (the frontend is built on it). Switching to bearer tokens is out of scope unless you choose it in Open Question 2.
 2. The frontend and API are deployed independently and not atomically, so old paths must keep working until the frontend is deployed on the new ones.
 3. `/api/v1` is the new canonical prefix; today's `/api/*` paths become **deprecated aliases** served by the same controllers, removed in a later PR.
-4. Phase 2 is **one PR on `cvpilot-api`**, followed (after merge + deploy) by **one PR on `cv-ai`** that adopts the contract. `CLAUDE.md` forbids two open PRs at once, so they are sequential.
-5. PHP test tooling may be added as dev dependencies (PHPUnit, Pint) — needs your OK (Open Question 4).
+4. Phase 2 ships as **one PR per slice** on `cvpilot-api` (§9), each merged before the next starts, followed (after S6 is deployed) by **one PR on `cv-ai`** that adopts the contract (Phase 2b). `CLAUDE.md` forbids two open PRs at once, so everything is sequential.
+5. PHPUnit and Pint are added as dev dependencies, with a GitHub Actions workflow (approved).
 6. Database changes are limited to: a `blog_posts` table (new) and dropping the unused `jobs` / `job_matches` tables is **not** part of this phase.
 7. `AtsDocumentReview`, `AtsScorer`, AI prompts' _content_, and job providers are not refactored here (only their errors, validation and status codes).
 
@@ -198,16 +198,17 @@ Body: `name, email, password, password_confirmation, role (user|admin), verified
 
 ## 9. Delivery slices (for `/plan`)
 
-Build order; each slice is a small commit set with tests and leaves `main`-equivalent behavior intact.
+Build order; each slice is its own branch and PR (small atomic commits, tests, behavior intact except what §11 lists for that slice). `composer audit` must already be clean in S0 because CI runs it.
 
-- **S0 Harness:** dev deps (PHPUnit, Pint), `phpunit.xml`, `composer test|lint|audit` scripts, SQLite-in-memory feature-test base class, ported/wrapped existing `tests/*.php`, `.gitkeep` for `bootstrap/cache` and `storage/framework/*`. Baseline: current behavior snapshot tests for a few critical routes _before_ refactoring.
+- **S0 Harness:** dev deps (PHPUnit, Pint), `phpunit.xml`, `composer test|test:scripts|lint|audit` scripts, SQLite-in-memory feature-test base class, existing `tests/*.php` moved to `tests/legacy/` behind a runner, keep-files for `bootstrap/cache` and `storage/framework/*`, GitHub Actions workflow (`composer test`, `pint --test`, `composer audit`), Pint applied to the codebase, and characterization tests that pin today's behavior before any refactor. See `tasks/plan.md`.
 - **S1 Error envelope:** exception renderer, request id middleware, JSON-always, `AiGateway` failure mapping, tests for every code in §4.2.
 - **S2 Routing:** `routes/api.php`, `/api/v1` + legacy aliases with deprecation headers, route names, closures → controllers, split `CareerController` into `CvVersionController`, `JobWorkspaceController`, `InterviewController`, `ReportController`, `CareerAiController`, `LibraryController`/`DashboardController`; `route:cache` succeeds; contract test (every route named, no closures, scope middleware as expected). Also decide whether the OAuth callback stays in `web.php`.
 - **S3 Validation:** FormRequests, Policies, Resources, `UserResource`; query-param enums; validation data-provider tests; IDOR tests.
 - **S4 Security:** §7 items 1–5, 8, 9; secret-redaction tests.
 - **S5 New endpoints:** blog + migration, `admin/users` create.
-- **S6 Ops:** scheduler service + retention test, `composer update`, deployment doc (`docs/DEPLOYMENT.md`: env vars, same-site cookies, scheduler, migration order).
-- **Phase 2b (separate PR, `cv-ai`, after this PR is merged and deployed):** §10.
+- **S6 Ops:** scheduler as a separate compose service + retention test, deployment doc `docs/DEPLOYMENT.md` (owner buys a domain; frontend on `app.<domain>`, API on `api.<domain>`: DNS, TLS, `APP_URL`, `FRONTEND_URL`, `SESSION_DOMAIN=.<domain>`, `SESSION_SAME_SITE=lax`, `SESSION_SECURE_COOKIE=true`, frontend `NEXT_PUBLIC_BACKEND_URL=https://api.<domain>`, scheduler, migration order, rollback).
+- **S7 Alias sunset (separate PR, after the frontend is deployed on v1):** remove the legacy `/api/*` aliases and the legacy-only endpoints `ai/improve-cv` and `cv/{id}/analyze`.
+- **Phase 2b (separate PR, `cv-ai`, after S6 is merged and deployed):** §10.
 
 ## 10. What the frontend needs to change (Phase 2b, for reference — not done in this PR)
 
@@ -352,15 +353,16 @@ final class ApplicationController
 9. `GET blog`, `GET blog/{slug}`, `admin/blog` CRUD and `POST admin/users` satisfy the frontend types in §8 and have tests.
 10. `composer test` and `pint --test` pass; the 6 previously passing legacy scripts still pass; the known failing ATS test is reported, not hidden.
 
-## 18. Open questions (my recommendation first)
+## 18. Decisions (approved)
 
-1. **Route renames.** (A, recommended) Full v1 map in §3.2 with legacy aliases. (B) Keep every path, only add the envelope/validation/status work — much smaller frontend change, but routes stay inconsistent (`career/*` mixes CRUD and AI actions, `cv` vs `cv-documents`).
-2. **Auth transport / cross-site cookies.** (A, recommended) Keep cookies and host the API on a subdomain of the frontend domain (e.g. `api.<your-domain>`): needs a domain and DNS/host changes, no code beyond §7.1. (B) Sanctum bearer tokens: no cookie issue but a larger change to the frontend and storage of tokens. Which domain will the frontend be served from?
-3. **Implement blog + `admin/users` now (recommended)** or defer them and hide the blog/"create user" UI in Phase 2b.
-4. **Dev dependencies:** OK to add PHPUnit and Pint (and a GitHub Actions workflow for tests — or leave CI for the ship phase)?
-5. **Legacy alias lifetime:** remove in a follow-up PR right after the frontend is deployed (recommended), or keep one release.
-6. **Account enumeration at registration** (`422` "email taken" reveals accounts): (A, recommended) return `201` always and email "you already have an account"; (B) keep as is and rely on throttling.
-7. **Unused endpoints** `ai/improve-cv`, `cv/{id}/analyze`: (A, recommended) keep on legacy paths only, delete at alias sunset; (B) keep in v1; (C) delete now.
-8. **Scheduler:** separate compose service (recommended) or an in-container loop started by the entrypoint?
-9. **`POST contact` → `contact-messages` rename:** fine, or keep `contact`?
-10. **Blog extras:** cover image, tags, or categories needed now? (Spec assumes none.)
+1. **Route renames:** A — full v1 map (§3.2) with legacy aliases.
+2. **Auth:** A — keep cookies. The owner buys a domain: frontend on `app.<domain>`, API on `api.<domain>`; setup steps go in `docs/DEPLOYMENT.md` (S6).
+3. **Blog + `POST admin/users`:** implement now (S5).
+4. **Tooling:** add PHPUnit and Pint and a GitHub Actions workflow running `composer test`, `pint --test`, `composer audit` (S0).
+5. **Legacy aliases:** removed in a follow-up PR right after the frontend is deployed (S7).
+6. **Registration enumeration:** A — always `201`; if the email already exists, send an "you already have an account" email (S4).
+7. **`ai/improve-cv`, `cv/{id}/analyze`:** legacy paths only, deleted at sunset (S7).
+8. **Scheduler:** separate compose service (S6).
+9. **`contact` → `contact-messages`:** OK.
+10. **Blog extras:** none for now (no image, tags or categories).
+11. **Delivery:** one branch and PR per slice S0–S7; the maintainer merges each before the next starts.
