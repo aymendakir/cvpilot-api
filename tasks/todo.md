@@ -6,21 +6,21 @@ Branch `refactor/api-s0-harness`. Detail and acceptance criteria: `tasks/plan.md
 
 ## Phase A — Tooling
 
-- [ ] T1 PHPUnit + Pint dev deps, `phpunit.xml`, `Tests\TestCase`, `/up` health test, composer scripts (`test`, `lint`, `lint:fix`, `audit`)
+- [x] T1 PHPUnit + Pint dev deps, `phpunit.xml`, `Tests\TestCase`, `/up` health test, composer scripts (`test`, `lint`, `lint:fix`, `audit`)
   - Verify: `composer install && composer test`
-- [ ] T2 Keep-files + `.gitignore` for `bootstrap/cache`, `storage/framework/*`, `storage/logs`; README note
+- [x] T2 Keep-files + `.gitignore` for `bootstrap/cache`, `storage/framework/*`, `storage/logs`; README note
   - Verify: fresh clone in `/tmp` → `composer install && composer test`
 
 ## Phase B — Harness and characterization
 
-- [ ] T3 `RefreshDatabase` on SQLite, `CreatesUsers` helpers, fake mail, harness test (`/api/me` 401 vs signed in)
+- [x] T3 `RefreshDatabase` on SQLite, `CreatesUsers` helpers, fake mail, harness test (`/api/me` 401 vs signed in)
 - [ ] T4 Characterize auth: register, otp, login (401/403), me, password, logout, revoked session
 - [ ] T5 Characterize errors/status: 401, 403, 404 (unknown + non-owner), 422 shape, 405, 419, 429, generic 500
 - [ ] T6 Characterize resources/admin: applications, career, public endpoints, admin access matrix, no secrets in responses
 
 ### Checkpoint A (after T1–T3)
 
-- [ ] Fresh clone: install + tests green
+- [x] Fresh clone: install + tests green
 
 ### Checkpoint B (after T4–T6)
 
