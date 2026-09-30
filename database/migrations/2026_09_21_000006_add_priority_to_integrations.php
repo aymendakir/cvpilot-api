@@ -1,12 +1,15 @@
 <?php
+
+use App\Models\Integration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use App\Models\Integration;
 
-return new class extends Migration {
-    public function up(): void {
-        if (!Schema::hasColumn('integrations', 'priority')) {
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (! Schema::hasColumn('integrations', 'priority')) {
             Schema::table('integrations', function (Blueprint $table) {
                 $table->unsignedInteger('priority')->default(1)->after('enabled')->index();
             });
@@ -28,7 +31,8 @@ return new class extends Migration {
         }
     }
 
-    public function down(): void {
+    public function down(): void
+    {
         if (Schema::hasColumn('integrations', 'priority')) {
             Schema::table('integrations', function (Blueprint $table) {
                 $table->dropColumn('priority');

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Characterization;
 
 use App\Models\User;
+use App\Services\PlatformMail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -180,7 +181,7 @@ class AuthTest extends TestCase
     public function test_otp_request_is_503_when_mail_delivery_fails(): void
     {
         $this->makeUser(['email' => 'known@example.test', 'verified_at' => null]);
-        $this->app->instance(\App\Services\PlatformMail::class, new class extends \App\Services\PlatformMail
+        $this->app->instance(PlatformMail::class, new class extends PlatformMail
         {
             public function __construct() {}
 

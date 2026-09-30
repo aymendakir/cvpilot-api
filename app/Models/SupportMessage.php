@@ -1,5 +1,10 @@
 <?php
+
 namespace App\Models;
-class SupportMessage extends \Illuminate\Database\Eloquent\Model {
+
+use Illuminate\Database\Eloquent\Model;
+
+class SupportMessage extends Model
+{
     protected $guarded = [];
 }

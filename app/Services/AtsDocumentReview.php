@@ -17,7 +17,7 @@ class AtsDocumentReview
         $lines = array_values(
             array_filter(
                 array_map('trim', explode("\n", $text)),
-                fn($line) => $line !== ''
+                fn ($line) => $line !== ''
             )
         );
 
@@ -26,11 +26,10 @@ class AtsDocumentReview
 
         $french = ResumeLanguage::detect($text) === 'French';
 
-        $clean = static fn(string $line): string =>
-            mb_strtolower(
-                preg_replace('/\s+/u', ' ', trim($line)),
-                'UTF-8'
-            );
+        $clean = static fn (string $line): string => mb_strtolower(
+            preg_replace('/\s+/u', ' ', trim($line)),
+            'UTF-8'
+        );
 
         $categories = [];
 
@@ -60,7 +59,7 @@ class AtsDocumentReview
                     array_values(
                         array_filter(
                             $evidence,
-                            static fn($line) => trim((string) $line) !== ''
+                            static fn ($line) => trim((string) $line) !== ''
                         )
                     ),
                     0,
@@ -300,28 +299,26 @@ class AtsDocumentReview
         $contributions = array_values(
             array_filter(
                 $sections['experience'],
-                static fn(string $line): bool =>
-                    $wordCountOf($line) >= 4 &&
-                    !preg_match(
+                static fn (string $line): bool => $wordCountOf($line) >= 4 &&
+                    ! preg_match(
                         '/^[\d\s\/–—.,-]+$/u',
                         $line
                     )
             )
         );
 
-        $key = static fn(string $line): string =>
-            preg_replace(
-                '/[^\p{L}\p{N}]+/u',
-                ' ',
-                mb_strtolower(
-                    preg_replace(
-                        '/^[-•*·▪–\s]+|^\(?\d+[.)]\s*/u',
-                        '',
-                        $line
-                    ),
-                    'UTF-8'
-                )
-            );
+        $key = static fn (string $line): string => preg_replace(
+            '/[^\p{L}\p{N}]+/u',
+            ' ',
+            mb_strtolower(
+                preg_replace(
+                    '/^[-•*·▪–\s]+|^\(?\d+[.)]\s*/u',
+                    '',
+                    $line
+                ),
+                'UTF-8'
+            )
+        );
 
         $unique = [];
         $dupes = [];
@@ -347,49 +344,44 @@ class AtsDocumentReview
         $missingChars = array_values(
             array_filter(
                 $lines,
-                static fn(string $line): bool =>
-                    str_contains($line, "\u{FFFD}")
+                static fn (string $line): bool => str_contains($line, "\u{FFFD}")
             )
         );
 
         $fragmented = array_values(
             array_filter(
                 $lines,
-                static fn(string $line): bool =>
-                    preg_match('/^\p{L}$/u', $line) === 1
+                static fn (string $line): bool => preg_match('/^\p{L}$/u', $line) === 1
             )
         );
 
         $letterSpaced = array_values(
             array_filter(
                 $lines,
-                static fn(string $line): bool =>
-                    preg_match(
-                        '/(?:\b\p{L}\s+){5,}\p{L}\b/u',
-                        $line
-                    ) === 1
+                static fn (string $line): bool => preg_match(
+                    '/(?:\b\p{L}\s+){5,}\p{L}\b/u',
+                    $line
+                ) === 1
             )
         );
 
         $email = array_values(
             array_filter(
                 $lines,
-                static fn(string $line): bool =>
-                    preg_match(
-                        '/[\w.+-]+@[\w.-]+\.[a-z]{2,}/iu',
-                        $line
-                    ) === 1
+                static fn (string $line): bool => preg_match(
+                    '/[\w.+-]+@[\w.-]+\.[a-z]{2,}/iu',
+                    $line
+                ) === 1
             )
         );
 
         $dated = array_values(
             array_filter(
                 $sections['experience'],
-                static fn(string $line): bool =>
-                    preg_match(
-                        '/\b(?:19|20)\d{2}\b/',
-                        $line
-                    ) === 1
+                static fn (string $line): bool => preg_match(
+                    '/\b(?:19|20)\d{2}\b/',
+                    $line
+                ) === 1
             )
         );
 
@@ -455,8 +447,7 @@ class AtsDocumentReview
         $actions = array_values(
             array_filter(
                 $unique,
-                static fn(string $line): bool =>
-                    preg_match($actionVerbPattern, $line) === 1 ||
+                static fn (string $line): bool => preg_match($actionVerbPattern, $line) === 1 ||
                     preg_match($actionNouns, $line) === 1
             )
         );
@@ -464,19 +455,17 @@ class AtsDocumentReview
         $weak = array_values(
             array_filter(
                 $unique,
-                static fn(string $line): bool =>
-                    preg_match(
-                        '/\b(?:responsible for|duties included|in charge of|tasked with|responsable de|chargé de|chargée de)\b/iu',
-                        $line
-                    ) === 1
+                static fn (string $line): bool => preg_match(
+                    '/\b(?:responsible for|duties included|in charge of|tasked with|responsable de|chargé de|chargée de)\b/iu',
+                    $line
+                ) === 1
             )
         );
 
         $concise = array_values(
             array_filter(
                 $unique,
-                static fn(string $line): bool =>
-                    $wordCountOf($line) <= 45
+                static fn (string $line): bool => $wordCountOf($line) <= 45
             )
         );
 
@@ -489,11 +478,10 @@ class AtsDocumentReview
         $outcomes = array_values(
             array_filter(
                 $unique,
-                static fn(string $line): bool =>
-                    preg_match(
-                        '/\b(?:resulting in|enabled|reduced|increased|improved|saved|to improve|to reduce|to enable|to simplify|permettant|réduit|amélioré|facilité|optimisé|afin de|pour améliorer|pour faciliter)\b|\d+(?:[.,]\d+)?\s*(?:%|clients?|users?|utilisateurs?|projets?|projects?|heures?|hours?|patients?|élèves?|students?|k\$?|€|\$|k€)\b/iu',
-                        $line
-                    ) === 1
+                static fn (string $line): bool => preg_match(
+                    '/\b(?:resulting in|enabled|reduced|increased|improved|saved|to improve|to reduce|to enable|to simplify|permettant|réduit|amélioré|facilité|optimisé|afin de|pour améliorer|pour faciliter)\b|\d+(?:[.,]\d+)?\s*(?:%|clients?|users?|utilisateurs?|projets?|projects?|heures?|hours?|patients?|élèves?|students?|k\$?|€|\$|k€)\b/iu',
+                    $line
+                ) === 1
             )
         );
 
@@ -549,7 +537,7 @@ class AtsDocumentReview
             'fragmentation',
             $french ? 'Ordre de lecture' : 'Reading continuity',
             5,
-            count($fragmented) <= 2 && !$letterSpaced ? 1 : 0,
+            count($fragmented) <= 2 && ! $letterSpaced ? 1 : 0,
             [...$fragmented, ...$letterSpaced],
             $french
                 ? count($fragmented).' lettres isolées, '.count($letterSpaced).' ligne(s) avec des mots espacés lettre par lettre.'
@@ -626,7 +614,7 @@ class AtsDocumentReview
 
         $educationContent = array_filter(
             $sections['education'],
-            static fn($s) => $wordCountOf($s) >= 3
+            static fn ($s) => $wordCountOf($s) >= 3
         );
 
         $add(
@@ -652,7 +640,7 @@ class AtsDocumentReview
 
         $skillsContent = array_filter(
             $sections['skills'],
-            static fn($s) => $wordCountOf($s) >= 2
+            static fn ($s) => $wordCountOf($s) >= 2
         );
 
         $add(
@@ -854,8 +842,7 @@ class AtsDocumentReview
         $issues = array_values(
             array_filter(
                 $checks,
-                static fn($c) =>
-                    $c['status'] === 'review'
+                static fn ($c) => $c['status'] === 'review'
             )
         );
 
@@ -873,13 +860,13 @@ class AtsDocumentReview
         | Critical document problems
         */
 
-        if ($score !== null && !$email) {
+        if ($score !== null && ! $email) {
             $score = min($score, 82);
         }
 
         if (
             $score !== null &&
-            !isset($headings['experience'])
+            ! isset($headings['experience'])
         ) {
             $score = min($score, 80);
         }
@@ -909,8 +896,7 @@ class AtsDocumentReview
         $significantIssues = array_values(
             array_filter(
                 $checks,
-                static fn(array $check): bool =>
-                    ($check['max'] - $check['earned']) >= 4
+                static fn (array $check): bool => ($check['max'] - $check['earned']) >= 4
             )
         );
 
@@ -931,8 +917,7 @@ class AtsDocumentReview
 
         usort(
             $priorities,
-            static fn($a, $b) =>
-                ($b['max'] - $b['earned'])
+            static fn ($a, $b) => ($b['max'] - $b['earned'])
                 <=>
                 ($a['max'] - $a['earned'])
         );

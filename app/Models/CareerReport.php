@@ -1,3 +1,12 @@
 <?php
+
 namespace App\Models;
-class CareerReport extends \Illuminate\Database\Eloquent\Model{protected $guarded=[];protected $casts=['input'=>'array'];}
+
+use Illuminate\Database\Eloquent\Model;
+
+class CareerReport extends Model
+{
+    protected $guarded = [];
+
+    protected $casts = ['input' => 'array'];
+}

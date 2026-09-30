@@ -6,6 +6,7 @@ use App\Models\CvDocument;
 use App\Models\Integration;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\Concerns\CreatesUsers;
 use Tests\TestCase;
@@ -153,7 +154,7 @@ class AdminAccessTest extends TestCase
         $integration = Integration::create([
             'provider' => 'gemini', 'type' => 'ai', 'secret' => 'GEMINI-KEY-123', 'model' => 'gemini-2.5-flash', 'enabled' => true, 'priority' => 1,
         ]);
-        Http::fake(fn () => throw new \Illuminate\Http\Client\ConnectionException(
+        Http::fake(fn () => throw new ConnectionException(
             'cURL error 28: Operation timed out for https://generativelanguage.googleapis.com/v1beta/models/m:generateContent?key=GEMINI-KEY-123'
         ));
 

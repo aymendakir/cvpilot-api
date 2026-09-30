@@ -1,52 +1,62 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\Integration;
 use App\Support\Redactor;
-use Illuminate\Support\Facades\{Http, DB, Log};
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
-class AiGateway {
-    public function providers(): array {
+class AiGateway
+{
+    public function providers(): array
+    {
         return [
             'openai' => [
-                'models' => ['gpt-4o-mini', 'gpt-4o', 'gpt-5-mini', 'gpt-4.1-mini']
+                'models' => ['gpt-4o-mini', 'gpt-4o', 'gpt-5-mini', 'gpt-4.1-mini'],
             ],
             'groq' => [
-                'models' => ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'llama-3.1-8b-instant']
+                'models' => ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'llama-3.1-8b-instant'],
             ],
             'gemini' => [
-                'models' => ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash']
+                'models' => ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash'],
             ],
             'anthropic' => [
-                'models' => ['claude-3-5-sonnet-latest', 'claude-sonnet-4-5', 'claude-haiku-4-5']
+                'models' => ['claude-3-5-sonnet-latest', 'claude-sonnet-4-5', 'claude-haiku-4-5'],
             ],
             'mistral' => [
-                'models' => ['mistral-small-latest', 'mistral-large-latest']
+                'models' => ['mistral-small-latest', 'mistral-large-latest'],
             ],
             'openrouter' => [
-                'models' => ['openai/gpt-4.1-mini', 'anthropic/claude-sonnet-4', 'meta-llama/llama-3.3-70b-instruct']
+                'models' => ['openai/gpt-4.1-mini', 'anthropic/claude-sonnet-4', 'meta-llama/llama-3.3-70b-instruct'],
             ],
             'bazaarlink' => [
-                'models' => ['bazaarlink-default']
+                'models' => ['bazaarlink-default'],
             ],
         ];
     }
 
-    public function orderedProviders(?string $requestedProvider = null): \Illuminate\Support\Collection {
+    public function orderedProviders(?string $requestedProvider = null): Collection
+    {
         $query = Integration::where('type', 'ai')->where('enabled', true);
         if ($requestedProvider) {
             $query->where('provider', $requestedProvider);
         }
         $list = $query->orderBy('priority')->orderBy('id')->get();
         abort_unless($list->isNotEmpty(), 503, 'No enabled AI provider. Configure one in Admin > API Keys.');
+
         return $list;
     }
 
-    public function active(?string $provider = null): Integration {
+    public function active(?string $provider = null): Integration
+    {
         return $this->orderedProviders($provider)->first();
     }
 
-    public function chat(string $prompt, string $feature = 'assistant', ?int $userId = null, ?string $provider = null): array {
+    public function chat(string $prompt, string $feature = 'assistant', ?int $userId = null, ?string $provider = null): array
+    {
         $providers = $this->orderedProviders($provider);
         $lastError = null;
         $attemptErrors = [];
@@ -101,13 +111,14 @@ class AiGateway {
         }
 
         throw new \RuntimeException(
-            "All available AI providers failed.\n" . implode("\n", $attemptErrors),
+            "All available AI providers failed.\n".implode("\n", $attemptErrors),
             503,
             $lastError
         );
     }
 
-    private function request(Integration $c, string $prompt): string {
+    private function request(Integration $c, string $prompt): string
+    {
         $key = $c->secret;
         $model = $c->model;
 
@@ -121,15 +132,17 @@ class AiGateway {
                 'messages' => [['role' => 'user', 'content' => $prompt]],
             ]);
             $r->throw();
+
             return (string) data_get($r->json(), 'content.0.text');
         }
 
         if ($c->provider === 'gemini') {
             $r = Http::timeout(45)->withHeaders(['x-goog-api-key' => $key])->post(
-                'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent',
+                'https://generativelanguage.googleapis.com/v1beta/models/'.rawurlencode($model).':generateContent',
                 ['contents' => [['parts' => [['text' => $prompt]]]]]
             );
             $r->throw();
+
             return (string) data_get($r->json(), 'candidates.0.content.parts.0.text');
         }
 
@@ -151,11 +164,14 @@ class AiGateway {
             'temperature' => 0.3,
         ]);
         $r->throw();
+
         return (string) data_get($r->json(), 'choices.0.message.content');
     }
 
-    public function test(Integration $c): array {
+    public function test(Integration $c): array
+    {
         $answer = $this->request($c, 'Reply with exactly: CVPilot connection ready');
+
         return ['ok' => true, 'message' => mb_substr($answer, 0, 120)];
     }
 }

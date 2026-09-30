@@ -30,11 +30,9 @@ final class Redactor
 
         $patterns = [
             // ?key=..., &api_key=..., ?token=... in URLs and query strings
-            '/([?&;](?:key|api[_-]?key|apikey|access[_-]?token|token|secret|password|client[_-]?secret)=)[^&\s"\']+/i'
-                => '$1'.self::MASK,
+            '/([?&;](?:key|api[_-]?key|apikey|access[_-]?token|token|secret|password|client[_-]?secret)=)[^&\s"\']+/i' => '$1'.self::MASK,
             // Authorization / API key headers, with or without a Bearer prefix
-            '/\b(authorization|x-api-key|x-goog-api-key|api-key)(\s*[:=]\s*)(?:Bearer\s+)?[^\s,;"\']+/i'
-                => '$1$2'.self::MASK,
+            '/\b(authorization|x-api-key|x-goog-api-key|api-key)(\s*[:=]\s*)(?:Bearer\s+)?[^\s,;"\']+/i' => '$1$2'.self::MASK,
             // Jooble puts the API key in the URL path
             '/(jooble\.org\/api\/)[^\s\/?"\']+/i' => '$1'.self::MASK,
             // Bare bearer tokens

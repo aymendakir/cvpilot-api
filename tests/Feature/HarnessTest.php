@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\PlatformMail;
 use Tests\Concerns\CreatesUsers;
 use Tests\TestCase;
 
@@ -46,7 +47,7 @@ class HarnessTest extends TestCase
         $this->fakePlatformMail();
         $user = $this->makeUser();
 
-        app(\App\Services\PlatformMail::class)->send($user->email, 'Hello', 'emails.notice', []);
+        app(PlatformMail::class)->send($user->email, 'Hello', 'emails.notice', []);
 
         $this->assertCount(1, $this->sentMail);
         $this->assertSame($user->email, $this->sentMail[0]['to']);
