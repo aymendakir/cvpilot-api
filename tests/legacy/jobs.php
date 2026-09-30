@@ -1,9 +1,9 @@
 <?php
 // php tests/jobs.php — isolated database and fake HTTP; no paid API requests.
-require __DIR__.'/../vendor/autoload.php';
+require __DIR__.'/../../vendor/autoload.php';
 putenv('APP_ENV=testing'); putenv('APP_KEY=base64:'.base64_encode(random_bytes(32)));
 putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:'); putenv('SESSION_SECURE_COOKIE=false');
-$app = require __DIR__.'/../bootstrap/app.php';
+$app = require __DIR__.'/../../bootstrap/app.php';
 $app->afterBootstrapping(Illuminate\Foundation\Bootstrap\LoadConfiguration::class, function () {
     config(['cache.default'=>'array', 'cache.stores.array'=>['driver'=>'array']]);
 });

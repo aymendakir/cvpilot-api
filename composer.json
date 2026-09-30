@@ -20,7 +20,8 @@
         ],
         "test": "@php artisan test --env=testing",
         "lint": "pint --test",
-        "lint:fix": "pint"
+        "lint:fix": "pint",
+        "test:scripts": "@php tests/legacy/run.php"
     },
     "config": {
         "optimize-autoloader": true,

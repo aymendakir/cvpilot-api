@@ -1,5 +1,5 @@
 <?php
-require __DIR__.'/../app/Services/ResumeLanguage.php';
+require __DIR__.'/../../app/Services/ResumeLanguage.php';
 use App\Services\ResumeLanguage;
 
 function checkLanguage(bool $condition): void { if (!$condition) throw new RuntimeException('Resume language check failed'); }
