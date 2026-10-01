@@ -40,7 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->prepend([RequestId::class, ForceJsonResponses::class, RejectMalformedJson::class]);
-        $middleware->validateCsrfTokens(except: ['api/analytics/events', 'api/contact']);
+        $middleware->validateCsrfTokens(except: ['api/analytics/events', 'api/contact', 'api/v1/analytics/events', 'api/v1/contact-messages']);
         $middleware->append([EnsureErrorEnvelope::class, SecurityHeaders::class]);
         // Deprecation headers must also decorate responses produced by middleware that runs later (401/403/429).
         $middleware->prependToPriorityList(before: EncryptCookies::class, prepend: Deprecated::class);
