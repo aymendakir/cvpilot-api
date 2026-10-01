@@ -19,7 +19,7 @@ function check(bool $condition, string $label): void { if (!$condition) throw ne
 function api(string $method, string $path, array $body = [], array &$cookies = []): array {
     global $kernel;
     app('session')->driver()->flush();
-    $request = Illuminate\Http\Request::create('http://localhost/api/'.$path, $method, [], $cookies, [], [
+    $request = Illuminate\Http\Request::create('http://localhost/api/v1/'.$path, $method, [], $cookies, [], [
         'HTTP_ACCEPT'=>'application/json', 'CONTENT_TYPE'=>'application/json', 'REMOTE_ADDR'=>'127.0.0.1',
     ], json_encode($body));
     $response = $kernel->handle($request);
@@ -80,7 +80,7 @@ $user = new App\Models\User;
 $user->name = 'Jobs Test'; $user->email = 'jobs@example.test'; $user->role = 'user';
 $user->password = Illuminate\Support\Facades\Hash::make('test-password-1234'); $user->verified_at = now(); $user->save();
 $cookies = [];
-check(api('POST', 'login', ['email'=>$user->email, 'password'=>'test-password-1234'], $cookies)[0] === 200, 'job seeker can sign in');
+check(api('POST', 'auth/login', ['email'=>$user->email, 'password'=>'test-password-1234'], $cookies)[0] === 200, 'job seeker can sign in');
 $result = api('POST', 'jobs/search', $search, $cookies);
 check($result[0] === 200 && $result[1]['count'] === 2 && array_unique(array_column($result[1]['data'], 'country_code')) === ['MA'], 'search endpoint returns only Morocco offers');
 foreach (['', '&city=Casablanca'] as $city) {

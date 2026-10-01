@@ -1,111 +1,91 @@
-# Implementation Plan: Phase 2, slice S6 — ops (scheduler, deployment guide)
+# Implementation Plan: Phase 2, slice S7 — alias sunset
 
-Spec: `SPEC.md` §7 item 6, §18 items 2 and 8, and the S6 scope note (including the `SESSION_SAME_SITE` switch added after S4). S0–S5 are merged and deployed. This plan covers **S6 only**; S7 (alias sunset) and Phase 2b (frontend on `/api/v1`) come after.
+Spec: `SPEC.md` §9 (S7), §18 items 5 and 7. S0–S6 and the migrations hotfix are merged and deployed; the frontend (Phase 2b, `cv-ai#16`) calls only `/api/v1` and its contract test pins all 107 calls to `tests/fixtures/routes-v1.json`. This plan covers **S7 only**.
 
-Branch: `refactor/api-s6-ops` (from `main` after S5). One PR. Stop after opening it.
+Branch: `refactor/api-s7` (from `main`). One PR. Stop after opening it.
+
+Status: built; see the PR description for the verification numbers.
 
 ## Overview
 
-Two promises in the product are not true in production today:
+Remove everything that exists only because the old frontend called pre-`/api/v1` paths: the 100+ deprecated alias routes, the `deprecated` middleware, their tests, and the two endpoints that were never exposed under v1 (`ai/improve-cv`, `cv/{id}/analyze`). **The v1 surface must not change**: the v1 route table (`tests/fixtures/routes-v1.json`, 95 rows) is byte-identical before and after, which is also what keeps the frontend contract valid.
 
-1. **Retention (48 h).** Uploaded CVs, admin copies and old support messages are deleted by `cvpilot:prune-temporary`, which is scheduled hourly in `routes/console.php`, but **nothing runs the scheduler**: no cron entry, no `schedule:work` process. Expired uploads stay on disk.
-2. **Same-site cookies.** S4 made `lax` the default, and production runs with an explicit `SESSION_SAME_SITE=none` until the API and frontend share a registrable domain. Nobody has written down how to get there.
+## What goes (verified in the code)
 
-S6 makes the scheduler run (and proves it), adds one small piece of proxy configuration the TLS setup needs, and writes `docs/DEPLOYMENT.md`, including the runbook for the switch to `lax`.
-
-## New finding (maintainer, after the first plan): Sevalla has no persistent disk
-
-Everything under `storage/` is **lost on every deploy and restart**: uploaded CV files, file sessions, the file cache and the log file. That changes S6 from "run the scheduler" to "make the app stateless". New tasks T4–T7 below (they come after T3 / Checkpoint A).
-
-What breaks today after a redeploy (verified in the code):
-
-| What lives in `storage/` | Effect of a redeploy |
+| Area | Removed |
 | --- | --- |
-| **Sessions** (`SESSION_DRIVER=file`) | **Every signed-in user and admin is signed out at every deploy.** |
-| **Cache** (`file`): OTP codes (10 min), login/register/API rate-limit counters, the register notice cooldown, the Microsoft token lock, the 5-minute job-search cache | Pending OTP codes stop working (the user requests a new one); rate-limit counters reset. No data loss. |
-| **Uploaded CV files** (`storage/app/private/cv/{user}/…`) | The files vanish; the `cv_documents` rows (name, size, `extracted_text`, `expires_at`) stay and point to a missing file. Nothing reads these files any more: the only readers were the admin download and the user download, removed in S3 and the frontend cleanup. Deleting a record and the prune command both tolerate a missing file (checked `exists()` first, `throw => false`), and the rows disappear on their own 48 hours after upload, once the scheduler runs. The CV list and ATS flows use the `extracted_text` column, so they keep working. |
-| **Log file** (`storage/logs/laravel.log`) | Logs vanish on redeploy, so errors cannot be investigated afterwards. |
-| **Compiled views** | Rebuilt on demand; no effect. |
+| Routes | `routes/legacy.php` (145 lines), its loader and the `legacy.<method>.<uri>` naming loop in `bootstrap/app.php` |
+| Middleware / config | `Deprecated` middleware + its alias, `config/api.php` `legacy_sunset`, `API_LEGACY_SUNSET` (`.env.example`), legacy entries in `AuditAdmin` (`legacyContentRead`), `SecurityHeaders::CACHEABLE_ROUTES`, the CSRF exemptions `api/analytics/events` and `api/contact` |
+| Legacy-only controller code | `AuthController::logoutLegacy`, `CacheController::clear` (v1 has `destroy`), the legacy `AdminController::warning` response split (v1 keeps the `201`), `AiController::improveCv` + `ImproveCvRequest`, `CvController::analyze` |
+| Tests | parity tests (`V1*ParityTest`), `LegacyRoutesTest`, `DeprecationTest`, `ComparesRoutes`, the legacy half of `RouteDocs`, `tests/fixtures/routes-legacy.json`, `tests/support/dump-routes.php` legacy mode |
+| Docs | the "Deprecated legacy aliases" section of `docs/ROUTES.md`, README / SPEC mentions |
 
-**Important consequence for T6 (R2):** since nothing reads the uploaded originals, moving them to Cloudflare R2 adds a paid service and a dependency to keep files nobody can open. The cheaper and more private alternative is to stop storing the original file at all (keep only `extracted_text` and metadata). T6 is written for R2 as you decided; I recommend you choose between the two at Checkpoint A (decision 5 below).
+## What stays (on purpose)
 
-## Current state (read, not changed)
+- **Microsoft SMTP OAuth callback** `/api/admin/smtp/microsoft/callback` (`routes/oauth.php`): registered with Microsoft, permanent, never deprecated.
+- **`AtsScorer` and the `ats_reports` table**: `AtsScorer` is still used by `JobsController` (match score). `cv/{id}/analyze` was the only writer of `ats_reports`; the table and scorer are removed with the legacy ATS code in Phase 3 ("legacy removal after"), not here.
+- **`cv_documents.disk_path` column**: nullable and unused since S6. **Not dropped here** (see decision 1).
+- `tests/legacy/*.php` scripts stay (they are the S0 harness) but are moved to v1 paths.
 
-- `routes/console.php`: `Schedule::command('cvpilot:prune-temporary')->hourly()`. The command calls `TemporaryDataCleanup` (expired `cv_documents` + their files, support messages older than 90 days, expired `admin_review_items`). It is only tested by a legacy script (`tests/legacy/workspace.php`), not by PHPUnit, and never through the scheduler.
-- `compose.yaml`: services `api` (Apache, `./storage` on the `documents` volume) and `db`. No scheduler. No healthcheck on `api`.
-- `docker-entrypoint.sh` always runs `php artisan optimize:clear` and `php artisan migrate --force` (retrying up to 12 times) before starting whatever the command is. A second container from the same image would run the migrations again, concurrently.
-- `bootstrap/app.php` does not configure trusted proxies. Behind a TLS-terminating proxy (Sevalla, Cloudflare, Caddy) `$request->isSecure()` is false unless the proxy headers are trusted, so `SecurityHeaders` never sends HSTS and URL generation can fall back to `http`.
-- `GET admin/system` reports PHP/Laravel versions, database and SMTP state, nothing about the scheduler.
-- `.env.example` has `SESSION_*` for local use; the README explains local Docker only. `docs/` holds `ERRORS.md` and `ROUTES.md`.
-- The Microsoft OAuth redirect URI is built from `APP_URL` (`/api/admin/smtp/microsoft/callback`) and is registered with Microsoft, so changing `APP_URL` to `api.<domain>` **breaks SMTP sign-in until the new URI is registered**.
+## Test migration (the real work)
 
-## Decisions I need from you (before /build)
+~30 test files reference legacy paths (`/api/login`, `/api/me`, `/api/career/...`). Deleting the aliases without porting them would silently drop coverage of behavior that v1 still has (envelope, throttles, ownership, security headers, request id, secret redaction, authorization matrix). So:
 
-1. **Sevalla (answered): no persistent disk.** A scheduler on the web container is therefore fine, because the prune command will act on the database and on the configured object store, never on local paths. The opt-in `RUN_SCHEDULER=true` (one `schedule:work` beside Apache in the single web container) is the production design; the compose file keeps the separate `scheduler` service for local Docker. The heartbeat (decision 3) must live in the **database**, not the file cache, because the cache is wiped on deploy.
-2. **`TRUSTED_PROXIES` (small change outside the scheduler).** Add `trustProxies(at: env TRUSTED_PROXIES)` to `bootstrap/app.php` (unset = none, `*` for managed platforms) so HSTS and `isSecure()` work behind the proxy. Your spec marks "CI/Docker/compose beyond the scheduler service" as ask-first, and this is application config, so I am asking. Without it the HSTS header from S4/earlier never reaches browsers in production.
-3. **Scheduler heartbeat in `admin/system`.** The prune command stores `last_run_at`; `admin/system` returns `retention.last_run_at` and `retention.healthy` (ran within the last 3 hours). It is the only way an admin can see that the scheduler is alive. It adds two fields to an admin-only response; the frontend ignores unknown fields. OK?
-4. **Domain.** I will write the guide with `<domain>` placeholders (frontend `app.<domain>`, API `api.<domain>`). Tell me the real domain if you want it filled in.
-5. **Uploaded originals (decided: do not store them).** _Earlier draft: R2_ through Laravel's S3 driver (`league/flysystem-aws-s3-v3`, approved; R2 is a paid service, so this is the one cost item, the free tier is 10 GB). My recommendation after the finding above: nobody reads the originals, so consider dropping file storage and keeping only `extracted_text`; it removes the cost, the dependency and the stale-file problem. T6 is built for R2 unless you say otherwise at Checkpoint A.
-6. **Production cache (decided: database).** With a wiped file cache, OTP codes and rate limits reset on every deploy. I plan `CACHE_STORE=database` in production beside the sessions (same database, no new service, `cache` and `cache_locks` tables, locks keep working). Say if you prefer to keep the file cache.
+1. **Port first, delete second.** Every non-parity test is moved to the v1 path (map in `docs/ROUTES.md` and the old `routes-legacy.json`). Where the legacy response differed from v1 (`logout` 200 vs 204, `cache/clear` 200 vs `DELETE` 204, `password` POST vs `PUT`, `warning` 200 vs `warnings` 201), the test follows v1.
+2. **Parity tests only assert "legacy equals v1".** Before deleting them, each v1-only assertion in them (status codes, headers, `assertNotDeprecated`) is checked to exist in a ported characterization or feature test; anything not covered is copied over.
+3. **New guard test** `LegacyPathsGoneTest`: every path in the old `routes-legacy.json` (except the OAuth callback) answers `404` with the `not_found` envelope and a request id, so a future route cannot silently reintroduce an alias.
+4. **v1 table unchanged:** `V1RoutesContractTest` keeps comparing against `routes-v1.json`; the diff of that fixture in this PR must be empty.
 
-## Architecture
+## Tasks
 
-- **Entrypoint modes.** `docker-entrypoint.sh` runs migrations only for the web role (command `apache2-foreground`, or `RUN_MIGRATIONS=true`); other roles (the scheduler) skip them, so two containers never migrate at once. `RUN_SCHEDULER=true` starts `php artisan schedule:work` in the background of the web container (killed with it on stop).
-- **Compose.** New `scheduler` service: same image, `.env`, and `documents` volume; `command: php artisan schedule:work`; `restart: unless-stopped`; waits for a healthy `api` (new healthcheck on `/up`). `RUN_MIGRATIONS=false`.
-- **Schedule.** `cvpilot:prune-temporary` stays hourly, gains `->withoutOverlapping()` and `->onFailure()` logging; the command records a heartbeat in the cache (shared `storage` volume).
-- **Trusted proxies.** `TRUSTED_PROXIES` env (comma list or `*`); tests send `X-Forwarded-Proto: https` from a trusted and an untrusted peer.
-- **Docs.** `docs/DEPLOYMENT.md` (sections below) and a README pointer; `.env.example` gains the new variables with comments. A test keeps the guide honest: every environment variable named in its tables exists in `.env.example` or `config/`.
+### T1 — Port the tests to v1 (no production code touched)
+- Convert every non-parity test and the `tests/legacy/*.php` helpers to v1 paths; remove legacy-vs-v1 comparisons that are now redundant.
+- Add `LegacyPathsGoneTest` (it fails at this point, on purpose: it is the T2 target).
+- **Acceptance:** `composer test` green except `LegacyPathsGoneTest`; assertion count not lower than before for the ported files (listed in the PR).
+- **Verify:** `composer test`, `composer test:scripts`, `pint --test`.
 
-## `docs/DEPLOYMENT.md` outline
+### T2 — Remove the routes and the deprecation machinery
+- Delete `routes/legacy.php`, the loader and naming loop, `Deprecated` + alias, `legacy_sunset`, `API_LEGACY_SUNSET`, legacy entries in `AuditAdmin`, `SecurityHeaders` and the CSRF exception list; fix comments in `routes/api.php` and `AppServiceProvider`.
+- **Acceptance:** `LegacyPathsGoneTest` green; `routes-v1.json` unchanged; `php artisan route:cache` works; the OAuth callback still resolves.
+- **Verify:** `composer test`, `php artisan route:list --path=api`, `route:cache` + `route:clear`.
 
-1. Topology: `app.<domain>` (frontend), `api.<domain>` (API), why same-site (Safari/ITP), what stays private (MySQL).
-2. DNS and TLS for both hostnames; proxy settings (`TRUSTED_PROXIES`, forwarded headers).
-3. Environment: a table per service (API and frontend) with every variable, its production value, and what breaks if wrong (`APP_URL`, `FRONTEND_URL`, CORS, `SESSION_DOMAIN=.<domain>`, `SESSION_SAME_SITE`, `SESSION_SECURE_COOKIE`, `NEXT_PUBLIC_BACKEND_URL`, `BACKEND_INTERNAL_URL`).
-4. Scheduler: compose service, the single-container option, how to check it (`admin/system`, `php artisan schedule:list`).
-5. Migrations and release order (the entrypoint migrates on start; additive migrations first, code after; the `blog_posts`, `last_error` and purge migrations already shipped).
-6. **Runbook: the switch from `SESSION_SAME_SITE=none` to `lax`** (preconditions, ordered steps, verification with a real login and the cookie flags, what users see: everyone is signed out once because the cookie domain changes).
-7. **Microsoft OAuth**: re-register the redirect URI `https://api.<domain>/api/admin/smtp/microsoft/callback` before changing `APP_URL`.
-8. Rollback for each step; known limits (file sessions and file cache mean one API instance and one shared `storage` disk; do not scale horizontally without moving sessions and cache to a shared store).
+### T3 — Delete legacy-only code
+- Remove `logoutLegacy`, `CacheController::clear`, the legacy warning wrapper, `improveCv` + `ImproveCvRequest`, `CvController::analyze`, and any import or test that only they used. Delete the parity tests, `ComparesRoutes`, `routes-legacy.json` (kept only as a list inside `LegacyPathsGoneTest`), and the legacy half of `RouteDocs` / `dump-routes.php`.
+- **Acceptance:** no `legacy`/`deprecated` references left except the guard test and SPEC history; `composer test`, `pint --test`, `composer audit` green.
 
-## Task list
+### Checkpoint A
+- [ ] Review with maintainer: diff size, list of ported vs deleted tests, route table diff (must be empty), the 404 guard test.
 
-Rules for every task: write the test first, `composer lint` + `composer test` + `composer test:scripts` before each commit.
+### T4 — Docs
+- Regenerate `docs/ROUTES.md` (no deprecated section), update README, `.env.example`, `docs/ERRORS.md` if affected, `docs/DEPLOYMENT.md` (drop `API_LEGACY_SUNSET`), `SPEC.md` (S7 built, §9, §11 item 7/8, §18 items 5 and 7) and `tasks/todo.md`.
+- **Acceptance:** `ROUTES.md` is generated and passes the staleness test; the deployment-guide test still passes (no env var documented that no longer exists).
 
-- **T1** Retention under test: a PHPUnit test that the schedule contains `cvpilot:prune-temporary` hourly without overlap, and that `schedule:run` at the right minute deletes expired uploads **and their files**, expired admin copies and support messages older than 90 days, while fresh ones, saved work and users survive. Heartbeat written by the command.
-- **T2** Entrypoint modes and the compose `scheduler` service plus `api` healthcheck; CI gains `sh -n docker-entrypoint.sh` and `docker compose config`; a test that runs the entrypoint's role decision with a stub (no Docker needed).
-- **T3** `TRUSTED_PROXIES` and the `admin/system` retention heartbeat (decisions 2 and 3), with tests.
+### T5 — Verify and open the PR
+- Fresh clone: `composer install`, `composer test`, `composer test:scripts`, `pint --test`, `composer audit`, `route:cache`.
+- Open the PR (deploy notes below), **STOP**.
 
-### Checkpoint A (after T3)
+## Deploy and rollback
 
-Show: the retention test (including the file removal), the entrypoint behaviour per role, the compose file, the HSTS-behind-proxy test. Review with maintainer.
-
-- **T4** Stateless sessions and cache: production `SESSION_DRIVER=database` and `CACHE_STORE=database` (migrations for `sessions`, `cache`, `cache_locks`; the file drivers stay the default for local and tests). Tests: a login survives across requests with the database driver, OTP and rate limits work on the database store, and the session boot guard (S4) still holds.
-- **T5** Logs: `LOG_CHANNEL=stderr` in production (a `stderr` channel that keeps the S4 secret-redaction tap); test that the redaction applies on the stderr channel.
-- **T6** Stop storing uploaded originals (maintainer decision; replaces R2, no new dependency, no paid service): the upload is processed from PHP's temp file, its text is extracted, and the temp file is deleted in a `finally` block; only `extracted_text` and metadata are stored. `cv_documents.disk_path` becomes nullable and unused (expand step); a data migration deletes any stored originals and nulls the column. The prune command and account deletion keep a defensive file delete for rows that still have a path. Dropping the column is a later contract step (an old instance still running during a rolling deploy would otherwise fail on insert). Tests: nothing is written to any disk, the temp file is gone after success and after a rejected file, the migration cleans old rows.
-- **T7** `docs/DEPLOYMENT.md` (now also: `storage/` is ephemeral on Sevalla, R2 bucket and token setup, every new env var, database sessions/cache, stderr logs, what a redeploy does and does not lose), README pointer, `.env.example`, and the guide-vs-config test.
-- **T8** SPEC §11 note, fresh-clone checks, open the PR (it starts with the Sevalla steps: env vars, R2 bucket, scheduler, `TRUSTED_PROXIES`) and **STOP**.
-
-### Checkpoint B (final)
-
-- [ ] CI green (lint, tests, scripts, audit, `route:cache`, entrypoint syntax, `docker compose config`)
-- [ ] Retention proven by the scheduler path (database and object-store), not by local paths
-- [ ] Nothing the app needs lives in `storage/` in production (sessions, cache, files, logs)
-- [ ] Maintainer merges S6 before the domain cutover and before S7 and Phase 2b are planned
+- API-only change. The frontend already uses v1 only, so deploy order does not matter after `cv-ai#16` is live; do not merge S7 before the Phase 2b smoke checklist has passed.
+- No migration, no new environment variable. `API_LEGACY_SUNSET` can be removed from Sevalla (ignored if left).
+- **After deploy:** a stale browser tab still running the old frontend bundle will get `404 not_found` on every call until it is refreshed; nothing else is affected.
+- **Rollback:** revert the PR; the aliases come back unchanged (no data is touched).
 
 ## Risks
 
 | Risk | Mitigation |
 | --- | --- |
-| The scheduler cannot see the uploads disk, so nothing is deleted | Decision 1; the heartbeat only proves the job ran, so the guide also says to confirm on the disk that an expired file is gone; the test proves file removal |
-| The new `sessions`/`cache` tables are missing when the new env vars are set | Migrations ship in this PR and run from the entrypoint before Apache starts; the guide orders the steps: deploy first, then switch the env vars |
-| Signing everyone out once when sessions move to the database | Expected and documented; do it at a quiet moment together with the first deploy |
-| R2 credentials leak into logs/errors | The S4 log redaction covers common key shapes; the guide uses a bucket-scoped token and tests assert none is logged |
-| Two containers migrate at once | Migrations only for the web role; the scheduler sets `RUN_MIGRATIONS=false` |
-| `RUN_SCHEDULER=true` leaves a zombie or dies silently | The loop is restarted by a tiny `while` supervisor in the entrypoint and logged; the heartbeat in `admin/system` shows if it stops |
-| `TRUSTED_PROXIES=*` accepted from the open internet | Documented as correct only when the container is reachable solely through the platform proxy; default is none |
-| Switching to `lax` breaks login | The guide makes it a separate, reversible step after the domain works; rollback is one env var |
-| Changing `APP_URL` breaks Microsoft SMTP | Guide step 7: register the new redirect URI first |
+| Hidden caller of a legacy path (old tab, script, bookmark) | Frontend contract test shows zero legacy calls; guard test documents the removal; rollback is a revert |
+| Silent loss of v1 coverage when parity tests go | Port-first rule (T1) and a before/after assertion count per file |
+| Removing code `JobsController` still needs (`AtsScorer`) | Kept; only the `analyze` endpoint goes |
+| v1 table changes by accident | `routes-v1.json` diff must be empty; contract test unchanged |
+
+## Decisions needed at Checkpoint A (recommendations first)
+
+1. **`cv_documents.disk_path` drop:** recommend **not in S7**; a separate tiny follow-up (idempotent migration with a `hasColumn` guard, per the hotfix lesson) after S7 is deployed. Keeping S7 free of migrations keeps its rollback a plain revert.
+2. **`AtsScorer` / `ats_reports`:** recommend **leave for Phase 3**, as above.
+3. **Old route-history fixture:** recommend keeping the legacy path list only inside `LegacyPathsGoneTest`, and deleting `routes-legacy.json`.
 
 ## Out of scope
 
-Horizontal scaling beyond what database sessions/cache allow, a CDN, monitoring/alerting beyond the heartbeat, the actual domain purchase and DNS, Phase 2b (frontend), S7 (alias sunset).
+Phase 3 (ATS), Phase 4 (UI), the domain cutover, the `disk_path` column drop, any v1 change.

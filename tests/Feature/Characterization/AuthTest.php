@@ -25,7 +25,7 @@ class AuthTest extends TestCase
 
     public function test_register_returns_201_with_a_message_and_no_user(): void
     {
-        $this->postJson('/api/register', [
+        $this->postJson('/api/v1/auth/register', [
             'name' => 'Ada Lovelace',
             'email' => ' Ada@Example.TEST ',
             'password' => self::PASSWORD,
@@ -47,7 +47,7 @@ class AuthTest extends TestCase
         $oldHash = $user->password;
 
         // S4 (SPEC decision 18.6): no more "email already taken" oracle.
-        $this->postJson('/api/register', [
+        $this->postJson('/api/v1/auth/register', [
             'name' => 'Someone',
             'email' => 'taken@example.test',
             'password' => self::PASSWORD,
@@ -60,7 +60,7 @@ class AuthTest extends TestCase
 
     public function test_register_validation_failures_are_422_with_field_errors(): void
     {
-        $this->postJson('/api/register', [
+        $this->postJson('/api/v1/auth/register', [
             'name' => '',
             'email' => 'not-an-email',
             'password' => 'short',
@@ -70,7 +70,7 @@ class AuthTest extends TestCase
 
     public function test_register_does_not_let_the_client_set_role_or_verification(): void
     {
-        $this->postJson('/api/register', [
+        $this->postJson('/api/v1/auth/register', [
             'name' => 'Mallory',
             'email' => 'mallory@example.test',
             'password' => self::PASSWORD,
@@ -88,7 +88,7 @@ class AuthTest extends TestCase
     {
         $user = $this->makeUser(['email' => 'login@example.test']);
 
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/v1/auth/login', [
             'email' => 'LOGIN@example.test',
             'password' => self::PASSWORD,
         ])->assertOk()
@@ -109,7 +109,7 @@ class AuthTest extends TestCase
     {
         $this->makeUser(['email' => 'login@example.test']);
 
-        $this->postJson('/api/login', ['email' => 'login@example.test', 'password' => 'wrong-password-123'])
+        $this->postJson('/api/v1/auth/login', ['email' => 'login@example.test', 'password' => 'wrong-password-123'])
             ->assertStatus(401)
             ->assertJsonPath('code', 'invalid_credentials')
             ->assertJsonPath('message', 'Invalid credentials.');
@@ -117,7 +117,7 @@ class AuthTest extends TestCase
 
     public function test_login_with_an_unknown_email_is_401_with_the_same_code_and_message(): void
     {
-        $this->postJson('/api/login', ['email' => 'nobody@example.test', 'password' => self::PASSWORD])
+        $this->postJson('/api/v1/auth/login', ['email' => 'nobody@example.test', 'password' => self::PASSWORD])
             ->assertStatus(401)
             ->assertJsonPath('code', 'invalid_credentials')
             ->assertJsonPath('message', 'Invalid credentials.');
@@ -127,12 +127,12 @@ class AuthTest extends TestCase
     {
         $this->makeUser(['email' => 'suspended@example.test', 'suspended' => true]);
 
-        $this->postJson('/api/login', ['email' => 'suspended@example.test', 'password' => self::PASSWORD])
+        $this->postJson('/api/v1/auth/login', ['email' => 'suspended@example.test', 'password' => self::PASSWORD])
             ->assertStatus(403)
             ->assertJsonPath('code', 'account_suspended')
             ->assertJsonPath('message', 'This account has been suspended by an administrator. Please contact support.');
 
-        $this->postJson('/api/login', ['email' => 'suspended@example.test', 'password' => 'wrong-password-123'])
+        $this->postJson('/api/v1/auth/login', ['email' => 'suspended@example.test', 'password' => 'wrong-password-123'])
             ->assertStatus(401);
     }
 
@@ -140,7 +140,7 @@ class AuthTest extends TestCase
     {
         $this->makeUser(['email' => 'unverified@example.test', 'verified_at' => null]);
 
-        $this->postJson('/api/login', ['email' => 'unverified@example.test', 'password' => self::PASSWORD])
+        $this->postJson('/api/v1/auth/login', ['email' => 'unverified@example.test', 'password' => self::PASSWORD])
             ->assertStatus(403)
             ->assertJsonPath('code', 'email_not_verified')
             ->assertJsonPath('message', 'Verify your email first.');
@@ -148,7 +148,7 @@ class AuthTest extends TestCase
 
     public function test_login_validation_is_422(): void
     {
-        $this->postJson('/api/login', ['email' => 'bad', 'password' => ''])
+        $this->postJson('/api/v1/auth/login', ['email' => 'bad', 'password' => ''])
             ->assertStatus(422)
             ->assertJsonStructure(['message', 'errors' => ['email', 'password']]);
     }
@@ -157,8 +157,8 @@ class AuthTest extends TestCase
     {
         $user = $this->makeUser(['email' => 'audit@example.test']);
 
-        $this->postJson('/api/login', ['email' => 'audit@example.test', 'password' => 'wrong-password-123']);
-        $this->postJson('/api/login', ['email' => 'audit@example.test', 'password' => self::PASSWORD]);
+        $this->postJson('/api/v1/auth/login', ['email' => 'audit@example.test', 'password' => 'wrong-password-123']);
+        $this->postJson('/api/v1/auth/login', ['email' => 'audit@example.test', 'password' => self::PASSWORD]);
 
         $this->assertDatabaseHas('audit_events', ['event' => 'login_failed', 'user_id' => null]);
         $this->assertDatabaseHas('audit_events', ['event' => 'login', 'user_id' => $user->id]);
@@ -169,8 +169,8 @@ class AuthTest extends TestCase
         $this->fakePlatformMail();
         $this->makeUser(['email' => 'known@example.test', 'verified_at' => null]);
 
-        $known = $this->postJson('/api/otp/request', ['email' => 'known@example.test', 'purpose' => 'verify']);
-        $unknown = $this->postJson('/api/otp/request', ['email' => 'unknown@example.test', 'purpose' => 'verify']);
+        $known = $this->postJson('/api/v1/auth/otp/request', ['email' => 'known@example.test', 'purpose' => 'verify']);
+        $unknown = $this->postJson('/api/v1/auth/otp/request', ['email' => 'unknown@example.test', 'purpose' => 'verify']);
 
         $known->assertOk()->assertExactJson(['message' => 'If this account exists, a code has been sent.']);
         $unknown->assertOk()->assertExactJson(['message' => 'If this account exists, a code has been sent.']);
@@ -182,7 +182,7 @@ class AuthTest extends TestCase
 
     public function test_otp_request_validates_purpose(): void
     {
-        $this->postJson('/api/otp/request', ['email' => 'a@example.test', 'purpose' => 'other'])
+        $this->postJson('/api/v1/auth/otp/request', ['email' => 'a@example.test', 'purpose' => 'other'])
             ->assertStatus(422)
             ->assertJsonStructure(['message', 'errors' => ['purpose']]);
     }
@@ -200,7 +200,7 @@ class AuthTest extends TestCase
             }
         });
 
-        $this->postJson('/api/otp/request', ['email' => 'known@example.test', 'purpose' => 'verify'])
+        $this->postJson('/api/v1/auth/otp/request', ['email' => 'known@example.test', 'purpose' => 'verify'])
             ->assertStatus(503)
             ->assertJsonPath('code', 'upstream_unavailable')
             ->assertHeader('Retry-After', '30');
@@ -211,15 +211,15 @@ class AuthTest extends TestCase
     {
         $this->fakePlatformMail();
         $user = $this->makeUser(['email' => 'verify@example.test', 'verified_at' => null]);
-        $this->postJson('/api/otp/request', ['email' => $user->email, 'purpose' => 'verify']);
+        $this->postJson('/api/v1/auth/otp/request', ['email' => $user->email, 'purpose' => 'verify']);
         $code = $this->sentMail[0]['data']['code'];
 
-        $this->postJson('/api/otp/verify', ['email' => $user->email, 'purpose' => 'verify', 'code' => $code])
+        $this->postJson('/api/v1/auth/otp/verify', ['email' => $user->email, 'purpose' => 'verify', 'code' => $code])
             ->assertOk()
             ->assertExactJson(['message' => 'Completed. Please sign in.']);
         $this->assertNotNull($user->refresh()->verified_at);
 
-        $this->postJson('/api/otp/verify', ['email' => $user->email, 'purpose' => 'verify', 'code' => $code])
+        $this->postJson('/api/v1/auth/otp/verify', ['email' => $user->email, 'purpose' => 'verify', 'code' => $code])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Invalid or expired code.');
     }
@@ -228,18 +228,18 @@ class AuthTest extends TestCase
     {
         $this->fakePlatformMail();
         $user = $this->makeUser(['email' => 'verify@example.test', 'verified_at' => null]);
-        $this->postJson('/api/otp/request', ['email' => $user->email, 'purpose' => 'verify']);
+        $this->postJson('/api/v1/auth/otp/request', ['email' => $user->email, 'purpose' => 'verify']);
         $code = $this->sentMail[0]['data']['code'];
         $wrong = $code === '000000' ? '111111' : '000000';
 
         for ($i = 0; $i < 5; $i++) {
-            $this->postJson('/api/otp/verify', ['email' => $user->email, 'purpose' => 'verify', 'code' => $wrong])
+            $this->postJson('/api/v1/auth/otp/verify', ['email' => $user->email, 'purpose' => 'verify', 'code' => $wrong])
                 ->assertStatus(422)
                 ->assertJsonPath('message', 'Invalid code.');
         }
 
         // The correct code no longer works after five failures.
-        $this->postJson('/api/otp/verify', ['email' => $user->email, 'purpose' => 'verify', 'code' => $code])
+        $this->postJson('/api/v1/auth/otp/verify', ['email' => $user->email, 'purpose' => 'verify', 'code' => $code])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Invalid or expired code.');
         $this->assertNull($user->refresh()->verified_at);
@@ -247,14 +247,14 @@ class AuthTest extends TestCase
 
     public function test_otp_verify_for_an_unknown_email_is_422(): void
     {
-        $this->postJson('/api/otp/verify', ['email' => 'nobody@example.test', 'purpose' => 'verify', 'code' => '123456'])
+        $this->postJson('/api/v1/auth/otp/verify', ['email' => 'nobody@example.test', 'purpose' => 'verify', 'code' => '123456'])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Invalid or expired code.');
     }
 
     public function test_otp_verify_validates_the_code_format(): void
     {
-        $this->postJson('/api/otp/verify', ['email' => 'a@example.test', 'purpose' => 'verify', 'code' => 'abc'])
+        $this->postJson('/api/v1/auth/otp/verify', ['email' => 'a@example.test', 'purpose' => 'verify', 'code' => 'abc'])
             ->assertStatus(422)
             ->assertJsonStructure(['message', 'errors' => ['code']]);
     }
@@ -263,10 +263,10 @@ class AuthTest extends TestCase
     {
         $this->fakePlatformMail();
         $user = $this->makeUser(['email' => 'reset@example.test']);
-        $this->postJson('/api/otp/request', ['email' => $user->email, 'purpose' => 'reset']);
+        $this->postJson('/api/v1/auth/otp/request', ['email' => $user->email, 'purpose' => 'reset']);
         $code = $this->sentMail[0]['data']['code'];
 
-        $this->postJson('/api/otp/verify', [
+        $this->postJson('/api/v1/auth/otp/verify', [
             'email' => $user->email, 'purpose' => 'reset', 'code' => $code,
             'password' => 'a-brand-new-passphrase', 'password_confirmation' => 'a-brand-new-passphrase',
         ])->assertOk();
@@ -278,7 +278,7 @@ class AuthTest extends TestCase
 
     public function test_password_reset_requires_a_new_password(): void
     {
-        $this->postJson('/api/otp/verify', ['email' => 'a@example.test', 'purpose' => 'reset', 'code' => '123456'])
+        $this->postJson('/api/v1/auth/otp/verify', ['email' => 'a@example.test', 'purpose' => 'reset', 'code' => '123456'])
             ->assertStatus(422)
             ->assertJsonStructure(['message', 'errors' => ['password']]);
     }
@@ -287,7 +287,7 @@ class AuthTest extends TestCase
     {
         $user = $this->makeUser();
 
-        $this->signIn($user)->getJson('/api/me')
+        $this->signIn($user)->getJson('/api/v1/me')
             ->assertOk()
             ->assertJsonPath('id', $user->id)
             ->assertJsonMissingPath('session_version')
@@ -297,7 +297,7 @@ class AuthTest extends TestCase
 
     public function test_me_without_a_session_is_401_unauthenticated(): void
     {
-        $this->getJson('/api/me')->assertStatus(401)
+        $this->getJson('/api/v1/me')->assertStatus(401)
             ->assertJsonPath('code', 'unauthenticated')
             ->assertJsonPath('message', 'Authentication is required.');
     }
@@ -308,7 +308,7 @@ class AuthTest extends TestCase
         $session = ['user_id' => $user->id, 'session_version' => $user->session_version];
         $user->forceFill(['session_version' => 2])->save();
 
-        $this->withSession($session)->getJson('/api/me')->assertStatus(401);
+        $this->withSession($session)->getJson('/api/v1/me')->assertStatus(401);
     }
 
     public function test_suspended_and_unverified_members_are_403_with_their_own_codes(): void
@@ -317,20 +317,20 @@ class AuthTest extends TestCase
         $unverified = $this->makeUser(['verified_at' => null]);
 
         // S4 (SPEC §6): the account state is a 403 with a distinct code, not a 401.
-        $this->signIn($suspended)->getJson('/api/me')->assertStatus(403)->assertJsonPath('code', 'account_suspended');
-        $this->signIn($unverified)->getJson('/api/me')->assertStatus(403)->assertJsonPath('code', 'email_not_verified');
+        $this->signIn($suspended)->getJson('/api/v1/me')->assertStatus(403)->assertJsonPath('code', 'account_suspended');
+        $this->signIn($unverified)->getJson('/api/v1/me')->assertStatus(403)->assertJsonPath('code', 'email_not_verified');
     }
 
     public function test_a_session_for_a_deleted_user_is_401(): void
     {
-        $this->withSession(['user_id' => 999, 'session_version' => 1])->getJson('/api/me')->assertStatus(401);
+        $this->withSession(['user_id' => 999, 'session_version' => 1])->getJson('/api/v1/me')->assertStatus(401);
     }
 
     public function test_profile_update_changes_only_validated_fields(): void
     {
         $user = $this->makeUser();
 
-        $this->signIn($user)->patchJson('/api/me', [
+        $this->signIn($user)->patchJson('/api/v1/me', [
             'name' => 'New Name',
             'city' => 'Casablanca',
             'country' => 'MA',
@@ -348,7 +348,7 @@ class AuthTest extends TestCase
 
     public function test_profile_validation_is_422(): void
     {
-        $this->signIn($this->makeUser())->patchJson('/api/me', ['country' => 'MAR', 'language' => 'de'])
+        $this->signIn($this->makeUser())->patchJson('/api/v1/me', ['country' => 'MAR', 'language' => 'de'])
             ->assertStatus(422)
             ->assertJsonStructure(['message', 'errors' => ['country', 'language']]);
     }
@@ -357,7 +357,7 @@ class AuthTest extends TestCase
     {
         $user = $this->makeUser();
 
-        $this->signIn($user)->postJson('/api/password', [
+        $this->signIn($user)->putJson('/api/v1/me/password', [
             'current_password' => 'not-the-password',
             'password' => 'another-long-passphrase',
             'password_confirmation' => 'another-long-passphrase',
@@ -368,7 +368,7 @@ class AuthTest extends TestCase
     {
         $user = $this->makeUser();
 
-        $this->signIn($user)->postJson('/api/password', [
+        $this->signIn($user)->putJson('/api/v1/me/password', [
             'current_password' => self::PASSWORD,
             'password' => 'another-long-passphrase',
             'password_confirmation' => 'another-long-passphrase',
@@ -380,13 +380,12 @@ class AuthTest extends TestCase
         $this->assertSame(2, session('session_version'), 'the current session keeps working');
     }
 
-    public function test_logout_returns_200_with_a_message(): void
+    public function test_logout_returns_204_and_is_audited(): void
     {
         $user = $this->makeUser();
 
-        $this->signIn($user)->postJson('/api/logout')
-            ->assertStatus(200)
-            ->assertExactJson(['message' => 'Signed out.']);
+        $this->signIn($user)->postJson('/api/v1/auth/logout')
+            ->assertStatus(204);
 
         $this->assertDatabaseHas('audit_events', ['event' => 'logout', 'user_id' => $user->id]);
         $this->assertNull(session('user_id'));
@@ -394,7 +393,7 @@ class AuthTest extends TestCase
 
     public function test_logout_without_a_session_is_401(): void
     {
-        $this->postJson('/api/logout')->assertStatus(401);
+        $this->postJson('/api/v1/auth/logout')->assertStatus(401);
     }
 
     public function test_cache_used_for_otp_is_the_array_store(): void

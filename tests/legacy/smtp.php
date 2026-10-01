@@ -34,7 +34,7 @@ function api(string $method, string $path, array $body = [], array &$cookies = [
     global $kernel;
     // Match fresh HTTP requests while preserving the in-memory session handler.
     app('session')->driver()->flush();
-    $request = Illuminate\Http\Request::create('https://api.example.test/api/'.$path, $method, [], $cookies, [], [
+    $request = Illuminate\Http\Request::create('https://api.example.test/api/'.(str_starts_with($path, 'admin/smtp/microsoft/callback') ? '' : 'v1/').$path, $method, [], $cookies, [], [
         'HTTP_ACCEPT'=>'application/json', 'CONTENT_TYPE'=>'application/json', 'REMOTE_ADDR'=>'127.0.0.1',
     ], json_encode($body));
     $response = $kernel->handle($request);
@@ -74,8 +74,8 @@ Http::fake(['https://login.microsoftonline.com/*'=>function ($request) use (&$to
 }]);
 $owner = []; $member = []; $guest = [];
 $admin = account('admin@example.test', 'admin'); account('member@example.test', 'user');
-check(api('POST', 'login', ['email'=>$admin->email, 'password'=>'test-password-1234'], $owner)[0] === 200, 'administrator signed in');
-check(api('POST', 'login', ['email'=>'member@example.test', 'password'=>'test-password-1234'], $member)[0] === 200, 'member signed in');
+check(api('POST', 'auth/login', ['email'=>$admin->email, 'password'=>'test-password-1234'], $owner)[0] === 200, 'administrator signed in');
+check(api('POST', 'auth/login', ['email'=>'member@example.test', 'password'=>'test-password-1234'], $member)[0] === 200, 'member signed in');
 foreach (['GET'=>'admin/smtp', 'PUT'=>'admin/smtp', 'POST'=>'admin/smtp/microsoft/connect'] as $method=>$path) {
     $denied = api($method, $path, [], $member);
     check($denied[0] === 403, "$method $path denies non-admin (status ".$denied[0].")");

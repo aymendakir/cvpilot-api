@@ -47,18 +47,18 @@ class ThrottleTest extends TestCase
         $this->login('someone-else@example.test')->assertStatus(401);
     }
 
-    public function test_admin_routes_allow_60_requests_a_minute_across_v1_and_legacy(): void
+    public function test_admin_routes_allow_60_requests_a_minute(): void
     {
         $admin = $this->makeAdmin();
 
         for ($i = 1; $i <= 30; $i++) {
             $this->signIn($admin)->getJson('/api/v1/admin/site-settings')->assertOk();
-            $this->signIn($admin)->getJson('/api/admin/site-settings')->assertOk();
+            $this->signIn($admin)->getJson('/api/v1/admin/site-settings')->assertOk();
         }
 
         $response = $this->signIn($admin)->getJson('/api/v1/admin/site-settings')->assertStatus(429)->assertJsonPath('code', 'too_many_requests');
         $this->assertNotNull($response->headers->get('Retry-After'));
-        $this->signIn($admin)->getJson('/api/admin/site-settings')->assertStatus(429);
+        $this->signIn($admin)->getJson('/api/v1/admin/site-settings')->assertStatus(429);
     }
 
     public function test_the_admin_limiter_does_not_apply_to_member_routes_or_other_admins(): void

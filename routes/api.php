@@ -3,11 +3,11 @@
 /*
  * Canonical API routes, served under /api/v1 (see bootstrap/app.php, which
  * adds the `web` middleware group, the /api/v1 prefix and the `v1.` name
- * prefix). Controllers are shared with the deprecated routes in routes/legacy.php.
+ * prefix).
  *
  * Conventions (SPEC.md section 3): plural kebab-case nouns, HTTP verbs for
  * actions, no closures, ids constrained with whereNumber(), every route named.
- * Throttle bucket prefixes match the legacy routes so both paths share one counter.
+ * Throttle bucket prefixes (`max,minutes,prefix:`) name the counter each limiter uses.
  */
 
 use App\Http\Controllers\Api\V1\AccountDataController;

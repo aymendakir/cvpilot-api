@@ -14,15 +14,6 @@ class RouteDocs
         return array_values(array_filter(iterator_to_array(Route::getRoutes()), fn (RouteObject $r) => str_starts_with($r->uri(), 'api/v1/')));
     }
 
-    /** @return array<int, RouteObject> */
-    public static function legacy(): array
-    {
-        return array_values(array_filter(
-            iterator_to_array(Route::getRoutes()),
-            fn (RouteObject $r) => str_starts_with($r->uri(), 'api/') && ! str_starts_with($r->uri(), 'api/v1/') && self::deprecation($r) !== null,
-        ));
-    }
-
     /** @return array<int, string> every middleware entry, as written in the route files */
     public static function middleware(RouteObject $route): array
     {
@@ -34,25 +25,6 @@ class RouteDocs
         $middleware = self::middleware($route);
 
         return in_array('admin', $middleware, true) ? 'admin' : (in_array('auth.session', $middleware, true) ? 'auth' : 'public');
-    }
-
-    /** The `deprecated` middleware entry of a legacy route (null if it has none). */
-    public static function deprecation(RouteObject $route): ?string
-    {
-        foreach (self::middleware($route) as $entry) {
-            if ($entry === 'deprecated' || str_starts_with($entry, 'deprecated:')) {
-                return $entry;
-            }
-        }
-
-        return null;
-    }
-
-    public static function successor(RouteObject $route): ?string
-    {
-        $entry = self::deprecation($route);
-
-        return $entry !== null && str_contains($entry, ':') ? substr($entry, strlen('deprecated:')) : null;
     }
 
     /** Route-specific limiters (everything but the shared `api` one), e.g. `10,1,cv:` and `admin`. */
@@ -90,19 +62,6 @@ class RouteDocs
         $out .= "## /api/v1\n\n| Scope | Method | Path | Limiters (`max,minutes,prefix`, or a named limiter) on top of the shared `api` one | Route name |\n| --- | --- | --- | --- | --- |\n";
         foreach ($rows as [$scope, $uri, $method, $throttle, $name]) {
             $out .= "| {$scope} | {$method} | `/api{$uri}` | ".($throttle !== '' ? $throttle : 'shared `api` limiter')." | `{$name}` |\n";
-        }
-
-        $legacy = [];
-        foreach (self::legacy() as $route) {
-            foreach (self::methods($route) as $method) {
-                $legacy[] = [$route->uri(), $method, self::successor($route)];
-            }
-        }
-        usort($legacy, fn ($a, $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
-
-        $out .= "\n## Deprecated legacy aliases\n\nEvery alias answers with `Deprecation: true`, a `Link: <successor>; rel=\"successor-version\"` header when it has a successor, and `Sunset` once `API_LEGACY_SUNSET` is set. They are removed in slice S7.\n\n| Method | Legacy path | Successor |\n| --- | --- | --- |\n";
-        foreach ($legacy as [$uri, $method, $successor]) {
-            $out .= "| {$method} | `/{$uri}` | ".($successor !== null ? "`{$successor}`" : '_legacy only_')." |\n";
         }
 
         $out .= "\n## Permanent, not versioned\n\n| Method | Path | Why |\n| --- | --- | --- |\n";

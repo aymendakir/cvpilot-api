@@ -6,14 +6,12 @@ use App\Models\BlogPost;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Tests\Concerns\ComparesRoutes;
 use Tests\Concerns\CreatesUsers;
 use Tests\TestCase;
 
 /** SPEC §8.1 admin side: what `features/admin/admin-blog.tsx` sends and expects. */
 class BlogAdminTest extends TestCase
 {
-    use ComparesRoutes;
     use CreatesUsers;
     use RefreshDatabase;
 
@@ -196,20 +194,6 @@ class BlogAdminTest extends TestCase
         foreach (['admin.blog.store', 'admin.blog.update', 'admin.blog.destroy'] as $event) {
             $this->assertContains($event, $events);
         }
-    }
-
-    public function test_the_legacy_admin_paths_the_frontend_calls_work_and_are_deprecated(): void
-    {
-        $admin = $this->makeAdmin();
-
-        $created = $this->signIn($admin)->postJson('/api/admin/blog', $this->payload())->assertStatus(201);
-        $this->assertDeprecated($created, '/api/v1/admin/blog');
-        $id = $created->json('id');
-
-        $this->assertSameResponse($this->signIn($admin)->getJson('/api/admin/blog'), $this->signIn($admin)->getJson('/api/v1/admin/blog'), 'list');
-        $this->assertSameResponse($this->signIn($admin)->getJson("/api/admin/blog/{$id}"), $this->signIn($admin)->getJson("/api/v1/admin/blog/{$id}"), 'show');
-        $this->assertDeprecated($this->signIn($admin)->putJson("/api/admin/blog/{$id}", $this->payload(['title' => 'Edited']))->assertOk(), "/api/v1/admin/blog/{$id}");
-        $this->signIn($admin)->deleteJson("/api/admin/blog/{$id}")->assertStatus(204);
     }
 
     public function test_a_slug_race_lost_at_the_database_is_still_a_422(): void

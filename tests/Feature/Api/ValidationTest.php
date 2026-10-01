@@ -144,7 +144,7 @@ class ValidationTest extends TestCase
 
         $this->signIn($user)->getJson('/api/v1/applications')->assertOk()->assertJsonPath('per_page', 20)->assertJsonCount(20, 'data');
         $this->signIn($user)->getJson('/api/v1/applications?per_page=5')->assertOk()->assertJsonPath('per_page', 5)->assertJsonCount(5, 'data');
-        $this->signIn($user)->getJson('/api/applications?per_page=50')->assertOk()->assertJsonCount(25, 'data');
+        $this->signIn($user)->getJson('/api/v1/applications?per_page=50')->assertOk()->assertJsonCount(25, 'data');
     }
 
     public function test_a_foreign_record_stays_404_even_when_the_body_is_invalid(): void
@@ -156,7 +156,7 @@ class ValidationTest extends TestCase
 
         $this->signIn($intruder)->patchJson("/api/v1/applications/{$app->id}", ['status' => 'bogus'])->assertStatus(404);
         $this->signIn($intruder)->postJson("/api/v1/interviews/{$session->id}/reply", ['answer' => 'x'])->assertStatus(404);
-        $this->signIn($intruder)->patchJson("/api/applications/{$app->id}", ['status' => 'bogus'])->assertStatus(404);
+        $this->signIn($intruder)->patchJson("/api/v1/applications/{$app->id}", ['status' => 'bogus'])->assertStatus(404);
     }
 
     public function test_every_form_request_builds_its_rules(): void

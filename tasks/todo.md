@@ -1,22 +1,19 @@
-# Task list — Phase 2, slice S6 (ops: scheduler, deployment guide)
+# Task list — Phase 2, slice S7 (alias sunset)
 
-Branch `refactor/api-s6-ops`. Detail: `tasks/plan.md`. Spec: `SPEC.md` §7 item 6, §18 items 2 and 8.
-Status: **plan updated for the no-persistent-disk finding; T1–T8 built; S6 PR opened.** Open: decisions 2, 3 (built as recommended, easy to drop), 5 (R2 or no file storage) and 6 (database cache).
+Branch `refactor/api-s7`. Detail: `tasks/plan.md`. Spec: `SPEC.md` §9 (S7), §18 items 5 and 7.
+Status: **T1–T5 built; S7 PR opened.** Pre-condition: Phase 2b (`cv-ai#16`) deployed and its smoke checklist passed.
 
-- [x] T1 Retention proven through the scheduler (files removed, fresh data kept, heartbeat)
-- [x] T2 Entrypoint roles, compose `scheduler` service, `api` healthcheck, CI checks
-- [x] T3 `TRUSTED_PROXIES` and the `admin/system` retention heartbeat
+- [x] T1 Port the tests and `tests/legacy` scripts to v1; add `LegacyPathsGoneTest`
+- [x] T2 Remove `routes/legacy.php`, the `Deprecated` middleware and legacy config/CSRF/audit/header entries
+- [x] T3 Delete legacy-only controller code (`logoutLegacy`, `CacheController::clear`, `improveCv`, `analyze`) and parity tests
 
 ### Checkpoint A
 
-- [x] Review with maintainer
+- [x] Review with maintainer (route table diff empty, ported vs deleted tests, decisions 1–3)
 
-- [x] T4 Database sessions and cache in production
-- [x] T5 Logs to stderr in production
-- [x] T6 Stop storing uploaded originals (no R2); `disk_path` nullable + cleanup migration
-- [x] T7 `docs/DEPLOYMENT.md`, README, `.env.example`, guide-vs-config test
-- [x] T8 SPEC note, fresh-clone checks, open the PR, **STOP**
+- [x] T4 Docs: ROUTES.md, README, `.env.example`, DEPLOYMENT, SPEC
+- [x] T5 Fresh-clone checks, open the PR, **STOP**
 
 ### Checkpoint B (final)
 
-- [x] PR opened; maintainer merges S6 before the cutover, S7 and Phase 2b are planned
+- [x] PR opened; maintainer merges S7, then Phase 3 (`SPEC-ats.md`)

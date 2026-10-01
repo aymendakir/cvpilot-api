@@ -49,7 +49,6 @@ Until the domain is live, the API and frontend are on different sites and produc
 | `TRUSTED_PROXIES` | `*` on Sevalla | No HSTS and HTTP URLs behind the TLS proxy. |
 | `RUN_SCHEDULER` | `true` (single container) | Without a scheduler nothing is ever deleted (section 4). |
 | `RUN_MIGRATIONS` | unset | Web containers migrate by default; set `false` on any extra container that shares the image. |
-| `API_LEGACY_SUNSET` | unset until a sunset date is fixed | Adds a `Sunset` header to legacy `/api/*` aliases. |
 | `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | the owner account | Used by `php artisan db:seed --force`. |
 | `MAIL_*` | optional fallback | SMTP is normally saved in Dashboard > Settings > Email. |
 

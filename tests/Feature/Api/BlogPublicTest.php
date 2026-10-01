@@ -4,13 +4,11 @@ namespace Tests\Feature\Api;
 
 use App\Models\BlogPost;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\Concerns\ComparesRoutes;
 use Tests\TestCase;
 
 /** SPEC §8.1: the public blog API the frontend (blog pages, home page, sitemap) reads. */
 class BlogPublicTest extends TestCase
 {
-    use ComparesRoutes;
     use RefreshDatabase;
 
     private function makePost(array $attributes = []): BlogPost
@@ -82,7 +80,7 @@ class BlogPublicTest extends TestCase
     {
         $this->makePost(['slug' => 'cache-me']);
 
-        foreach (['/api/v1/blog', '/api/v1/blog/cache-me', '/api/blog', '/api/blog/cache-me'] as $path) {
+        foreach (['/api/v1/blog', '/api/v1/blog/cache-me', '/api/v1/blog', '/api/v1/blog/cache-me'] as $path) {
             $response = $this->getJson($path)->assertOk();
 
             $cache = (string) $response->headers->get('Cache-Control');
@@ -100,17 +98,6 @@ class BlogPublicTest extends TestCase
         $this->assertStringContainsString('no-store', (string) $this->getJson('/api/v1/blog/missing')->assertStatus(404)->headers->get('Cache-Control'));
         $this->assertStringContainsString('no-store', (string) $this->getJson('/api/v1/blog?page=0')->headers->get('Cache-Control'));
         $this->assertStringContainsString('no-store', (string) $this->getJson('/api/v1/site-settings')->headers->get('Cache-Control'));
-    }
-
-    public function test_the_legacy_path_returns_the_same_data_with_deprecation_headers(): void
-    {
-        $this->makePost(['slug' => 'same']);
-
-        $this->assertSameResponse($this->getJson('/api/blog'), $this->getJson('/api/v1/blog'), 'list');
-        $this->assertSameResponse($this->getJson('/api/blog/same'), $this->getJson('/api/v1/blog/same'), 'show');
-        $this->assertDeprecated($this->getJson('/api/blog'), '/api/v1/blog');
-        $this->assertDeprecated($this->getJson('/api/blog/same'), '/api/v1/blog/same');
-        $this->assertNotDeprecated($this->getJson('/api/v1/blog'));
     }
 
     public function test_the_blog_is_throttled_per_ip(): void

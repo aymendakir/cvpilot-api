@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 class SecurityHeaders
 {
     /** Public, cookie-free routes that may be cached for a minute. */
-    private const CACHEABLE_ROUTES = ['v1.blog.index', 'v1.blog.show', 'legacy.get.blog', 'legacy.get.blog.slug'];
+    private const CACHEABLE_ROUTES = ['v1.blog.index', 'v1.blog.show'];
 
     public function handle(Request $request, Closure $next): Response
     {

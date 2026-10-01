@@ -22,14 +22,14 @@ class HarnessTest extends TestCase
 
     public function test_me_requires_a_session(): void
     {
-        $this->getJson('/api/me')->assertStatus(401);
+        $this->getJson('/api/v1/me')->assertStatus(401);
     }
 
     public function test_me_returns_the_signed_in_user(): void
     {
         $user = $this->makeUser();
 
-        $this->signIn($user)->getJson('/api/me')
+        $this->signIn($user)->getJson('/api/v1/me')
             ->assertOk()
             ->assertJsonPath('id', $user->id)
             ->assertJsonPath('email', $user->email);
@@ -39,7 +39,7 @@ class HarnessTest extends TestCase
     {
         $admin = $this->makeAdmin();
 
-        $this->signIn($admin)->getJson('/api/admin/summary')->assertOk();
+        $this->signIn($admin)->getJson('/api/v1/admin/summary')->assertOk();
     }
 
     public function test_mail_is_captured_not_sent(): void

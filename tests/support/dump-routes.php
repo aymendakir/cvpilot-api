@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Route;
  * Prints the application's route table as normalized JSON (method, uri,
  * controller action with short class name, middleware).
  *
- *   php tests/support/dump-routes.php > tests/fixtures/routes-legacy.json
+ *   php tests/support/dump-routes.php
  *
- * Used to pin the legacy route table (see tests/Feature/Api/LegacyRoutesTest.php).
+ * A debugging aid; the pinned contract is tests/fixtures/routes-v1.json (V1RoutesContractTest).
  */
 require __DIR__.'/../../vendor/autoload.php';
 

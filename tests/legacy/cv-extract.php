@@ -14,7 +14,7 @@ $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);
 function call($kernel,$files,$login=true,$user=null){
  $session=app('session')->driver();$session->start();$session->flush();$session->put('_token','tok');
  if($login){$session->put('user_id',$user->id);$session->put('session_version',1);}
- $req=Request::create('/api/cv/extract','POST',[],[],$files,['HTTP_ACCEPT'=>'application/json','HTTP_X_CSRF_TOKEN'=>'tok']);
+ $req=Request::create('/api/v1/cv-documents/extract','POST',[],[],$files,['HTTP_ACCEPT'=>'application/json','HTTP_X_CSRF_TOKEN'=>'tok']);
  $req->setLaravelSession($session);
  // array driver: make StartSession reuse this store
  app()->instance('session.store',$session);

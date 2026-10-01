@@ -26,7 +26,7 @@ class AuditAdmin
 
         $name = (string) $request->route()?->getName();
         $isWrite = ! in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true);
-        $isContentRead = $request->isMethod('GET') && (in_array($name, self::CONTENT_READS, true) || $this->legacyContentRead($name));
+        $isContentRead = $request->isMethod('GET') && (in_array($name, self::CONTENT_READS, true));
 
         if (($isWrite || $isContentRead) && $request->user()) {
             $event = 'admin.'.preg_replace('/^v1\.admin\./', '', $name).($response->getStatusCode() >= 400 ? '.failed' : '');
@@ -34,14 +34,5 @@ class AuditAdmin
         }
 
         return $response;
-    }
-
-    /** Legacy aliases of the content reads (named `legacy.get.<uri>`). */
-    private function legacyContentRead(string $name): bool
-    {
-        return in_array($name, [
-            'legacy.get.admin.users', 'legacy.get.admin.users.user', 'legacy.get.admin.applications',
-            'legacy.get.admin.contact-messages', 'legacy.get.admin.logs',
-        ], true);
     }
 }

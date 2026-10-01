@@ -15,7 +15,7 @@ use Tests\Concerns\CreatesUsers;
 use Tests\TestCase;
 
 /**
- * Owner-only records: another user's id is a plain 404 (never 403, never the data), on v1 and legacy paths.
+ * Owner-only records: another user's id is a plain 404 (never 403, never the data).
  * The record must be untouched afterwards.
  */
 class OwnershipTest extends TestCase
@@ -27,7 +27,7 @@ class OwnershipTest extends TestCase
 
     private const JOB = 'We are hiring a backend developer to build and maintain Laravel APIs, write tests and review code with the team.';
 
-    /** @return array<string, array{0: string, 1: string|null, 2: string, 3: array<string, mixed>}> */
+    /** @return array<string, array{0: string, 1: string, 2: array<string, mixed>}> */
     private function matrix(User $owner): array
     {
         $doc = CvDocument::create(['user_id' => $owner->id, 'name' => 'cv.pdf', 'disk_path' => 'cv/1/x.pdf', 'mime' => 'application/pdf', 'size' => 1, 'extracted_text' => 'text', 'expires_at' => now()->addHour()]);
@@ -41,32 +41,31 @@ class OwnershipTest extends TestCase
         $edit = ['name' => 'Hacked', 'content' => self::CV];
 
         return [
-            'cv document destroy' => ['DELETE', "cv/{$doc->id}", "v1/cv-documents/{$doc->id}", []],
-            'cv version show' => ['GET', "career/cv-versions/{$version->id}", "v1/cv-versions/{$version->id}", []],
-            'cv version update' => ['PATCH', "career/cv-versions/{$version->id}", "v1/cv-versions/{$version->id}", $edit],
-            'cv version destroy' => ['DELETE', "career/cv-versions/{$version->id}", "v1/cv-versions/{$version->id}", []],
-            'workspace show' => ['GET', "career/workspaces/{$workspace->id}", "v1/job-workspaces/{$workspace->id}", []],
-            'interview show' => ['GET', "career/interviews/{$session->id}", "v1/interviews/{$session->id}", []],
-            'interview reply' => ['POST', "career/interviews/{$session->id}/reply", "v1/interviews/{$session->id}/reply", ['answer' => 'My answer']],
-            'interview finish' => ['POST', "career/interviews/{$session->id}/finish", "v1/interviews/{$session->id}/finish", []],
-            'interview destroy' => ['DELETE', "career/interviews/{$session->id}", "v1/interviews/{$session->id}", []],
-            'report destroy' => ['DELETE', "career/reports/{$report->id}", "v1/reports/{$report->id}", []],
-            'application show' => ['GET', null, "v1/applications/{$app->id}", []],
-            'application update' => ['PATCH', "applications/{$app->id}", "v1/applications/{$app->id}", ['status' => 'offer']],
-            'application destroy' => ['DELETE', "applications/{$app->id}", "v1/applications/{$app->id}", []],
-            'saved search destroy' => ['DELETE', "jobs/saved-searches/{$search->id}", "v1/jobs/saved-searches/{$search->id}", []],
+            'cv document destroy' => ['DELETE', "v1/cv-documents/{$doc->id}", []],
+            'cv version show' => ['GET', "v1/cv-versions/{$version->id}", []],
+            'cv version update' => ['PATCH', "v1/cv-versions/{$version->id}", $edit],
+            'cv version destroy' => ['DELETE', "v1/cv-versions/{$version->id}", []],
+            'workspace show' => ['GET', "v1/job-workspaces/{$workspace->id}", []],
+            'interview show' => ['GET', "v1/interviews/{$session->id}", []],
+            'interview reply' => ['POST', "v1/interviews/{$session->id}/reply", ['answer' => 'My answer']],
+            'interview finish' => ['POST', "v1/interviews/{$session->id}/finish", []],
+            'interview destroy' => ['DELETE', "v1/interviews/{$session->id}", []],
+            'report destroy' => ['DELETE', "v1/reports/{$report->id}", []],
+            'application show' => ['GET', "v1/applications/{$app->id}", []],
+            'application update' => ['PATCH', "v1/applications/{$app->id}", ['status' => 'offer']],
+            'application destroy' => ['DELETE', "v1/applications/{$app->id}", []],
+            'saved search destroy' => ['DELETE', "v1/jobs/saved-searches/{$search->id}", []],
         ];
     }
 
-    public function test_another_users_records_are_404_on_legacy_and_v1_routes(): void
+    public function test_another_users_records_are_404(): void
     {
         $owner = $this->makeUser();
         $intruder = $this->makeUser();
         $matrix = $this->matrix($owner);
 
-        foreach ($matrix as $label => [$method, $legacy, $v1, $body]) {
-            // `GET applications/{id}` only exists on v1.
-            foreach (array_filter([$legacy ? "/api/{$legacy}" : null, "/api/{$v1}"]) as $path) {
+        foreach ($matrix as $label => [$method, $v1, $body]) {
+            foreach (["/api/{$v1}"] as $path) {
                 $response = $this->signIn($intruder)->json($method, $path, $body);
                 $response->assertStatus(404);
                 $this->assertSame('not_found', $response->json('code'), "{$label} {$path}");
@@ -93,13 +92,13 @@ class OwnershipTest extends TestCase
         $matrix = $this->matrix($owner);
 
         foreach (['cv version show', 'workspace show', 'interview show', 'application show'] as $label) {
-            [$method, , $v1, $body] = $matrix[$label];
+            [$method, $v1, $body] = $matrix[$label];
             $this->signIn($owner)->json($method, "/api/{$v1}", $body)->assertOk();
         }
-        [$method, , $v1, $body] = $matrix['application update'];
+        [$method, $v1, $body] = $matrix['application update'];
         $this->signIn($owner)->json($method, "/api/{$v1}", $body)->assertOk()->assertJsonPath('status', 'offer');
         foreach (['cv version destroy', 'report destroy', 'saved search destroy', 'application destroy', 'interview destroy', 'cv document destroy'] as $label) {
-            [$method, , $v1] = $matrix[$label];
+            [$method, $v1] = $matrix[$label];
             $this->signIn($owner)->json($method, "/api/{$v1}")->assertStatus(204);
         }
     }

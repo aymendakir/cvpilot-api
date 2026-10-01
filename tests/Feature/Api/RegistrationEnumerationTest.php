@@ -95,16 +95,6 @@ class RegistrationEnumerationTest extends TestCase
         $this->register('taken@example.test')->assertStatus(201)->assertJsonPath('message', 'Account created. Request your verification code.');
     }
 
-    public function test_the_legacy_path_behaves_the_same(): void
-    {
-        $this->fakePlatformMail();
-        $this->makeUser(['email' => 'taken@example.test']);
-
-        $this->register('taken@example.test', '/api/register')->assertStatus(201);
-
-        $this->assertCount(1, $this->sentMail);
-    }
-
     public function test_validation_errors_still_apply_but_never_mention_the_email_being_taken(): void
     {
         $this->makeUser(['email' => 'taken@example.test']);
