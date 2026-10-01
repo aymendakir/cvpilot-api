@@ -208,12 +208,13 @@ class ParsingFixturesTest extends TestCase
 
     public function test_parsing_writes_no_file(): void
     {
+        // The system temp dir is listed one level deep only: CI runners keep root-only directories there
+        // (systemd), and anything PHP or poppler created for us would sit at its top level. storage/app
+        // is ours, so it is walked fully.
         $list = function () {
-            $files = [];
-            foreach ([sys_get_temp_dir(), storage_path('app')] as $dir) {
-                foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)) as $f) {
-                    $files[] = $f->getPathname();
-                }
+            $files = array_map(fn ($name) => sys_get_temp_dir().'/'.$name, array_diff(scandir(sys_get_temp_dir()) ?: [], ['.', '..']));
+            foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(storage_path('app'), \FilesystemIterator::SKIP_DOTS)) as $f) {
+                $files[] = $f->getPathname();
             }
 
             return $files;
