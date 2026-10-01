@@ -4,6 +4,8 @@ Spec: `SPEC.md` §9 (S7), §18 items 5 and 7. S0–S6 and the migrations hotfix 
 
 Branch: `refactor/api-s7` (from `main`). One PR. Stop after opening it.
 
+Status: built; see the PR description for the verification numbers.
+
 ## Overview
 
 Remove everything that exists only because the old frontend called pre-`/api/v1` paths: the 100+ deprecated alias routes, the `deprecated` middleware, their tests, and the two endpoints that were never exposed under v1 (`ai/improve-cv`, `cv/{id}/analyze`). **The v1 surface must not change**: the v1 route table (`tests/fixtures/routes-v1.json`, 95 rows) is byte-identical before and after, which is also what keeps the frontend contract valid.

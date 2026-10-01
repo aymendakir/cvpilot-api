@@ -26,7 +26,7 @@ Make `cvpilot-api` a predictable, safe JSON API whose contract the frontend can 
 
 1. Session-cookie + CSRF auth stays (the frontend is built on it). Switching to bearer tokens is out of scope unless you choose it in Open Question 2.
 2. The frontend and API are deployed independently and not atomically, so old paths must keep working until the frontend is deployed on the new ones.
-3. `/api/v1` is the new canonical prefix; today's `/api/*` paths become **deprecated aliases** served by the same controllers, removed in a later PR.
+3. `/api/v1` is the new canonical prefix; today's `/api/*` paths became **deprecated aliases** served by the same controllers, **removed in S7**.
 4. Phase 2 ships as **one PR per slice** on `cvpilot-api` (§9), each merged before the next starts, followed (after S6 is deployed) by **one PR on `cv-ai`** that adopts the contract (Phase 2b). `CLAUDE.md` forbids two open PRs at once, so everything is sequential.
 5. PHPUnit and Pint are added as dev dependencies, with a GitHub Actions workflow (approved).
 6. Database changes are limited to: a `blog_posts` table (new) and dropping the unused `jobs` / `job_matches` tables is **not** part of this phase.
@@ -41,7 +41,7 @@ Make `cvpilot-api` a predictable, safe JSON API whose contract the frontend can 
 - Non-CRUD actions are `POST /{resource}/{id}/{verb}` (e.g. `interviews/{id}/reply`) or, for stateless generators, `POST /ai/{verb}`.
 - Three scopes: **public**, **authenticated** (`auth.session` middleware, formerly `member`), **admin** (`admin/*`, authenticated + admin).
 - Path IDs constrained (`whereNumber`); model binding scoped to the owner (another user's record → `404`, never `403`).
-- Legacy aliases: every old path keeps working via the same controller + `Deprecation: true`, `Sunset: <date>` and `Link: <new-path>; rel="successor-version"` headers. Removal is a separate later PR.
+- Legacy aliases: every old path keeps working via the same controller + `Deprecation: true`, `Sunset: <date>` and `Link: <new-path>; rel="successor-version"` headers. Removal was a separate later PR (**done in S7**: the aliases, the `Deprecated` middleware and `API_LEGACY_SUNSET` no longer exist).
 - `routes/web.php` keeps only `GET /up` (health) and the Microsoft OAuth browser callback (verify in §9 S2).
 
 ### 3.2 Route map (old → new v1)
@@ -100,7 +100,7 @@ Unchanged rows are listed so the table is the full contract. Throttles are carri
 
 ### 4.1 One envelope
 
-Every non-2xx response under `/api/*` (v1 **and** legacy), including 404 for unknown routes, 405, 419, 429 and unhandled exceptions, is JSON:
+Every non-2xx response under `/api/*` (v1; the legacy aliases were removed in S7 and answer this envelope as unknown routes), including 404 for unknown routes, 405, 419, 429 and unhandled exceptions, is JSON:
 
 ```json
 {
@@ -210,6 +210,7 @@ Build order; each slice is its own branch and PR (small atomic commits, tests, b
 - **S6 Ops:** scheduler as a separate compose service + retention test, deployment doc `docs/DEPLOYMENT.md` (owner buys a domain; frontend on `app.<domain>`, API on `api.<domain>`: DNS, TLS, `APP_URL`, `FRONTEND_URL`, `SESSION_DOMAIN=.<domain>`, `SESSION_SAME_SITE=lax` (**the switch from the explicit `none` that production runs since S4** — change it only after both hostnames are live and a login test passes on them), `SESSION_SECURE_COOKIE=true`, frontend `NEXT_PUBLIC_BACKEND_URL=https://api.<domain>`, scheduler, migration order, rollback).
   - **Built (S6):** the scheduler actually runs (`routes/console.php` was never loaded, so `cvpilot:prune-temporary` did not exist): compose `scheduler` service, `RUN_SCHEDULER=true` for single-container hosts, entrypoint roles, `admin/system` heartbeat, `TRUSTED_PROXIES`. **Sevalla has no persistent disk**, so production is stateless: `SESSION_DRIVER=database`, `CACHE_STORE=database`, `LOG_CHANNEL=stderr`, and **uploaded CV originals are no longer stored** (only `extracted_text` and metadata, kept 48 hours; `cv_documents.disk_path` is nullable and unused, dropped in a later contract step). See `docs/DEPLOYMENT.md`.
 - **S7 Alias sunset (separate PR, after the frontend is deployed on v1):** remove the legacy `/api/*` aliases and the legacy-only endpoints `ai/improve-cv` and `cv/{id}/analyze`.
+  - **Built (S7):** `routes/legacy.php`, the `Deprecated` middleware, `config/api.php` (`API_LEGACY_SUNSET`) and the legacy entries in the CSRF exceptions, admin audit and cacheable-route lists are gone, together with `AuthController::logoutLegacy`, `CacheController::clear`, the legacy `warning` response, `AiController::improveCv` (+ `ImproveCvRequest`) and `CvController::analyze`. The v1 route table (`tests/fixtures/routes-v1.json`) is unchanged. `LegacyPathsGoneTest` pins that every old path answers `404 not_found`; the parity tests were replaced by `V1BehaviorTest`, and the rest of the suite and `tests/legacy/*.php` call v1 paths. `AtsScorer` and the `ats_reports` table stay until Phase 3; `cv_documents.disk_path` is dropped in a separate contract step.
 - **Phase 2b (separate PR, `cv-ai`, after S6 is merged and deployed):** §10.
 
 ## 10. What the frontend needs to change (Phase 2b, for reference — not done in this PR)
@@ -239,7 +240,7 @@ Build order; each slice is its own branch and PR (small atomic commits, tests, b
 16. Security (S4, legacy routes included): login throttle 5/min per email+IP and 30/min per IP (was 20/120); admin routes 60/min; the session `same_site` default is `lax` and production refuses to boot with an insecure session cookie; the API sends `Content-Security-Policy` and `Cross-Origin-Resource-Policy` headers and a CORS header allow-list (the OAuth callback page is excluded from the CSP). _(S4)_
 17. A suspended or unverified account is `403` (`account_suspended` / `email_not_verified`) instead of `401`; unknown or revoked sessions stay `401`. _(S4)_
 18. `register` always answers `201` with the same body; an existing email gets a notice mail (one per address every 10 minutes) and no account is created. _(S4)_
-19. Every admin write and every read of user content is audited as `admin.<route name>` (legacy aliases as `admin.legacy.*`); admin copies of CV, workspace, interview and report records are no longer written and the existing ones are purged. All log lines are scrubbed of provider keys. _(S4)_
+19. Every admin write and every read of user content is audited as `admin.<route name>` (the legacy aliases, recorded as `admin.legacy.*` until S7, no longer exist); admin copies of CV, workspace, interview and report records are no longer written and the existing ones are purged. All log lines are scrubbed of provider keys. _(S4)_
 20. New endpoints (S5): public `GET blog` and `GET blog/{slug}` (published posts only, cacheable for 60 s, no cookies), admin `admin/blog` CRUD, and `POST admin/users` (`201`, `AdminUserResource`, no email sent; `role=admin` needs `confirm_admin: true`). The deployed frontend calls the legacy paths, so they exist as deprecated aliases until S7. _(S5)_
 21. Ops (S6): uploaded CV originals are never stored (privacy: only extracted text and metadata, 48 hours); production sessions, cache and logs no longer use the disk; the retention job is registered and scheduled; `admin/system` gains `retention`; `TRUSTED_PROXIES` makes HSTS work behind a TLS proxy. _(S6)_
 
@@ -343,7 +344,7 @@ final class ApplicationController
 - Write or update a test first for each behavior in §11; run `composer test`, `pint --test` and `composer audit` before every commit.
 - Keep commits small and atomic; Prettier/lint for any frontend file touched.
 - Validate every input; use Resources for output; return errors through the envelope only.
-- Keep legacy aliases working until the frontend PR is deployed.
+- Keep legacy aliases working until the frontend PR is deployed (done: removed in S7).
 - Keep old behavior identical except for §11.
 
 **Ask first**
