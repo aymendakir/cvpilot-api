@@ -16,11 +16,18 @@ use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\ApplicationController;
 use App\Http\Controllers\Api\V1\AtsDocumentController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CareerAiController;
 use App\Http\Controllers\Api\V1\CsrfTokenController;
 use App\Http\Controllers\Api\V1\CurrentUserController;
 use App\Http\Controllers\Api\V1\CvController;
 use App\Http\Controllers\Api\V1\CvTemplateController;
+use App\Http\Controllers\Api\V1\CvVersionController;
+use App\Http\Controllers\Api\V1\InsightsController;
+use App\Http\Controllers\Api\V1\InterviewController;
 use App\Http\Controllers\Api\V1\JobsController;
+use App\Http\Controllers\Api\V1\JobWorkspaceController;
+use App\Http\Controllers\Api\V1\LibraryController;
+use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SiteSettingsController;
 use App\Http\Controllers\Api\V1\SupportController;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +57,8 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
         Route::delete('/', [AccountDataController::class, 'destroy'])->middleware('throttle:3,10,account-delete:')->name('destroy');
         Route::get('export', [AccountDataController::class, 'export'])->middleware('throttle:3,1,account-export:')->name('export');
         Route::put('password', [AuthController::class, 'password'])->name('password.update');
+        Route::get('dashboard', [InsightsController::class, 'dashboard'])->name('dashboard');
+        Route::get('analytics', [InsightsController::class, 'analytics'])->name('analytics');
     });
 
     // CV documents (uploads kept for 48 hours) and stateless text extraction
@@ -83,4 +92,34 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
     Route::post('ai/ats-analysis', [AiController::class, 'atsAnalysis'])->middleware('throttle:10,1,ai-ats-analysis:')->name('ai.ats-analysis');
     Route::post('ai/cover-letter', [AiController::class, 'coverLetter'])->middleware('throttle:10,1,ai-cover-letter:')->name('ai.cover-letter');
     Route::post('ats/document', [AtsDocumentController::class, 'analyze'])->middleware('throttle:20,1,ats-document:')->name('ats.document');
+
+    // Career workspace: saved CV versions, job workspaces, reports, mock interviews and the library
+    Route::prefix('cv-versions')->name('cv-versions.')->group(function () {
+        Route::get('/', [CvVersionController::class, 'index'])->name('index');
+        Route::post('/', [CvVersionController::class, 'store'])->name('store');
+        Route::get('{version}', [CvVersionController::class, 'show'])->whereNumber('version')->name('show');
+        Route::patch('{version}', [CvVersionController::class, 'update'])->whereNumber('version')->name('update');
+        Route::delete('{version}', [CvVersionController::class, 'destroy'])->whereNumber('version')->name('destroy');
+    });
+    Route::prefix('job-workspaces')->name('job-workspaces.')->group(function () {
+        Route::get('/', [JobWorkspaceController::class, 'index'])->name('index');
+        Route::post('/', [JobWorkspaceController::class, 'store'])->name('store');
+        Route::get('{workspace}', [JobWorkspaceController::class, 'show'])->whereNumber('workspace')->name('show');
+    });
+    Route::delete('reports/{report}', [ReportController::class, 'destroy'])->whereNumber('report')->name('reports.destroy');
+    Route::get('library', LibraryController::class)->name('library');
+    Route::prefix('interviews')->name('interviews.')->group(function () {
+        Route::post('/', [InterviewController::class, 'store'])->middleware('throttle:10,1,career-interviews:')->name('store');
+        Route::get('{session}', [InterviewController::class, 'show'])->whereNumber('session')->name('show');
+        Route::delete('{session}', [InterviewController::class, 'destroy'])->whereNumber('session')->name('destroy');
+        Route::post('{session}/reply', [InterviewController::class, 'reply'])->whereNumber('session')->middleware('throttle:20,1,career-interviews--session--reply:')->name('reply');
+        Route::post('{session}/finish', [InterviewController::class, 'finish'])->whereNumber('session')->middleware('throttle:5,1,career-interviews--session--finish:')->name('finish');
+    });
+    Route::post('ai/recruiter-view', [CareerAiController::class, 'recruiterView'])->middleware('throttle:10,1,career-recruiter-view:')->name('ai.recruiter-view');
+    Route::post('ai/tailor-cv', [CareerAiController::class, 'tailorCv'])->middleware('throttle:8,1,career-tailor-cv:')->name('ai.tailor-cv');
+    Route::post('ai/application-pack', [CareerAiController::class, 'applicationPack'])->middleware('throttle:6,1,career-application-pack:')->name('ai.application-pack');
+    Route::post('ai/skill-gap', [CareerAiController::class, 'skillGap'])->middleware('throttle:10,1,career-skill-gap:')->name('ai.skill-gap');
+    Route::post('ai/portfolio-review', [CareerAiController::class, 'portfolio'])->middleware('throttle:10,1,career-portfolio:')->name('ai.portfolio-review');
+    Route::post('ai/follow-up', [CareerAiController::class, 'followUp'])->middleware('throttle:10,1,career-follow-up:')->name('ai.follow-up');
+    Route::post('ai/career-diagnostic', [CareerAiController::class, 'diagnostic'])->middleware('throttle:5,1,career-diagnostic:')->name('ai.career-diagnostic');
 });

@@ -8,7 +8,7 @@ use Illuminate\Testing\TestResponse;
 trait ComparesRoutes
 {
     /** Keys whose values legitimately differ between two requests. */
-    private const VOLATILE = ['request_id', 'token', 'created_at', 'updated_at', 'last_seen_at', 'id', 'user_id', 'reference'];
+    private const VOLATILE = ['request_id', 'token', 'created_at', 'updated_at', 'last_seen_at', 'id', 'user_id', 'reference', 'session_id', 'report_id', 'path', 'url', 'first_page_url', 'last_page_url', 'next_page_url', 'prev_page_url'];
 
     private function normalized(mixed $value): mixed
     {
