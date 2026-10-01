@@ -13,6 +13,8 @@ All paths are relative to the API origin. Errors use the envelope in [ERRORS.md]
 | public | POST | `/api/v1/auth/otp/request` | `otp-send` | `v1.auth.otp.request` |
 | public | POST | `/api/v1/auth/otp/verify` | `otp-verify` | `v1.auth.otp.verify` |
 | public | POST | `/api/v1/auth/register` | `register` | `v1.auth.register` |
+| public | GET | `/api/v1/blog` | `60,1,blog:` | `v1.blog.index` |
+| public | GET | `/api/v1/blog/{slug}` | `60,1,blog:` | `v1.blog.show` |
 | public | POST | `/api/v1/contact-messages` | `3,10,contact:` | `v1.contact-messages.store` |
 | public | GET | `/api/v1/csrf` | shared `api` limiter | `v1.csrf` |
 | public | GET | `/api/v1/cv-templates` | `60,1,cv-templates:` | `v1.cv-templates.index` |
@@ -142,6 +144,8 @@ Every alias answers with `Deprecation: true`, a `Link: <successor>; rel="success
 | PATCH | `/api/applications/{application}` | `/api/v1/applications/{application}` |
 | PUT | `/api/applications/{application}` | `/api/v1/applications/{application}` |
 | POST | `/api/ats/document` | `/api/v1/ats/document` |
+| GET | `/api/blog` | `/api/v1/blog` |
+| GET | `/api/blog/{slug}` | `/api/v1/blog/{slug}` |
 | GET | `/api/career/analytics` | `/api/v1/me/analytics` |
 | POST | `/api/career/application-pack` | `/api/v1/ai/application-pack` |
 | GET | `/api/career/cv-versions` | `/api/v1/cv-versions` |

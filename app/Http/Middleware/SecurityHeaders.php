@@ -8,6 +8,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class SecurityHeaders
 {
+    /** Public, cookie-free routes that may be cached for a minute. */
+    private const CACHEABLE_ROUTES = ['v1.blog.index', 'v1.blog.show', 'legacy.get.blog', 'legacy.get.blog.slug'];
+
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
@@ -18,7 +21,9 @@ class SecurityHeaders
         }
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
         if ($request->is('api/*')) {
-            $response->headers->set('Cache-Control', 'no-store, private');
+            // The public blog is the one cacheable API surface (SPEC §8.1); errors stay no-store.
+            $cacheable = $response->getStatusCode() === 200 && in_array($request->route()?->getName(), self::CACHEABLE_ROUTES, true);
+            $response->headers->set('Cache-Control', $cacheable ? 'public, max-age=60' : 'no-store, private');
             // JSON only: the Microsoft OAuth callback is an HTML page with inline styles.
             if ($request->route()?->getName() !== 'smtp.microsoft.callback') {
                 $response->headers->set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");

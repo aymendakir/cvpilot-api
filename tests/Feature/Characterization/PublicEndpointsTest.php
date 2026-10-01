@@ -80,11 +80,12 @@ class PublicEndpointsTest extends TestCase
         $this->assertNotSame(str_repeat('a', 20), $event->visitor_id, 'visitor id is stored hashed');
     }
 
-    public function test_the_blog_api_the_frontend_calls_does_not_exist(): void
+    public function test_the_blog_api_the_frontend_calls_exists(): void
     {
-        $this->getJson('/api/blog')->assertStatus(404);
+        // S5 (SPEC §8.1): flipped from a GAP. Detailed behaviour lives in BlogPublicTest and BlogAdminTest.
+        $this->getJson('/api/blog')->assertOk()->assertJsonPath('data', []);
         $this->getJson('/api/blog/some-post')->assertStatus(404);
-        $this->signIn($this->makeAdmin())->getJson('/api/admin/blog')->assertStatus(404); // GAP: S5 adds it
+        $this->signIn($this->makeAdmin())->getJson('/api/admin/blog')->assertStatus(404); // GAP: the admin half arrives with T3
     }
 
     public function test_admin_user_creation_the_frontend_calls_does_not_exist(): void

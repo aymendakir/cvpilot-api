@@ -415,6 +415,16 @@
         "scope": "public"
     },
     {
+        "method": "GET",
+        "uri": "v1/blog",
+        "scope": "public"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/blog/{slug}",
+        "scope": "public"
+    },
+    {
         "method": "POST",
         "uri": "v1/contact-messages",
         "scope": "public"
