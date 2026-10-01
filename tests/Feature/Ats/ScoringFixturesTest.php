@@ -80,4 +80,29 @@ class ScoringFixturesTest extends TestCase
             $this->assertSame($category['max'], array_sum(array_column($in, 'max')));
         }
     }
+
+    #[DataProvider('cases')]
+    public function test_every_expected_top_suggestion_and_impact_is_reproduced(string $case): void
+    {
+        $expected = $this->golden($case);
+        $suggestions = self::assess($expected['cv'], $expected['job'])->suggestions;
+        $top = array_map(fn ($s) => ['id' => $s->id, 'impact_points' => $s->impactPoints], array_slice($suggestions, 0, count($expected['top_suggestions'])));
+
+        $this->assertSame($expected['top_suggestions'], $top);
+        $this->assertSame(range(1, max(1, count($suggestions))), $suggestions === [] ? [1] : array_map(fn ($s) => $s->rank, $suggestions));
+        foreach ($suggestions as $suggestion) {
+            $this->assertTrue($suggestion->impactPoints === null ? $expected['score'] === null : $suggestion->impactPoints >= 0);
+        }
+    }
+
+    public function test_stuffing_gives_an_info_suggestion_and_leaves_the_score_unchanged(): void
+    {
+        $clean = self::assess('cvs/clean-en.docx', 'jobs/laravel-dev.txt');
+        $stuffed = self::assess('cvs/stuffing.docx', 'jobs/laravel-dev.txt');
+
+        $this->assertSame($clean->score->score, $stuffed->score->score);
+        $stuffing = array_values(array_filter($stuffed->suggestions, fn ($s) => $s->checkId === 'keyword_stuffing'));
+        $this->assertCount(1, $stuffing);
+        $this->assertSame(['keyword_stuffing:laravel', 'info', 0, 15], [$stuffing[0]->id, $stuffing[0]->severity, $stuffing[0]->impactPoints, $stuffing[0]->params['count']]);
+    }
 }

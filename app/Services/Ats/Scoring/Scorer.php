@@ -7,7 +7,7 @@ use App\Services\Ats\Checks\CheckStatus;
 use App\Services\Ats\Keywords\KeywordReport;
 
 /**
- * Check results + keyword report → score and suggestions (SPEC-ats.md §6, R1–R6).
+ * Check results + keyword report → score and ranked suggestions (SPEC-ats.md §6, R1–R6).
  *
  * Status (R4, S3 decision 23): no extractable text or garbled text → `unreadable`, and every check
  * other than readable_text becomes unverified; readable text under 40 words → `insufficient_text`, the
@@ -15,7 +15,10 @@ use App\Services\Ats\Keywords\KeywordReport;
  */
 final class Scorer
 {
-    public function __construct(private readonly ScoreCalculator $calculator = new ScoreCalculator) {}
+    public function __construct(
+        private readonly ScoreCalculator $calculator = new ScoreCalculator,
+        private readonly SuggestionBuilder $suggestions = new SuggestionBuilder,
+    ) {}
 
     /** @param array<string, CheckResult> $results */
     public function assess(array $results, ?KeywordReport $keywords = null): Assessment
@@ -30,7 +33,7 @@ final class Scorer
         }
         $score = $this->calculator->calculate(self::statuses($results), $keywords !== null, $keywords?->coverage(), $status);
 
-        return new Assessment($results, $keywords, $score);
+        return new Assessment($results, $keywords, $score, $this->suggestions->build($results, $keywords, $score));
     }
 
     /** @return 'scored'|'insufficient_text'|'unreadable' */
