@@ -88,6 +88,12 @@ class AdminController
         return ['message' => $emailSent ? 'Warning email sent successfully and recorded in user logs.' : 'Warning recorded in user logs and history (Email not delivered: configure SMTP in dashboard).', 'email_sent' => $emailSent];
     }
 
+    /** v1: 201 Created. The legacy route keeps the 200 from warning(). Removed with the legacy aliases. */
+    public function storeWarning(Request $r, User $user, PlatformMail $mail)
+    {
+        return response()->json($this->warning($r, $user, $mail), 201);
+    }
+
     public function download(Request $r, CvDocument $cv)
     {
         abort_if($cv->expires_at && $cv->expires_at->isPast(), 404, 'File not found or expired.');

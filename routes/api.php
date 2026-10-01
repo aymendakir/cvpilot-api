@@ -11,6 +11,10 @@
  */
 
 use App\Http\Controllers\Api\V1\AccountDataController;
+use App\Http\Controllers\Api\V1\Admin\AdminController;
+use App\Http\Controllers\Api\V1\Admin\CacheController;
+use App\Http\Controllers\Api\V1\Admin\IntegrationController;
+use App\Http\Controllers\Api\V1\Admin\MailSettingsController;
 use App\Http\Controllers\Api\V1\AiController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\ApplicationController;
@@ -122,4 +126,51 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
     Route::post('ai/portfolio-review', [CareerAiController::class, 'portfolio'])->middleware('throttle:10,1,career-portfolio:')->name('ai.portfolio-review');
     Route::post('ai/follow-up', [CareerAiController::class, 'followUp'])->middleware('throttle:10,1,career-follow-up:')->name('ai.follow-up');
     Route::post('ai/career-diagnostic', [CareerAiController::class, 'diagnostic'])->middleware('throttle:5,1,career-diagnostic:')->name('ai.career-diagnostic');
+
+    // Administration (admin role required)
+    Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
+        Route::get('site-settings', [SiteSettingsController::class, 'show'])->name('site-settings.show');
+        Route::put('site-settings', [SiteSettingsController::class, 'save'])->name('site-settings.update');
+        Route::get('system', [SiteSettingsController::class, 'system'])->name('system');
+        Route::get('summary', [AdminController::class, 'summary'])->name('summary');
+        Route::get('analytics', [AnalyticsController::class, 'report'])->name('analytics');
+        Route::get('audit-events', [AdminController::class, 'logs'])->name('audit-events.index');
+        Route::get('applications', [AdminController::class, 'applications'])->name('applications.index');
+        Route::get('cv-documents/{cv}/file', [AdminController::class, 'download'])->whereNumber('cv')->name('cv-documents.file');
+        Route::delete('cache', [CacheController::class, 'destroy'])->name('cache.destroy');
+
+        Route::get('contact-messages', [SupportController::class, 'index'])->name('contact-messages.index');
+        Route::patch('contact-messages/{message}', [SupportController::class, 'update'])->whereNumber('message')->name('contact-messages.update');
+
+        Route::prefix('cv-templates')->name('cv-templates.')->group(function () {
+            Route::get('/', [CvTemplateController::class, 'index'])->name('index');
+            Route::post('/', [CvTemplateController::class, 'store'])->name('store');
+            Route::patch('{template}', [CvTemplateController::class, 'update'])->whereNumber('template')->name('update');
+            Route::delete('{template}', [CvTemplateController::class, 'destroy'])->whereNumber('template')->name('destroy');
+        });
+
+        Route::prefix('smtp')->name('smtp.')->group(function () {
+            Route::get('/', [MailSettingsController::class, 'show'])->name('show');
+            Route::put('/', [MailSettingsController::class, 'save'])->name('update');
+            Route::post('microsoft/connect', [MailSettingsController::class, 'connectMicrosoft'])->middleware('throttle:5,1,smtp-connect:')->name('microsoft.connect');
+            Route::post('check', [MailSettingsController::class, 'check'])->middleware('throttle:3,1,smtp-check:')->name('check');
+            Route::post('test', [MailSettingsController::class, 'test'])->middleware('throttle:3,1,smtp-test:')->name('test');
+        });
+
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::get('/', [AdminController::class, 'users'])->name('index');
+            Route::get('{user}', [AdminController::class, 'detail'])->whereNumber('user')->name('show');
+            Route::patch('{user}', [AdminController::class, 'suspend'])->whereNumber('user')->name('update');
+            Route::post('{user}/warnings', [AdminController::class, 'storeWarning'])->whereNumber('user')->middleware('throttle:10,1,warning:')->name('warnings.store');
+        });
+
+        Route::prefix('integrations')->name('integrations.')->group(function () {
+            Route::get('/', [IntegrationController::class, 'index'])->name('index');
+            Route::post('/', [IntegrationController::class, 'store'])->name('store');
+            Route::post('reorder', [IntegrationController::class, 'reorder'])->name('reorder');
+            Route::patch('{integration}', [IntegrationController::class, 'update'])->whereNumber('integration')->name('update');
+            Route::post('{integration}/test', [IntegrationController::class, 'test'])->whereNumber('integration')->middleware('throttle:10,1,integrations--integration--test:')->name('test');
+            Route::delete('{integration}', [IntegrationController::class, 'destroy'])->whereNumber('integration')->name('destroy');
+        });
+    });
 });
