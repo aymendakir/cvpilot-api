@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Process;
 
 /**
  * The poppler-utils binaries the PDF parser runs (SPEC-ats.md §4.1, docs/DEPLOYMENT.md).
- * Arguments are always passed as an array (no shell) with a hard timeout.
+ * Commands are passed as an argument array, so every argument is escaped (Symfony Process); nothing from
+ * the user is ever interpolated into a command line. Every call has a hard timeout.
  */
 final class Poppler
 {
@@ -54,6 +55,10 @@ final class Poppler
             throw new UnreadableDocument(UnreadableDocument::TIMEOUT, "{$name} timed out");
         } catch (\Throwable $e) {
             throw new \RuntimeException("{$name} could not run: ".$e->getMessage(), previous: $e);
+        }
+        if (in_array($result->exitCode(), [126, 127], true)) {
+            // Not found / not executable: a server fault, never reported as the user's file.
+            throw new \RuntimeException("{$name} could not run: ".trim($result->errorOutput()));
         }
         if (strlen($result->output()) > (int) config('ats.poppler.max_output', 20 * 1024 * 1024)) {
             throw new UnreadableDocument(UnreadableDocument::CORRUPT, "{$name} output is too large");

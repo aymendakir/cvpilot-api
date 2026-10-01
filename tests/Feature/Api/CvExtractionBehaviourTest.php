@@ -75,4 +75,16 @@ class CvExtractionBehaviourTest extends TestCase
         }
         $this->assertDatabaseCount('cv_documents', 0);
     }
+
+    public function test_a_missing_poppler_binary_is_a_server_error_not_a_bad_file(): void
+    {
+        // New in S1: smalot failures were all reported as an unreadable file; a missing poppler binary is
+        // the server's fault, so it is a 500 (logged with the request id), never blamed on the CV.
+        config(['ats.poppler.pdfinfo' => '/nonexistent/pdfinfo']);
+
+        $this->signIn($this->makeUser())
+            ->post('/api/v1/cv-documents/extract', ['file' => $this->upload('cvs/clean-en.pdf')], ['Accept' => 'application/json'])
+            ->assertStatus(500)
+            ->assertJsonPath('code', 'server_error');
+    }
 }

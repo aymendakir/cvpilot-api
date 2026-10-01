@@ -27,7 +27,7 @@ checker reads CV PDFs with poppler: text, line positions (columns, tables, repea
 - the test suite fails (`PopplerAvailabilityTest`) when a binary is missing or too old, with the install command;
 - `composer install` fails without `ext-intl`.
 
-Poppler adds roughly 10–20 MB to the image. It runs only on the request's temporary upload, with no shell, a hard timeout
+Poppler adds roughly 10–20 MB to the image. It runs only on the request's temporary upload, with escaped arguments (never a hand-built command line), a hard timeout
 (`ATS_POPPLER_TIMEOUT`, default 10 s per call) and nothing written to disk; keep the base image updated so Debian's security
 fixes for poppler arrive with each rebuild. A custom host that does not use this Dockerfile must install the same packages.
 

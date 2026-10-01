@@ -175,8 +175,8 @@ final class AtsPdf extends FPDF
     protected function _putinfo()
     {
         $this->CreationDate = ATS_FIXED_TIME;
-        // smalot/pdfparser treats a Producer starting with "FPDF" as an FPDI import and then fails to
-        // read text positions (Page::isFpdf()). Real CVs never carry it, so the fixtures do not either.
+        // Kept from S0 so the fixture bytes stay stable: smalot/pdfparser (removed in S1) treated a
+        // Producer starting with "FPDF" as an FPDI import and failed to read text positions.
         $this->metadata['Producer'] = 'CVPilot fixture builder (FPDF '.self::VERSION.')';
         parent::_putinfo();
     }
