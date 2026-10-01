@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\BlogPost;
 use Illuminate\Routing\Route as RouteObject;
 use Illuminate\Support\Facades\Route;
 use Tests\Support\RouteDocs;
@@ -15,9 +16,6 @@ class V1RoutesContractTest extends TestCase
 
     /** The successor uses another verb (SPEC §3.2): legacy "METHOD uri" => v1 method. */
     private const VERB_CHANGES = ['POST api/password' => 'PUT', 'POST api/admin/cache/clear' => 'DELETE'];
-
-    /** Routes that arrive in later slices (S5): never present in the S2 table. */
-    private const LATER_SLICES = ['GET v1/blog', 'GET v1/blog/{slug}', 'POST v1/admin/users'];
 
     private function pinned(): array
     {
@@ -39,9 +37,6 @@ class V1RoutesContractTest extends TestCase
         sort($actual);
 
         $this->assertSame($expected, $actual, 'v1 routes differ from tests/fixtures/routes-v1.json (update the fixture only with SPEC §3.2)');
-        foreach (self::LATER_SLICES as $later) {
-            $this->assertNotContains('public '.$later, $actual);
-        }
     }
 
     public function test_every_v1_route_is_named_controller_based_and_has_numeric_ids(): void
@@ -54,7 +49,9 @@ class V1RoutesContractTest extends TestCase
 
             preg_match_all('/\{(\w+)\}/', $route->uri(), $params);
             foreach ($params[1] as $param) {
-                $this->assertSame('[0-9]+', $route->wheres[$param] ?? null, "{$label}: {{$param}} must use whereNumber");
+                // Blog slugs use the slug pattern; every other parameter is a numeric id.
+                $expected = $param === 'slug' ? BlogPost::SLUG_PATTERN : '[0-9]+';
+                $this->assertSame($expected, $route->wheres[$param] ?? null, "{$label}: {{$param}} must be constrained");
             }
         }
     }

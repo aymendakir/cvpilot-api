@@ -13,6 +13,8 @@ All paths are relative to the API origin. Errors use the envelope in [ERRORS.md]
 | public | POST | `/api/v1/auth/otp/request` | `otp-send` | `v1.auth.otp.request` |
 | public | POST | `/api/v1/auth/otp/verify` | `otp-verify` | `v1.auth.otp.verify` |
 | public | POST | `/api/v1/auth/register` | `register` | `v1.auth.register` |
+| public | GET | `/api/v1/blog` | `60,1,blog:` | `v1.blog.index` |
+| public | GET | `/api/v1/blog/{slug}` | `60,1,blog:` | `v1.blog.show` |
 | public | POST | `/api/v1/contact-messages` | `3,10,contact:` | `v1.contact-messages.store` |
 | public | GET | `/api/v1/csrf` | shared `api` limiter | `v1.csrf` |
 | public | GET | `/api/v1/cv-templates` | `60,1,cv-templates:` | `v1.cv-templates.index` |
@@ -69,6 +71,11 @@ All paths are relative to the API origin. Errors use the envelope in [ERRORS.md]
 | admin | GET | `/api/v1/admin/analytics` | `admin` | `v1.admin.analytics` |
 | admin | GET | `/api/v1/admin/applications` | `admin` | `v1.admin.applications.index` |
 | admin | GET | `/api/v1/admin/audit-events` | `admin` | `v1.admin.audit-events.index` |
+| admin | GET | `/api/v1/admin/blog` | `admin` | `v1.admin.blog.index` |
+| admin | POST | `/api/v1/admin/blog` | `admin` | `v1.admin.blog.store` |
+| admin | DELETE | `/api/v1/admin/blog/{post}` | `admin` | `v1.admin.blog.destroy` |
+| admin | GET | `/api/v1/admin/blog/{post}` | `admin` | `v1.admin.blog.show` |
+| admin | PUT | `/api/v1/admin/blog/{post}` | `admin` | `v1.admin.blog.update` |
 | admin | DELETE | `/api/v1/admin/cache` | `admin` | `v1.admin.cache.destroy` |
 | admin | GET | `/api/v1/admin/contact-messages` | `admin` | `v1.admin.contact-messages.index` |
 | admin | PATCH | `/api/v1/admin/contact-messages/{message}` | `admin` | `v1.admin.contact-messages.update` |
@@ -92,6 +99,7 @@ All paths are relative to the API origin. Errors use the envelope in [ERRORS.md]
 | admin | GET | `/api/v1/admin/summary` | `admin` | `v1.admin.summary` |
 | admin | GET | `/api/v1/admin/system` | `admin` | `v1.admin.system` |
 | admin | GET | `/api/v1/admin/users` | `admin` | `v1.admin.users.index` |
+| admin | POST | `/api/v1/admin/users` | `admin` + `10,1,admin-create-user:` | `v1.admin.users.store` |
 | admin | GET | `/api/v1/admin/users/{user}` | `admin` | `v1.admin.users.show` |
 | admin | PATCH | `/api/v1/admin/users/{user}` | `admin` | `v1.admin.users.update` |
 | admin | POST | `/api/v1/admin/users/{user}/warnings` | `admin` + `10,1,warning:` | `v1.admin.users.warnings.store` |
@@ -104,6 +112,11 @@ Every alias answers with `Deprecation: true`, a `Link: <successor>; rel="success
 | --- | --- | --- |
 | GET | `/api/admin/analytics` | `/api/v1/admin/analytics` |
 | GET | `/api/admin/applications` | `/api/v1/admin/applications` |
+| GET | `/api/admin/blog` | `/api/v1/admin/blog` |
+| POST | `/api/admin/blog` | `/api/v1/admin/blog` |
+| DELETE | `/api/admin/blog/{post}` | `/api/v1/admin/blog/{post}` |
+| GET | `/api/admin/blog/{post}` | `/api/v1/admin/blog/{post}` |
+| PUT | `/api/admin/blog/{post}` | `/api/v1/admin/blog/{post}` |
 | POST | `/api/admin/cache/clear` | `/api/v1/admin/cache` |
 | GET | `/api/admin/contact-messages` | `/api/v1/admin/contact-messages` |
 | PATCH | `/api/admin/contact-messages/{message}` | `/api/v1/admin/contact-messages/{message}` |
@@ -128,6 +141,7 @@ Every alias answers with `Deprecation: true`, a `Link: <successor>; rel="success
 | GET | `/api/admin/summary` | `/api/v1/admin/summary` |
 | GET | `/api/admin/system` | `/api/v1/admin/system` |
 | GET | `/api/admin/users` | `/api/v1/admin/users` |
+| POST | `/api/admin/users` | `/api/v1/admin/users` |
 | GET | `/api/admin/users/{user}` | `/api/v1/admin/users/{user}` |
 | PATCH | `/api/admin/users/{user}` | `/api/v1/admin/users/{user}` |
 | POST | `/api/admin/users/{user}/warning` | `/api/v1/admin/users/{user}/warnings` |
@@ -142,6 +156,8 @@ Every alias answers with `Deprecation: true`, a `Link: <successor>; rel="success
 | PATCH | `/api/applications/{application}` | `/api/v1/applications/{application}` |
 | PUT | `/api/applications/{application}` | `/api/v1/applications/{application}` |
 | POST | `/api/ats/document` | `/api/v1/ats/document` |
+| GET | `/api/blog` | `/api/v1/blog` |
+| GET | `/api/blog/{slug}` | `/api/v1/blog/{slug}` |
 | GET | `/api/career/analytics` | `/api/v1/me/analytics` |
 | POST | `/api/career/application-pack` | `/api/v1/ai/application-pack` |
 | GET | `/api/career/cv-versions` | `/api/v1/cv-versions` |

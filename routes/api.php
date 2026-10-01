@@ -12,6 +12,7 @@
 
 use App\Http\Controllers\Api\V1\AccountDataController;
 use App\Http\Controllers\Api\V1\Admin\AdminController;
+use App\Http\Controllers\Api\V1\Admin\BlogPostController;
 use App\Http\Controllers\Api\V1\Admin\CacheController;
 use App\Http\Controllers\Api\V1\Admin\IntegrationController;
 use App\Http\Controllers\Api\V1\Admin\MailSettingsController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\ApplicationController;
 use App\Http\Controllers\Api\V1\AtsDocumentController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\CareerAiController;
 use App\Http\Controllers\Api\V1\CsrfTokenController;
 use App\Http\Controllers\Api\V1\CurrentUserController;
@@ -34,6 +36,7 @@ use App\Http\Controllers\Api\V1\LibraryController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SiteSettingsController;
 use App\Http\Controllers\Api\V1\SupportController;
+use App\Models\BlogPost;
 use Illuminate\Support\Facades\Route;
 
 // Public
@@ -42,6 +45,12 @@ Route::get('site-settings', [SiteSettingsController::class, 'show'])->name('site
 Route::post('contact-messages', [SupportController::class, 'store'])->middleware('throttle:3,10,contact:')->name('contact-messages.store');
 Route::post('analytics/events', [AnalyticsController::class, 'store'])->middleware('throttle:120,1,analytics-events:')->name('analytics.events.store');
 Route::get('cv-templates', [CvTemplateController::class, 'published'])->middleware('throttle:60,1,cv-templates:')->name('cv-templates.index');
+
+// Public blog: cacheable (Cache-Control in SecurityHeaders), so no session and no cookies on these two routes.
+Route::withoutMiddleware('web')->middleware('throttle:60,1,blog:')->group(function () {
+    Route::get('blog', [BlogController::class, 'index'])->name('blog.index');
+    Route::get('blog/{slug}', [BlogController::class, 'show'])->where('slug', BlogPost::SLUG_PATTERN)->name('blog.show');
+});
 
 // Authentication
 Route::prefix('auth')->name('auth.')->group(function () {
@@ -156,8 +165,17 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
             Route::post('test', [MailSettingsController::class, 'test'])->middleware('throttle:3,1,smtp-test:')->name('test');
         });
 
+        Route::prefix('blog')->name('blog.')->group(function () {
+            Route::get('/', [BlogPostController::class, 'index'])->name('index');
+            Route::post('/', [BlogPostController::class, 'store'])->name('store');
+            Route::get('{post}', [BlogPostController::class, 'show'])->whereNumber('post')->name('show');
+            Route::put('{post}', [BlogPostController::class, 'update'])->whereNumber('post')->name('update');
+            Route::delete('{post}', [BlogPostController::class, 'destroy'])->whereNumber('post')->name('destroy');
+        });
+
         Route::prefix('users')->name('users.')->group(function () {
             Route::get('/', [AdminController::class, 'users'])->name('index');
+            Route::post('/', [AdminController::class, 'storeUser'])->middleware('throttle:10,1,admin-create-user:')->name('store');
             Route::get('{user}', [AdminController::class, 'detail'])->whereNumber('user')->name('show');
             Route::patch('{user}', [AdminController::class, 'suspend'])->whereNumber('user')->name('update');
             Route::post('{user}/warnings', [AdminController::class, 'storeWarning'])->whereNumber('user')->middleware('throttle:10,1,warning:')->name('warnings.store');

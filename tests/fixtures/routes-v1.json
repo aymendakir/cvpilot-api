@@ -15,6 +15,31 @@
         "scope": "admin"
     },
     {
+        "method": "GET",
+        "uri": "v1/admin/blog",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/admin/blog",
+        "scope": "admin"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/admin/blog/{post}",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/blog/{post}",
+        "scope": "admin"
+    },
+    {
+        "method": "PUT",
+        "uri": "v1/admin/blog/{post}",
+        "scope": "admin"
+    },
+    {
         "method": "DELETE",
         "uri": "v1/admin/cache",
         "scope": "admin"
@@ -126,6 +151,11 @@
     },
     {
         "method": "GET",
+        "uri": "v1/admin/users",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
         "uri": "v1/admin/users",
         "scope": "admin"
     },
@@ -412,6 +442,16 @@
     {
         "method": "POST",
         "uri": "v1/auth/register",
+        "scope": "public"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/blog",
+        "scope": "public"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/blog/{slug}",
         "scope": "public"
     },
     {

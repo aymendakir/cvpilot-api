@@ -12,6 +12,7 @@
 
 use App\Http\Controllers\Api\V1\AccountDataController;
 use App\Http\Controllers\Api\V1\Admin\AdminController;
+use App\Http\Controllers\Api\V1\Admin\BlogPostController;
 use App\Http\Controllers\Api\V1\Admin\CacheController;
 use App\Http\Controllers\Api\V1\Admin\IntegrationController;
 use App\Http\Controllers\Api\V1\Admin\MailSettingsController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\ApplicationController;
 use App\Http\Controllers\Api\V1\AtsDocumentController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\CareerAiController;
 use App\Http\Controllers\Api\V1\CsrfTokenController;
 use App\Http\Controllers\Api\V1\CurrentUserController;
@@ -34,6 +36,7 @@ use App\Http\Controllers\Api\V1\LibraryController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SiteSettingsController;
 use App\Http\Controllers\Api\V1\SupportController;
+use App\Models\BlogPost;
 use Illuminate\Support\Facades\Route;
 
 Route::get('csrf', CsrfTokenController::class)->middleware('deprecated:/api/v1/csrf');
@@ -45,6 +48,11 @@ Route::post('login', [AuthController::class, 'login'])->middleware('throttle:log
 Route::post('otp/request', [AuthController::class, 'code'])->middleware('throttle:otp-send')->middleware('deprecated:/api/v1/auth/otp/request');
 Route::post('otp/verify', [AuthController::class, 'verify'])->middleware('throttle:otp-verify')->middleware('deprecated:/api/v1/auth/otp/verify');
 Route::get('cv-templates', [CvTemplateController::class, 'published'])->middleware('throttle:60,1,cv-templates:')->middleware('deprecated:/api/v1/cv-templates');
+// Added in S5 for the deployed frontend, which already calls these paths; removed with the other aliases in S7.
+Route::withoutMiddleware('web')->middleware('throttle:60,1,blog:')->group(function () {
+    Route::get('blog', [BlogController::class, 'index'])->middleware('deprecated:/api/v1/blog');
+    Route::get('blog/{slug}', [BlogController::class, 'show'])->where('slug', BlogPost::SLUG_PATTERN)->middleware('deprecated:/api/v1/blog/{slug}');
+});
 Route::middleware(['throttle:api', 'auth.session'])->group(function () {
     Route::get('me/export', [AccountDataController::class, 'export'])->middleware('throttle:3,1,account-export:')->middleware('deprecated:/api/v1/me/export');
     Route::delete('me', [AccountDataController::class, 'destroy'])->middleware('throttle:3,10,account-delete:')->middleware('deprecated:/api/v1/me');
@@ -101,6 +109,12 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
         Route::get('system', [SiteSettingsController::class, 'system'])->middleware('deprecated:/api/v1/admin/system');
         Route::get('contact-messages', [SupportController::class, 'index'])->middleware('deprecated:/api/v1/admin/contact-messages');
         Route::patch('contact-messages/{message}', [SupportController::class, 'update'])->middleware('deprecated:/api/v1/admin/contact-messages/{message}');
+        // Added in S5 for the deployed frontend (removed with the other aliases in S7).
+        Route::get('blog', [BlogPostController::class, 'index'])->middleware('deprecated:/api/v1/admin/blog');
+        Route::post('blog', [BlogPostController::class, 'store'])->middleware('deprecated:/api/v1/admin/blog');
+        Route::get('blog/{post}', [BlogPostController::class, 'show'])->middleware('deprecated:/api/v1/admin/blog/{post}');
+        Route::put('blog/{post}', [BlogPostController::class, 'update'])->middleware('deprecated:/api/v1/admin/blog/{post}');
+        Route::delete('blog/{post}', [BlogPostController::class, 'destroy'])->middleware('deprecated:/api/v1/admin/blog/{post}');
         Route::get('summary', [AdminController::class, 'summary'])->middleware('deprecated:/api/v1/admin/summary');
         Route::get('cv-templates', [CvTemplateController::class, 'index'])->middleware('deprecated:/api/v1/admin/cv-templates');
         Route::post('cv-templates', [CvTemplateController::class, 'store'])->middleware('deprecated:/api/v1/admin/cv-templates');
@@ -112,6 +126,8 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
         Route::post('smtp/check', [MailSettingsController::class, 'check'])->middleware('throttle:3,1,smtp-check:')->middleware('deprecated:/api/v1/admin/smtp/check');
         Route::post('smtp/test', [MailSettingsController::class, 'test'])->middleware('throttle:3,1,smtp-test:')->middleware('deprecated:/api/v1/admin/smtp/test');
         Route::get('users', [AdminController::class, 'users'])->middleware('deprecated:/api/v1/admin/users');
+        // Added in S5 for the deployed frontend (removed with the other aliases in S7).
+        Route::post('users', [AdminController::class, 'storeUser'])->middleware('throttle:10,1,admin-create-user:')->middleware('deprecated:/api/v1/admin/users');
         Route::get('users/{user}', [AdminController::class, 'detail'])->middleware('deprecated:/api/v1/admin/users/{user}');
         Route::post('users/{user}/warning', [AdminController::class, 'warning'])->middleware('throttle:10,1,warning:')->middleware('deprecated:/api/v1/admin/users/{user}/warnings');
         Route::get('applications', [AdminController::class, 'applications'])->middleware('deprecated:/api/v1/admin/applications');
