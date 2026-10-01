@@ -194,7 +194,7 @@ type Detection = {
 };
 
 type Suggestion = {
-  id: string; // stable: "<check_id>" or "keyword:<term>" (term lower-cased, spaces kept: "keyword:content strategy")
+  id: string; // stable: "<check_id>", "keyword:<term>" (missing keyword), "keyword_skills_only:<term>", "keyword_stuffing:<term>" (term lower-cased, spaces kept: "keyword:content strategy")
   rank: number; // 1-based
   severity: "blocker" | "major" | "minor" | "info";
   category: Category["id"];
@@ -448,6 +448,17 @@ Existing check logic (headings lists, action verbs, contribution heuristics) in 
 - **R7 Determinism.** No randomness, no clock in scoring, no network; the same input produces an identical report except `generated_at`.
 - **R8 Grade:** `strong ≥ 85`, `good 70–84`, `needs_work 50–69`, `poor < 50`.
 
+**Scoring rules as built (S3).** Constants live in `config/ats.php` (`checks`, `caps`, `grades`, `suggestions`).
+
+- **Status (R4, decision 23):** `unreadable` when no text can be extracted or `readable_text` fails as garbled; every other check is then `unverified`. `insufficient_text` when the text is readable but under 40 words; the checks still run and are shown. Both have `score`, `raw_score`, `grade` null, `caps: []` and `impact_points: null`.
+- **`keyword_coverage`:** earns `round_half_up(30 × coverage)`; `pass` only at coverage 1, else `fail`. With `insufficient_job_description` it is `unverified` (not applicable), so the report is scored like document mode while the `keywords` category stays in the list with max 0 (decision 24).
+- **Caps:** triggered only by a **failed** check (an unverified check never triggers one).
+- **Suggestions (R6, decisions 24–26):** one per failed document check (none for unverified checks); missing required keywords (severity `minor`, up to 5) and missing preferred keywords (`info`, up to 3), each chosen by impact then id; `keyword_skills_only` (`info`, impact 0, up to 3, required terms first, then id); `keyword_stuffing` (`info`, impact 0); an insufficient job description gives one `info` suggestion (id `keyword_coverage`, impact 0) instead of keyword suggestions. Ranking: impact desc → severity → id. Ids: `"<check_id>"`, `"keyword:<term>"`, `"keyword_skills_only:<term>"`, `"keyword_stuffing:<term>"`.
+- **Report text:** `lang/{en,fr}/ats.php` via `MessageCatalog`; whole sentences with named placeholders and explicit plural ranges, never assembled from fragments. French uses non-breaking spaces before `:` `;` `%`, inside « » and in thousands, and decimal commas. The summary (decision 27) is the status sentence when there is no score, else the verdict with the top suggestion's gain, else "every check passes" / "no single fix raises it".
+- **Locale:** the requested `locale`, else the detected CV language when `en`/`fr`, else `en`.
+- **Limitations:** always the estimate disclaimer; plus PDF heuristics (PDF), no OCR (unreadable), format checks not run (pasted text), exact-only matching (CV language neither EN nor FR).
+- **Check `confidence`** is the detection's confidence; a check that could not be judged reports `low`.
+
 ### 6.1 Keyword extraction (deterministic, as built in S2)
 
 1. Normalize the job description (NFKC, typographic punctuation made plain); comparisons use the folded form (lower case, no accents), terms keep the job description's wording.
@@ -469,7 +480,7 @@ As built in S2: tokens keep tech forms whole (`c#`, `.net`, `node.js`, `ci/cd`);
 
 ```text
 app/Services/Ats/
-  AtsAnalyzer.php                 # orchestrator
+  AtsAnalyzer.php                 # orchestrator (analyzeFile / analyzeText)
   Parsing/   DocumentReader (entry), DocumentTypeDetector, DocumentParser (interface), PdfParser, DocxParser, TextParser,
              Poppler (process wrapper), GlyphInspector, ParsedDocument, Line, Structure, Detection, Confidence, UnreadableDocument
   Language/  LanguageDetector, Normalizer, Tokenizer, StopWords, Stemmer
@@ -477,8 +488,8 @@ app/Services/Ats/
              KeywordReport, KeywordAnalyzer
   Sections/  SectionDetector, Sections, DateRanges
   Checks/    Check.php (interface), CheckResult, CheckStatus, CheckContext, CheckRunner, Format/*, Sections/*, Content/*
-  Scoring/   ScoreCalculator, Caps, Grade, WhatIf, SuggestionBuilder, MessageCatalog
-  Report/    AtsReport (DTO), AtsReportResource
+  Scoring/   Scorer, ScoreCalculator (points, caps, grade), ScoreResult, Assessment, WhatIf, SuggestionBuilder, Suggestion, MessageCatalog
+  Report/    ReportBuilder, AtsReport (DTO, toArray() = §5.2); AtsReportResource in S4
 app/Http/Controllers/Api/V1/Ats/AnalysisController.php
 app/Http/Requests/Ats/StoreAtsAnalysisRequest.php
 config/ats.php                    # weights, thresholds, version
@@ -684,3 +695,14 @@ Also decided: Phase 3b is skipped (the ATS UI is built in Phase 4), and the prom
 **After S2:**
 
 - Keyword source (requirement blocks only when the job ad has them, vs. the whole job ad as built in S2): decided in S5 with real job ads.
+
+**S3 plan decisions, approved:**
+
+22. S3 includes `AtsAnalyzer` and the full §5.2 report; S4 adds only the HTTP layer (route, FormRequest, Resource, JSON Schema, privacy and error tests).
+23. `unreadable` (no text or garbled; other checks unverified) vs `insufficient_text` (readable, < 40 words; checks shown); both without a score.
+24. Insufficient job description: `keyword_coverage` unverified, one `info` suggestion (impact 0) asking for the full job description.
+25. Unverified checks get no suggestion; pasted text gets a limitation line instead.
+26. `keyword_skills_only`: up to 3, `info`, impact 0, required terms first.
+27. Summary sentence from the status, then the top suggestion's gain, then the grade.
+
+**S3 Checkpoint A (copy review), approved:** suggestion ids `keyword_skills_only:<term>` and `keyword_stuffing:<term>` (§5.2); French non-breaking spaces; French copy changes (images, clean_characters title, `needs_work` verdict, skills_section reason). The date parser's French month names, abbreviations and open ends ("mars 2022 – aujourd'hui") are pinned by tests.
