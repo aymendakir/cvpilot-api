@@ -13,7 +13,7 @@ Status: **plan updated for the no-persistent-disk finding; T1–T3 built; stoppe
 
 - [ ] T4 Database sessions and cache in production
 - [ ] T5 Logs to stderr in production
-- [ ] T6 Uploaded files on the configured disk (R2) + stale-record command
+- [ ] T6 Stop storing uploaded originals (no R2); `disk_path` nullable + cleanup migration
 - [ ] T7 `docs/DEPLOYMENT.md`, README, `.env.example`, guide-vs-config test
 - [ ] T8 SPEC note, fresh-clone checks, open the PR, **STOP**
 
