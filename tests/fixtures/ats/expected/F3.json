@@ -241,9 +241,13 @@
     {
       "id": "keyword:redis",
       "impact_points": 3
+    },
+    {
+      "id": "keyword:graphql",
+      "impact_points": 2
     }
   ],
   "notes": [
-    "Only the first two suggestions are pinned. §8.2 lists the missing preferred terms as separate suggestions (+2 each), but R6 says missing preferred terms get one summary suggestion; S3 settles this (see the Checkpoint A notes)."
+    "Missing preferred terms get one suggestion each, max 3, severity info (R6); ties at +2 are ordered by id."
   ]
 }

@@ -220,5 +220,8 @@
       "id": "keyword:redis",
       "impact_points": 0
     }
+  ],
+  "notes": [
+    "keyword:redis (required, minor) ranks above the +0 preferred terms because missing preferred keywords are severity info (R6), as in the §5.3 example."
   ]
 }

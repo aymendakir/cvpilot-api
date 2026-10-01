@@ -169,8 +169,14 @@ class ExpectedResultsTest extends TestCase
                 $expectedIds = array_values(array_diff($expectedIds, ['keyword_coverage']));
             }
             $this->assertSame($expectedIds, array_keys($e['checks']), "{$case}: every check, in §6 order");
-            foreach (self::STRUCTURE as $id) {
-                $this->assertSame($e['source'] === 'text', $e['checks'][$id]['status'] === 'unverified', "{$case} {$id}: unverified only for pasted text");
+            if ($e['score_status'] === 'unreadable') {
+                foreach ($e['checks'] as $id => $check) {
+                    $this->assertSame($id === 'readable_text' ? 'fail' : 'unverified', $check['status'], "{$case} {$id}: R4, only readable_text is evaluated");
+                }
+            } else {
+                foreach (self::STRUCTURE as $id) {
+                    $this->assertSame($e['source'] === 'text', $e['checks'][$id]['status'] === 'unverified', "{$case} {$id}: unverified only for pasted text");
+                }
             }
         }
     }
@@ -238,7 +244,10 @@ class ExpectedResultsTest extends TestCase
             }
             $this->assertSame($suggestion['impact_points'], self::whatIf($e, $suggestion['id']) - $e['score'], "{$case} {$suggestion['id']}: what-if impact");
 
-            $severity = str_starts_with($suggestion['id'], 'keyword:') ? 'minor' : self::CHECKS[$suggestion['id']][1];
+            // R6: a missing required keyword is minor, a missing preferred keyword is info.
+            $severity = str_starts_with($suggestion['id'], 'keyword:')
+                ? (collect($e['keywords']['items'])->first(fn ($i) => 'keyword:'.mb_strtolower($i['term']) === $suggestion['id'])['kind'] === 'required' ? 'minor' : 'info')
+                : self::CHECKS[$suggestion['id']][1];
             $key = [-$suggestion['impact_points'], self::SEVERITY[$severity], $suggestion['id']];
             if ($previous !== null) {
                 $this->assertLessThan(0, $previous <=> $key, "{$case}: suggestions sorted by impact, severity, id");

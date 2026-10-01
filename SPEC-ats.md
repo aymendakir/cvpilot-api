@@ -118,7 +118,7 @@ type AtsReport = {
   keywords: KeywordReport | null; // null when mode = "document"
   sections: SectionsReport;
   formatting: FormattingReport;
-  caps: { id: CapId; limit: number; applied: boolean; reason: string }[];
+  caps: { id: CapId; limit: number; applied: boolean; reason: string }[]; // only triggered caps; applied = binding (limit < raw_score)
   suggestions: Suggestion[]; // ranked by impact_points desc
   limitations: string[];
   generated_at: string; // ISO-8601 UTC
@@ -194,7 +194,7 @@ type Detection = {
 };
 
 type Suggestion = {
-  id: string; // stable: "<check_id>" or "keyword:<term>"
+  id: string; // stable: "<check_id>" or "keyword:<term>" (term lower-cased, spaces kept: "keyword:content strategy")
   rank: number; // 1-based
   severity: "blocker" | "major" | "minor" | "info";
   category: Category["id"];
@@ -206,7 +206,7 @@ type Suggestion = {
   title: string;
   detail: string; // why it matters
   action: string; // concrete fix; keyword suggestions say "add only if true for you"
-  impact_points: number; // score gain if this alone is fixed (what-if recompute, caps included)
+  impact_points: number | null; // score gain if this alone is fixed (what-if recompute, caps included); null only when score is null
   evidence: string[];
 };
 
@@ -430,10 +430,10 @@ Existing check logic (headings lists, action verbs, contribution heuristics) in 
 
 - **R1 Normalization.** `score = round_half_up(100 × Σ earned / Σ max)` over **applicable** checks only. Without a job description `keyword_coverage` is absent (max 70 in full-file mode). Unverified checks (pasted text, low-confidence detections) are excluded from both sums, never counted as passes.
 - **R2 Coverage.** `coverage = Σ weight(matched) / Σ weight(all)`, weight 2 for required, 1 for preferred. If fewer than 3 keywords can be extracted from the job description → `keywords.status = "insufficient_job_description"`, `keyword_coverage` not applicable, and a suggestion asks for a fuller description.
-- **R3 Caps** (applied after normalization, lowest wins): any failed `major` **format** check (`single_column`, `layout_tables`, `images`) → **84**; `email` fails → **79**; `experience_section` fails → **74**. Each cap appears in `caps[]` with `applied` true/false.
-- **R4 Status.** `readable_text` fails or no extractable text → `score_status: "unreadable"`, `score: null`; fewer than 40 words → `"insufficient_text"`, `score: null`. Checks and suggestions are still returned.
+- **R3 Caps** (applied after normalization, lowest wins): any failed `major` **format** check (`single_column`, `layout_tables`, `images`) → **84**; `email` fails → **79**; `experience_section` fails → **74**. Only **triggered** caps appear in `caps[]`, each with `applied` = whether it is binding (`limit < raw_score`); a report with no failed cap condition has `caps: []`.
+- **R4 Status.** `readable_text` fails or no extractable text → `score_status: "unreadable"`, `score: null`; fewer than 40 words → `"insufficient_text"`, `score: null`. Checks and suggestions are still returned. For `unreadable`, every check other than `readable_text` is `unverified`, and suggestions carry `impact_points: null`.
 - **R5 Impact.** For each failed/missing item, `impact_points` = `score(with that one check passing, other results unchanged, caps re-evaluated) − current score`, ≥ 0. Suggestions sort by `impact_points` desc, then severity (`blocker > major > minor > info`), then `id`. The UI can therefore promise exact gains.
-- **R6 Keyword suggestions:** one suggestion per missing **required** keyword (max 5, weight-ordered), one summary suggestion for missing preferred terms, one `keyword_skills_only` per term found only in the skills section (recommend using it in an experience bullet), one `keyword_stuffing` (info) per term with > 10 occurrences (stuffing never changes the score).
+- **R6 Keyword suggestions:** one suggestion per missing **required** keyword (max 5, weight-ordered), one suggestion per missing **preferred** keyword (max 3, ordered by impact, then id; severity `info`, so a missing required keyword, severity `minor`, ranks first on equal impact, as in §5.3), one `keyword_skills_only` per term found only in the skills section (recommend using it in an experience bullet), one `keyword_stuffing` (info) per term with > 10 occurrences (stuffing never changes the score).
 - **R7 Determinism.** No randomness, no clock in scoring, no network; the same input produces an identical report except `generated_at`.
 - **R8 Grade:** `strong ≥ 85`, `good 70–84`, `needs_work 50–69`, `poor < 50`.
 
@@ -643,3 +643,11 @@ Moved here from Phase 2 §7 item 3 (decision after the S4 plan). Delivered as sl
 11. **Message catalog:** EN/FR; the maintainer reviews the French copy.
 
 Also decided: Phase 3b is skipped (the ATS UI is built in Phase 4), and the prompt envelope (§16.1) needs a model evaluation before it changes any prompt.
+
+**S0 Checkpoint A (fixtures review), approved:**
+
+12. Missing preferred keywords: one suggestion per term, max 3 (R6); this matches the F3 and F11 rows of §8.2. They have severity `info`, which keeps the §5.3 order (`keyword:redis` before the +0 preferred terms) consistent with R5's tie-break.
+13. Unreadable documents: other checks `unverified`, `impact_points: null` (R4, §5.2).
+14. Keyword suggestion ids keep the lower-cased term with spaces (§5.2).
+15. `caps[]` lists only triggered caps (R3, §5.2).
+16. §6.1 candidate rule (b) is too broad for job ads written in sentences (every phrase in a requirements block would become a keyword). S2 specifies a tighter rule (taxonomy terms plus short stand-alone lines) before building the extractor; the fixture job descriptions use one term per line.
