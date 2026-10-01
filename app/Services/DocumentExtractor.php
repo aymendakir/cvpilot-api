@@ -48,6 +48,23 @@ class DocumentExtractor
         return in_array($extension, ['txt', ''], true) ? 'txt' : null;
     }
 
+    /**
+     * Extracts the text and always deletes PHP's temp copy of the upload afterwards, accepted or rejected.
+     * The original is never stored anywhere (SPEC S6).
+     */
+    public function extractAndDiscard(UploadedFile $file): string
+    {
+        $path = $file->getRealPath();
+
+        try {
+            return $this->extract($file);
+        } finally {
+            if ($path && is_file($path)) {
+                @unlink($path);
+            }
+        }
+    }
+
     public function extract(UploadedFile $file): string
     {
         $type = $this->detect($file);
