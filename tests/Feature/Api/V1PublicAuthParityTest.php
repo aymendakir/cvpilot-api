@@ -138,8 +138,10 @@ class V1PublicAuthParityTest extends TestCase
 
     public function test_the_login_throttle_is_one_bucket_shared_by_both_paths(): void
     {
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 3; $i++) {
             $this->postJson('/api/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123'])->assertStatus(401);
+        }
+        for ($i = 0; $i < 2; $i++) {
             $this->postJson('/api/v1/auth/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123'])->assertStatus(401);
         }
 

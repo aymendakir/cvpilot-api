@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -59,8 +60,8 @@ class LegacyRoutesTest extends TestCase
     /** Middleware aliases that were renamed (the pinned baseline still says `member`). */
     private const RENAMED_MIDDLEWARE = ['auth.session' => 'member'];
 
-    /** Middleware that legacy routes gain (never removed or reordered): `deprecated`, optionally with a successor path. */
-    private const ADDED_MIDDLEWARE_PREFIX = 'deprecated';
+    /** Middleware that legacy routes gain (never removed or reordered): `deprecated` (optionally with a successor path) and, on admin routes, `throttle:admin`. */
+    private const ADDED_MIDDLEWARE_PREFIXES = ['deprecated', 'throttle:admin'];
 
     /** @return array<string, array{action: string, middleware: array<int, string>}> */
     private function currentTable(): array
@@ -114,7 +115,7 @@ class LegacyRoutesTest extends TestCase
 
             $middleware = array_values(array_map(
                 fn ($m) => self::RENAMED_MIDDLEWARE[$m] ?? $m,
-                array_filter($current[$key]['middleware'], fn ($m) => ! str_starts_with($m, self::ADDED_MIDDLEWARE_PREFIX)),
+                array_filter($current[$key]['middleware'], fn ($m) => ! Str::startsWith($m, self::ADDED_MIDDLEWARE_PREFIXES)),
             ));
             if ($middleware !== $row['middleware']) {
                 $problems[] = "middleware changed: {$key} [".implode(',', $row['middleware']).'] -> ['.implode(',', $middleware).']';

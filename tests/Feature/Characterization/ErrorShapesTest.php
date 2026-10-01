@@ -149,9 +149,10 @@ class ErrorShapesTest extends TestCase
         ])->assertStatus(201);
     }
 
-    public function test_login_is_throttled_with_429_after_20_attempts_per_email_and_ip(): void
+    public function test_login_is_throttled_with_429_after_5_attempts_per_email_and_ip(): void
     {
-        for ($i = 1; $i <= 20; $i++) {
+        // S4 (SPEC §7 item 4): 5 per minute per email+IP (was 20).
+        for ($i = 1; $i <= 5; $i++) {
             $this->postJson('/api/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123'])
                 ->assertStatus(401);
         }

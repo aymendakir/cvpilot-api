@@ -6,7 +6,7 @@ All paths are relative to the API origin. Errors use the envelope in [ERRORS.md]
 
 ## /api/v1
 
-| Scope | Method | Path | Throttle (max,minutes,prefix) | Route name |
+| Scope | Method | Path | Limiters (`max,minutes,prefix`, or a named limiter) on top of the shared `api` one | Route name |
 | --- | --- | --- | --- | --- |
 | public | POST | `/api/v1/analytics/events` | `120,1,analytics-events:` | `v1.analytics.events.store` |
 | public | POST | `/api/v1/auth/login` | `login` | `v1.auth.login` |
@@ -66,35 +66,35 @@ All paths are relative to the API origin. Errors use the envelope in [ERRORS.md]
 | auth | GET | `/api/v1/me/export` | `3,1,account-export:` | `v1.me.export` |
 | auth | PUT | `/api/v1/me/password` | shared `api` limiter | `v1.me.password.update` |
 | auth | DELETE | `/api/v1/reports/{report}` | shared `api` limiter | `v1.reports.destroy` |
-| admin | GET | `/api/v1/admin/analytics` | shared `api` limiter | `v1.admin.analytics` |
-| admin | GET | `/api/v1/admin/applications` | shared `api` limiter | `v1.admin.applications.index` |
-| admin | GET | `/api/v1/admin/audit-events` | shared `api` limiter | `v1.admin.audit-events.index` |
-| admin | DELETE | `/api/v1/admin/cache` | shared `api` limiter | `v1.admin.cache.destroy` |
-| admin | GET | `/api/v1/admin/contact-messages` | shared `api` limiter | `v1.admin.contact-messages.index` |
-| admin | PATCH | `/api/v1/admin/contact-messages/{message}` | shared `api` limiter | `v1.admin.contact-messages.update` |
-| admin | GET | `/api/v1/admin/cv-templates` | shared `api` limiter | `v1.admin.cv-templates.index` |
-| admin | POST | `/api/v1/admin/cv-templates` | shared `api` limiter | `v1.admin.cv-templates.store` |
-| admin | DELETE | `/api/v1/admin/cv-templates/{template}` | shared `api` limiter | `v1.admin.cv-templates.destroy` |
-| admin | PATCH | `/api/v1/admin/cv-templates/{template}` | shared `api` limiter | `v1.admin.cv-templates.update` |
-| admin | GET | `/api/v1/admin/integrations` | shared `api` limiter | `v1.admin.integrations.index` |
-| admin | POST | `/api/v1/admin/integrations` | shared `api` limiter | `v1.admin.integrations.store` |
-| admin | POST | `/api/v1/admin/integrations/reorder` | shared `api` limiter | `v1.admin.integrations.reorder` |
-| admin | DELETE | `/api/v1/admin/integrations/{integration}` | shared `api` limiter | `v1.admin.integrations.destroy` |
-| admin | PATCH | `/api/v1/admin/integrations/{integration}` | shared `api` limiter | `v1.admin.integrations.update` |
-| admin | POST | `/api/v1/admin/integrations/{integration}/test` | `10,1,integrations--integration--test:` | `v1.admin.integrations.test` |
-| admin | GET | `/api/v1/admin/site-settings` | shared `api` limiter | `v1.admin.site-settings.show` |
-| admin | PUT | `/api/v1/admin/site-settings` | shared `api` limiter | `v1.admin.site-settings.update` |
-| admin | GET | `/api/v1/admin/smtp` | shared `api` limiter | `v1.admin.smtp.show` |
-| admin | PUT | `/api/v1/admin/smtp` | shared `api` limiter | `v1.admin.smtp.update` |
-| admin | POST | `/api/v1/admin/smtp/check` | `3,1,smtp-check:` | `v1.admin.smtp.check` |
-| admin | POST | `/api/v1/admin/smtp/microsoft/connect` | `5,1,smtp-connect:` | `v1.admin.smtp.microsoft.connect` |
-| admin | POST | `/api/v1/admin/smtp/test` | `3,1,smtp-test:` | `v1.admin.smtp.test` |
-| admin | GET | `/api/v1/admin/summary` | shared `api` limiter | `v1.admin.summary` |
-| admin | GET | `/api/v1/admin/system` | shared `api` limiter | `v1.admin.system` |
-| admin | GET | `/api/v1/admin/users` | shared `api` limiter | `v1.admin.users.index` |
-| admin | GET | `/api/v1/admin/users/{user}` | shared `api` limiter | `v1.admin.users.show` |
-| admin | PATCH | `/api/v1/admin/users/{user}` | shared `api` limiter | `v1.admin.users.update` |
-| admin | POST | `/api/v1/admin/users/{user}/warnings` | `10,1,warning:` | `v1.admin.users.warnings.store` |
+| admin | GET | `/api/v1/admin/analytics` | `admin` | `v1.admin.analytics` |
+| admin | GET | `/api/v1/admin/applications` | `admin` | `v1.admin.applications.index` |
+| admin | GET | `/api/v1/admin/audit-events` | `admin` | `v1.admin.audit-events.index` |
+| admin | DELETE | `/api/v1/admin/cache` | `admin` | `v1.admin.cache.destroy` |
+| admin | GET | `/api/v1/admin/contact-messages` | `admin` | `v1.admin.contact-messages.index` |
+| admin | PATCH | `/api/v1/admin/contact-messages/{message}` | `admin` | `v1.admin.contact-messages.update` |
+| admin | GET | `/api/v1/admin/cv-templates` | `admin` | `v1.admin.cv-templates.index` |
+| admin | POST | `/api/v1/admin/cv-templates` | `admin` | `v1.admin.cv-templates.store` |
+| admin | DELETE | `/api/v1/admin/cv-templates/{template}` | `admin` | `v1.admin.cv-templates.destroy` |
+| admin | PATCH | `/api/v1/admin/cv-templates/{template}` | `admin` | `v1.admin.cv-templates.update` |
+| admin | GET | `/api/v1/admin/integrations` | `admin` | `v1.admin.integrations.index` |
+| admin | POST | `/api/v1/admin/integrations` | `admin` | `v1.admin.integrations.store` |
+| admin | POST | `/api/v1/admin/integrations/reorder` | `admin` | `v1.admin.integrations.reorder` |
+| admin | DELETE | `/api/v1/admin/integrations/{integration}` | `admin` | `v1.admin.integrations.destroy` |
+| admin | PATCH | `/api/v1/admin/integrations/{integration}` | `admin` | `v1.admin.integrations.update` |
+| admin | POST | `/api/v1/admin/integrations/{integration}/test` | `admin` + `10,1,integrations--integration--test:` | `v1.admin.integrations.test` |
+| admin | GET | `/api/v1/admin/site-settings` | `admin` | `v1.admin.site-settings.show` |
+| admin | PUT | `/api/v1/admin/site-settings` | `admin` | `v1.admin.site-settings.update` |
+| admin | GET | `/api/v1/admin/smtp` | `admin` | `v1.admin.smtp.show` |
+| admin | PUT | `/api/v1/admin/smtp` | `admin` | `v1.admin.smtp.update` |
+| admin | POST | `/api/v1/admin/smtp/check` | `admin` + `3,1,smtp-check:` | `v1.admin.smtp.check` |
+| admin | POST | `/api/v1/admin/smtp/microsoft/connect` | `admin` + `5,1,smtp-connect:` | `v1.admin.smtp.microsoft.connect` |
+| admin | POST | `/api/v1/admin/smtp/test` | `admin` + `3,1,smtp-test:` | `v1.admin.smtp.test` |
+| admin | GET | `/api/v1/admin/summary` | `admin` | `v1.admin.summary` |
+| admin | GET | `/api/v1/admin/system` | `admin` | `v1.admin.system` |
+| admin | GET | `/api/v1/admin/users` | `admin` | `v1.admin.users.index` |
+| admin | GET | `/api/v1/admin/users/{user}` | `admin` | `v1.admin.users.show` |
+| admin | PATCH | `/api/v1/admin/users/{user}` | `admin` | `v1.admin.users.update` |
+| admin | POST | `/api/v1/admin/users/{user}/warnings` | `admin` + `10,1,warning:` | `v1.admin.users.warnings.store` |
 
 ## Deprecated legacy aliases
 
