@@ -283,9 +283,11 @@ class AuthTest extends TestCase
             ->assertJsonMissingPath('password');
     }
 
-    public function test_me_without_a_session_is_401_with_an_empty_message(): void
+    public function test_me_without_a_session_is_401_unauthenticated(): void
     {
-        $this->getJson('/api/me')->assertStatus(401)->assertExactJson(['message' => '']);
+        $this->getJson('/api/me')->assertStatus(401)
+            ->assertJsonPath('code', 'unauthenticated')
+            ->assertJsonPath('message', 'Authentication is required.');
     }
 
     public function test_a_revoked_session_version_is_401(): void
