@@ -12,6 +12,7 @@
 
 use App\Http\Controllers\Api\V1\AccountDataController;
 use App\Http\Controllers\Api\V1\Admin\AdminController;
+use App\Http\Controllers\Api\V1\Admin\BlogPostController;
 use App\Http\Controllers\Api\V1\Admin\CacheController;
 use App\Http\Controllers\Api\V1\Admin\IntegrationController;
 use App\Http\Controllers\Api\V1\Admin\MailSettingsController;
@@ -162,6 +163,14 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
             Route::post('microsoft/connect', [MailSettingsController::class, 'connectMicrosoft'])->middleware('throttle:5,1,smtp-connect:')->name('microsoft.connect');
             Route::post('check', [MailSettingsController::class, 'check'])->middleware('throttle:3,1,smtp-check:')->name('check');
             Route::post('test', [MailSettingsController::class, 'test'])->middleware('throttle:3,1,smtp-test:')->name('test');
+        });
+
+        Route::prefix('blog')->name('blog.')->group(function () {
+            Route::get('/', [BlogPostController::class, 'index'])->name('index');
+            Route::post('/', [BlogPostController::class, 'store'])->name('store');
+            Route::get('{post}', [BlogPostController::class, 'show'])->whereNumber('post')->name('show');
+            Route::put('{post}', [BlogPostController::class, 'update'])->whereNumber('post')->name('update');
+            Route::delete('{post}', [BlogPostController::class, 'destroy'])->whereNumber('post')->name('destroy');
         });
 
         Route::prefix('users')->name('users.')->group(function () {

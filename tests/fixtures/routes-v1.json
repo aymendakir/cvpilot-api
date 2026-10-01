@@ -15,6 +15,31 @@
         "scope": "admin"
     },
     {
+        "method": "GET",
+        "uri": "v1/admin/blog",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/admin/blog",
+        "scope": "admin"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/admin/blog/{post}",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/blog/{post}",
+        "scope": "admin"
+    },
+    {
+        "method": "PUT",
+        "uri": "v1/admin/blog/{post}",
+        "scope": "admin"
+    },
+    {
         "method": "DELETE",
         "uri": "v1/admin/cache",
         "scope": "admin"

@@ -1,11 +1,11 @@
 # Task list — Phase 2, slice S5 (blog and `POST admin/users`)
 
 Branch `refactor/api-s5-blog`. Detail: `tasks/plan.md`. Spec: `SPEC.md` §8.
-Status: **plan written, waiting for maintainer approval. No code yet.**
+Status: **T1–T3 built; stopped at Checkpoint A for review.**
 
-- [ ] T1 Migration, `BlogPost` model, `BlogPostResource`
-- [ ] T2 Public `GET blog` and `GET blog/{slug}` (cacheable, cookie-free)
-- [ ] T3 Admin blog CRUD
+- [x] T1 Migration, `BlogPost` model, `BlogPostResource`
+- [x] T2 Public `GET blog` and `GET blog/{slug}` (cacheable, cookie-free)
+- [x] T3 Admin blog CRUD
 
 ### Checkpoint A
 

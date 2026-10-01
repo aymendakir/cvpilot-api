@@ -85,7 +85,7 @@ class PublicEndpointsTest extends TestCase
         // S5 (SPEC §8.1): flipped from a GAP. Detailed behaviour lives in BlogPublicTest and BlogAdminTest.
         $this->getJson('/api/blog')->assertOk()->assertJsonPath('data', []);
         $this->getJson('/api/blog/some-post')->assertStatus(404);
-        $this->signIn($this->makeAdmin())->getJson('/api/admin/blog')->assertStatus(404); // GAP: the admin half arrives with T3
+        $this->signIn($this->makeAdmin())->getJson('/api/admin/blog')->assertOk();
     }
 
     public function test_admin_user_creation_the_frontend_calls_does_not_exist(): void

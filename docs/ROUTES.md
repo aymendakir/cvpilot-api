@@ -71,6 +71,11 @@ All paths are relative to the API origin. Errors use the envelope in [ERRORS.md]
 | admin | GET | `/api/v1/admin/analytics` | `admin` | `v1.admin.analytics` |
 | admin | GET | `/api/v1/admin/applications` | `admin` | `v1.admin.applications.index` |
 | admin | GET | `/api/v1/admin/audit-events` | `admin` | `v1.admin.audit-events.index` |
+| admin | GET | `/api/v1/admin/blog` | `admin` | `v1.admin.blog.index` |
+| admin | POST | `/api/v1/admin/blog` | `admin` | `v1.admin.blog.store` |
+| admin | DELETE | `/api/v1/admin/blog/{post}` | `admin` | `v1.admin.blog.destroy` |
+| admin | GET | `/api/v1/admin/blog/{post}` | `admin` | `v1.admin.blog.show` |
+| admin | PUT | `/api/v1/admin/blog/{post}` | `admin` | `v1.admin.blog.update` |
 | admin | DELETE | `/api/v1/admin/cache` | `admin` | `v1.admin.cache.destroy` |
 | admin | GET | `/api/v1/admin/contact-messages` | `admin` | `v1.admin.contact-messages.index` |
 | admin | PATCH | `/api/v1/admin/contact-messages/{message}` | `admin` | `v1.admin.contact-messages.update` |
@@ -106,6 +111,11 @@ Every alias answers with `Deprecation: true`, a `Link: <successor>; rel="success
 | --- | --- | --- |
 | GET | `/api/admin/analytics` | `/api/v1/admin/analytics` |
 | GET | `/api/admin/applications` | `/api/v1/admin/applications` |
+| GET | `/api/admin/blog` | `/api/v1/admin/blog` |
+| POST | `/api/admin/blog` | `/api/v1/admin/blog` |
+| DELETE | `/api/admin/blog/{post}` | `/api/v1/admin/blog/{post}` |
+| GET | `/api/admin/blog/{post}` | `/api/v1/admin/blog/{post}` |
+| PUT | `/api/admin/blog/{post}` | `/api/v1/admin/blog/{post}` |
 | POST | `/api/admin/cache/clear` | `/api/v1/admin/cache` |
 | GET | `/api/admin/contact-messages` | `/api/v1/admin/contact-messages` |
 | PATCH | `/api/admin/contact-messages/{message}` | `/api/v1/admin/contact-messages/{message}` |

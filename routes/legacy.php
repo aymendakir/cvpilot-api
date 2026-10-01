@@ -12,6 +12,7 @@
 
 use App\Http\Controllers\Api\V1\AccountDataController;
 use App\Http\Controllers\Api\V1\Admin\AdminController;
+use App\Http\Controllers\Api\V1\Admin\BlogPostController;
 use App\Http\Controllers\Api\V1\Admin\CacheController;
 use App\Http\Controllers\Api\V1\Admin\IntegrationController;
 use App\Http\Controllers\Api\V1\Admin\MailSettingsController;
@@ -108,6 +109,12 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
         Route::get('system', [SiteSettingsController::class, 'system'])->middleware('deprecated:/api/v1/admin/system');
         Route::get('contact-messages', [SupportController::class, 'index'])->middleware('deprecated:/api/v1/admin/contact-messages');
         Route::patch('contact-messages/{message}', [SupportController::class, 'update'])->middleware('deprecated:/api/v1/admin/contact-messages/{message}');
+        // Added in S5 for the deployed frontend (removed with the other aliases in S7).
+        Route::get('blog', [BlogPostController::class, 'index'])->middleware('deprecated:/api/v1/admin/blog');
+        Route::post('blog', [BlogPostController::class, 'store'])->middleware('deprecated:/api/v1/admin/blog');
+        Route::get('blog/{post}', [BlogPostController::class, 'show'])->middleware('deprecated:/api/v1/admin/blog/{post}');
+        Route::put('blog/{post}', [BlogPostController::class, 'update'])->middleware('deprecated:/api/v1/admin/blog/{post}');
+        Route::delete('blog/{post}', [BlogPostController::class, 'destroy'])->middleware('deprecated:/api/v1/admin/blog/{post}');
         Route::get('summary', [AdminController::class, 'summary'])->middleware('deprecated:/api/v1/admin/summary');
         Route::get('cv-templates', [CvTemplateController::class, 'index'])->middleware('deprecated:/api/v1/admin/cv-templates');
         Route::post('cv-templates', [CvTemplateController::class, 'store'])->middleware('deprecated:/api/v1/admin/cv-templates');
