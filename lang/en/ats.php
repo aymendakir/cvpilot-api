@@ -347,14 +347,17 @@ return [
         'common' => [
             'not_inspected' => 'Pasted text has no layout to inspect.',
             'not_applicable_pdf' => 'Does not apply to PDF files.',
+            'and' => 'and',
         ],
         'columns' => [
             'found' => 'Text is laid out in more than one column.',
-            'found_pages' => 'Text is laid out in two columns on page :pages.',
+            'found_pages' => '{1} Text is laid out in two columns on page :pages.|[2,*] Text is laid out in two columns on pages :pages.',
+            'left' => 'Left column: :text',
+            'right' => 'Right column: :text',
         ],
         'tables' => [
             'found' => '{0} Tables contain text.|{1} One table contains text.|[2,*] :count tables contain text.',
-            'possible' => 'Aligned text that looks like a table on page :pages (low confidence).',
+            'possible' => '{1} Aligned text that looks like a table on page :pages (low confidence).|[2,*] Aligned text that looks like a table on pages :pages (low confidence).',
         ],
         'images' => [
             'found' => '{1} One image.|[2,*] :count images.',

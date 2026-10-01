@@ -345,14 +345,17 @@ return [
         'common' => [
             'not_inspected' => 'Un texte collé n\'a pas de mise en page à analyser.',
             'not_applicable_pdf' => 'Ne s\'applique pas aux fichiers PDF.',
+            'and' => 'et',
         ],
         'columns' => [
             'found' => 'Le texte est disposé sur plusieurs colonnes.',
-            'found_pages' => 'Le texte est disposé sur deux colonnes à la page :pages.',
+            'found_pages' => '{1} Le texte est disposé sur deux colonnes à la page :pages.|[2,*] Le texte est disposé sur deux colonnes aux pages :pages.',
+            'left' => 'Colonne de gauche : :text',
+            'right' => 'Colonne de droite : :text',
         ],
         'tables' => [
             'found' => '{0} Des tableaux contiennent du texte.|{1} Un tableau contient du texte.|[2,*] :count tableaux contiennent du texte.',
-            'possible' => 'Texte aligné qui ressemble à un tableau à la page :pages (confiance faible).',
+            'possible' => '{1} Texte aligné qui ressemble à un tableau à la page :pages (confiance faible).|[2,*] Texte aligné qui ressemble à un tableau aux pages :pages (confiance faible).',
         ],
         'images' => [
             'found' => '{1} Une image.|[2,*] :count images.',

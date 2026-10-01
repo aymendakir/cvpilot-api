@@ -17,6 +17,9 @@ final class ReportBuilder
 {
     public const MAX_TEXT = 100_000;
 
+    /** @var list<string> sides of the column samples of the document being built ("left", "right") */
+    private array $columnSides = [];
+
     /**
      * @param  'file'|'text'  $source
      * @param  'en'|'fr'|'other'  $language  detected CV language
@@ -33,6 +36,7 @@ final class ReportBuilder
         DateTimeInterface $now,
     ): AtsReport {
         $score = $assessment->score;
+        $this->columnSides = array_values($document->structure->columns->extra['sample_sides'] ?? []);
         $documentData = [
             'source' => $source,
             'file_name' => $source === 'file' ? $fileName : null,
@@ -92,7 +96,7 @@ final class ReportBuilder
                     'confidence' => $result->confidence?->value ?? 'low',
                     'finding' => $catalog->finding($id, $result->findingKey, $result->params),
                     'action' => $points['status'] === CheckStatus::Fail ? $catalog->action($id, $result->findingKey, $result->params) : null,
-                    'evidence' => $result->evidence,
+                    'evidence' => $this->evidence($id, $result->evidence, $catalog),
                 ];
             }
             $out[] = ['id' => $category['id'], 'title' => $catalog->categoryTitle($category['id']), 'earned' => $category['earned'], 'max' => $category['max'], 'checks' => $checks];
@@ -160,14 +164,15 @@ final class ReportBuilder
     private function detection(Detection $d, string $signal, ParsedDocument $document, MessageCatalog $catalog): array
     {
         $extra = $d->extra;
-        $pages = isset($extra['pages']) && is_array($extra['pages']) ? implode(', ', $extra['pages']) : null;
+        $pageList = isset($extra['pages']) && is_array($extra['pages']) ? array_values($extra['pages']) : [];
+        $pages = $pageList === [] ? null : $this->listOf($pageList, $catalog);
         $note = match (true) {
             $d->detected === null && $document->type === 'text' => $catalog->formattingNote('common', 'not_inspected'),
             $d->detected === null => $catalog->formattingNote('common', 'not_applicable_pdf'),
             $d->detected === false && $signal === 'header_footer' && $document->type === 'pdf' && $document->pages === 1 => $catalog->formattingNote('header_footer', 'single_page'),
             $d->detected === false => null,
-            $signal === 'columns' => $pages !== null ? $catalog->formattingNote('columns', 'found_pages', ['pages' => $pages]) : $catalog->formattingNote('columns', 'found'),
-            $signal === 'tables' && $d->confidence?->isLow() && $pages !== null => $catalog->formattingNote('tables', 'possible', ['pages' => $pages]),
+            $signal === 'columns' => $pages !== null ? $catalog->formattingNote('columns', 'found_pages', ['pages' => $pages, 'count' => count($pageList)]) : $catalog->formattingNote('columns', 'found'),
+            $signal === 'tables' && $d->confidence?->isLow() && $pages !== null => $catalog->formattingNote('tables', 'possible', ['pages' => $pages, 'count' => count($pageList)]),
             $signal === 'tables', $signal === 'text_boxes' => $catalog->formattingNote($signal, 'found', ['count' => (int) ($extra['count'] ?? 0)]),
             $signal === 'images' => isset($extra['largest_area_pct'])
                 ? $catalog->formattingNote('images', 'found_area', ['count' => (int) ($extra['count'] ?? 0), 'largest_area_pct' => (float) $extra['largest_area_pct']])
@@ -193,7 +198,7 @@ final class ReportBuilder
             'detail' => $text['detail'],
             'action' => $text['action'],
             'impact_points' => $s->impactPoints,
-            'evidence' => $s->evidence,
+            'evidence' => $this->evidence($s->checkId, $s->evidence, $catalog),
         ];
     }
 
@@ -215,5 +220,29 @@ final class ReportBuilder
         }
 
         return array_map(fn ($k) => $catalog->limitation($k), $keys);
+    }
+
+    /**
+     * Column samples are labelled in the report locale ("Left column: …", « Colonne de gauche : … »);
+     * every other evidence line is the CV text as found.
+     *
+     * @param  list<string>  $evidence
+     * @return list<string>
+     */
+    private function evidence(string $checkId, array $evidence, MessageCatalog $catalog): array
+    {
+        if ($checkId !== 'single_column' || count($evidence) !== count($this->columnSides)) {
+            return $evidence;
+        }
+
+        return array_map(fn (string $text, string $side) => $catalog->formattingNote('columns', $side, ['text' => $text]), $evidence, $this->columnSides);
+    }
+
+    /** "1", "1 and 2", "1, 2 and 3" in the report locale. @param list<int|string> $items */
+    private function listOf(array $items, MessageCatalog $catalog): string
+    {
+        $last = (string) array_pop($items);
+
+        return $items === [] ? $last : implode(', ', $items).' '.$catalog->formattingNote('common', 'and').' '.$last;
     }
 }
