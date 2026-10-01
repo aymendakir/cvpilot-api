@@ -1,11 +1,11 @@
 # Task list — Phase 3, slice S3 (`ats-scoring`)
 
 Branch `feature/ats-s3`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §5.2, §6, §8.
-Status: **planned; waiting for approval of decisions 22–27.**
+Status: **T1–T3 built; at Checkpoint A.** Decisions 22–27 approved as written.
 
-- [ ] T1 Points, categories, caps, grade, status; golden scores reproduced
-- [ ] T2 What-if and suggestions; golden top-3 ids and impacts reproduced
-- [ ] T3 EN/FR message catalog with parity test
+- [x] T1 Points, categories, caps, grade, status; golden scores reproduced
+- [x] T2 What-if and suggestions; golden top-3 ids and impacts reproduced
+- [x] T3 EN/FR message catalog with parity test
 
 ### Checkpoint A
 
