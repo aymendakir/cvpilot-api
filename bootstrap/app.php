@@ -9,6 +9,7 @@ use App\Http\Middleware\Member;
 use App\Http\Middleware\RejectMalformedJson;
 use App\Http\Middleware\RequestId;
 use App\Http\Middleware\SecurityHeaders;
+use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -20,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function () {
             Route::middleware('web')->prefix('api')->group(function () {
-                Route::middleware('deprecated')->group(base_path('routes/legacy.php'));
+                Route::group([], base_path('routes/legacy.php'));
                 Route::group([], base_path('routes/oauth.php'));
             });
             Route::middleware('web')->prefix('api/v1')->name('v1.')->group(base_path('routes/api.php'));
@@ -39,6 +40,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend([RequestId::class, ForceJsonResponses::class, RejectMalformedJson::class]);
         $middleware->validateCsrfTokens(except: ['api/analytics/events', 'api/contact']);
         $middleware->append([EnsureErrorEnvelope::class, SecurityHeaders::class]);
+        // Deprecation headers must also decorate responses produced by middleware that runs later (401/403/429).
+        $middleware->prependToPriorityList(before: EncryptCookies::class, prepend: Deprecated::class);
         $middleware->alias([
             'member' => Member::class,
             'auth.session' => Member::class,

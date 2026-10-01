@@ -59,6 +59,17 @@ class DeprecationTest extends TestCase
         );
     }
 
+    public function test_every_legacy_route_has_exactly_one_deprecated_middleware(): void
+    {
+        foreach (Route::getRoutes() as $route) {
+            $isLegacy = str_starts_with($route->uri(), 'api/') && ! str_starts_with($route->uri(), 'api/v1/')
+                && $route->getName() !== 'smtp.microsoft.callback';
+            $count = count(array_filter($route->gatherMiddleware(), fn ($m) => is_string($m) && str_starts_with($m, 'deprecated')));
+
+            $this->assertSame($isLegacy ? 1 : 0, $count, $route->uri());
+        }
+    }
+
     public function test_the_console_page_and_health_route_are_untouched(): void
     {
         $this->get('/')->assertOk()->assertHeaderMissing('Deprecation');
