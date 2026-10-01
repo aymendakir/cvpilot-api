@@ -11,14 +11,14 @@ Rules: test first (RED), minimal code (GREEN), flip the matching `WART` assertio
 - [x] Every framework-originated error matches the envelope; suite green
 - [ ] Review with maintainer (wording, `Retry-After`)
 
-- [ ] T3 Login (`invalid_credentials`, `account_suspended`, `email_not_verified`) and OTP mail failure carry specific codes; statuses and texts unchanged
-- [ ] T4 `UpstreamUnavailableException` (503) / `UpstreamInvalidResponseException` (502) in `AiGateway` and `AiController`; flip the three AI WARTs
-- [ ] T5 `EnsureErrorEnvelope` safety net for hand-built error bodies
-- [ ] T6 `request_id` in log context + `docs/ERRORS.md` (doc table checked against `ErrorCode` by a test)
-- [ ] T7 Sweep remaining hand-built errors, fresh-clone verification, open the S1 PR, **STOP**
+- [x] T3 Login (`invalid_credentials`, `account_suspended`, `email_not_verified`) and OTP mail failure carry specific codes; statuses and texts unchanged
+- [x] T4 `UpstreamUnavailableException` (503) / `UpstreamInvalidResponseException` (502) in `AiGateway` and `AiController`; flip the three AI WARTs
+- [x] T5 `EnsureErrorEnvelope` safety net for hand-built error bodies
+- [x] T6 `request_id` in log context + `docs/ERRORS.md` (doc table checked against `ErrorCode` by a test)
+- [x] T7 Sweep remaining hand-built errors, fresh-clone verification, open the S1 PR, **STOP**
 
 ### Checkpoint B (final)
 
-- [ ] CI green; all fixed WARTs flipped with their fix
-- [ ] Remaining WARTs for S2–S4 listed in the PR
+- [x] CI green; all fixed WARTs flipped with their fix
+- [x] Remaining WARTs for S2–S4 listed in the PR
 - [ ] Maintainer merges S1 before S2 is planned

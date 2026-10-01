@@ -228,6 +228,8 @@ Build order; each slice is its own branch and PR (small atomic commits, tests, b
 7. New endpoints: blog (public + admin), `POST admin/users`.
 8. `ai/improve-cv` and `cv/{id}/analyze` are not exposed under v1.
 9. Gemini key sent in a header; provider errors redacted.
+10. A JSON request body that is not valid JSON returns `400 bad_request` (previously it was read as empty input and usually ended as a `422`). _(S1)_
+11. Every response carries `X-Request-Id`; 5xx responses always use a generic message (the cause is logged with the request id); `abort(503)` stays `503` instead of being rewritten to `500`; API routes answer JSON regardless of `Accept`. _(S1)_
 
 ## 12. Commands
 
