@@ -235,6 +235,10 @@ Build order; each slice is its own branch and PR (small atomic commits, tests, b
 13. `me`, login and profile update return `UserResource` (no `session_version`, `suspended`, `last_seen_at`, `created_at`); every other model response is an explicit field list. _(S3)_
 14. Provider failures: integration test and SMTP check/test/connect answer `502 upstream_invalid_response` (provider answered with an error) or `503 upstream_unavailable` (unreachable, timed out, not configured) with a generic body; local PHP/template/database failures are `500`. The redacted reason is stored in `integrations.last_error` / `mail_settings.last_error` (new nullable column), returned in the admin resources and logged with the request id. _(S3)_
 15. Admins no longer read user CV text: admin user detail drops `extracted_text`, CV version `content`, interview `cv_text`, report `input` and the temporary `reviews`; `GET admin/cv-documents/{id}/file` (legacy `admin/uploads/{id}`) is removed. _(S3)_
+16. Security (S4, legacy routes included): login throttle 5/min per email+IP and 30/min per IP (was 20/120); admin routes 60/min; the session `same_site` default is `lax` and production refuses to boot with an insecure session cookie; the API sends `Content-Security-Policy` and `Cross-Origin-Resource-Policy` headers and a CORS header allow-list (the OAuth callback page is excluded from the CSP). _(S4)_
+17. A suspended or unverified account is `403` (`account_suspended` / `email_not_verified`) instead of `401`; unknown or revoked sessions stay `401`. _(S4)_
+18. `register` always answers `201` with the same body; an existing email gets a notice mail (one per address every 10 minutes) and no account is created. _(S4)_
+19. Every admin write and every read of user content is audited as `admin.<route name>` (legacy aliases as `admin.legacy.*`); admin copies of CV, workspace, interview and report records are no longer written and the existing ones are purged. All log lines are scrubbed of provider keys. _(S4)_
 
 ## 12. Commands
 
