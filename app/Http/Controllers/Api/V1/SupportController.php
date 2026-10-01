@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Requests\Admin\ListContactMessagesRequest;
 use App\Http\Requests\Admin\UpdateContactMessageRequest;
 use App\Http\Requests\Support\ContactMessageRequest;
+use App\Http\Resources\SupportMessageResource;
 use App\Models\SupportMessage;
 
 class SupportController
@@ -22,8 +23,8 @@ class SupportController
     {
         $data = $request->validated();
 
-        return SupportMessage::when($data['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->latest()->paginate($request->perPage(20));
+        return SupportMessageResource::paginate(SupportMessage::when($data['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->latest()->paginate($request->perPage(20)));
     }
 
     public function update(UpdateContactMessageRequest $request, SupportMessage $message)
@@ -31,6 +32,6 @@ class SupportController
         $message->update($request->validated());
         AuthController::audit($request, 'support_message_'.$message->id.'_updated', $request->user()->id);
 
-        return $message;
+        return SupportMessageResource::make($message);
     }
 }

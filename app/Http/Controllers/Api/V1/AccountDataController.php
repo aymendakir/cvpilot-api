@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\Account\DeleteAccountRequest;
+use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,7 @@ class AccountDataController
     public function export(Request $request)
     {
         $id = $request->user()->id;
-        $data = ['exported_at' => now()->toIso8601String(), 'profile' => $request->user()->toArray()];
+        $data = ['exported_at' => now()->toIso8601String(), 'profile' => UserResource::make($request->user())->resolve() + ['created_at' => $request->user()->created_at]];
         foreach (['cv_versions', 'job_workspaces', 'interview_sessions', 'career_reports', 'applications', 'ats_reports', 'job_searches'] as $table) {
             $data[$table] = DB::table($table)->where('user_id', $id)->get();
         }

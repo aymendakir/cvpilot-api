@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Requests\Applications\ListApplicationsRequest;
 use App\Http\Requests\Applications\StoreApplicationRequest;
 use App\Http\Requests\Applications\UpdateApplicationRequest;
+use App\Http\Resources\ApplicationResource;
 use App\Models\Application;
 use App\Models\CvVersion;
 use App\Services\AdminReview;
@@ -15,7 +16,7 @@ class ApplicationController
 {
     public function index(ListApplicationsRequest $r)
     {
-        return Application::where('user_id', $r->user()->id)->latest()->paginate($r->perPage(20));
+        return ApplicationResource::paginate(Application::where('user_id', $r->user()->id)->latest()->paginate($r->perPage(20)));
     }
 
     public function store(StoreApplicationRequest $r)
@@ -31,14 +32,14 @@ class ApplicationController
         AdminReview::record('application', $item);
         AuthController::audit($r, 'application_saved', $r->user()->id);
 
-        return response()->json($item, $item->wasRecentlyCreated ? 201 : 200);
+        return ApplicationResource::make($item)->response()->setStatusCode($item->wasRecentlyCreated ? 201 : 200);
     }
 
     public function show(Request $r, Application $application)
     {
         Gate::forUser($r->user())->authorize('view', $application);
 
-        return $application;
+        return ApplicationResource::make($application);
     }
 
     public function update(UpdateApplicationRequest $r, Application $application)
@@ -52,7 +53,7 @@ class ApplicationController
         AdminReview::record('application', $application);
         AuthController::audit($r, 'application_updated', $r->user()->id);
 
-        return $application;
+        return ApplicationResource::make($application);
     }
 
     public function destroy(Request $r, Application $application)

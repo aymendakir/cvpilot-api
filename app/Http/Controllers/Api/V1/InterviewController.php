@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\Career\DocumentsWithIdentityRequest;
 use App\Http\Requests\Career\ReplyInterviewRequest;
+use App\Http\Resources\InterviewSessionResource;
 use App\Models\InterviewSession;
 use App\Services\AdminReview;
 use App\Services\AiGateway;
@@ -30,7 +31,7 @@ class InterviewController
     {
         Gate::forUser($r->user())->authorize('view', $session);
 
-        return $session;
+        return InterviewSessionResource::make($session);
     }
 
     public function destroy(Request $r, InterviewSession $session)

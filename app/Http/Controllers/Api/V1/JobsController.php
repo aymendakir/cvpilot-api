@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Requests\Jobs\JobLinksRequest;
 use App\Http\Requests\Jobs\SaveJobSearchRequest;
 use App\Http\Requests\Jobs\SearchJobsRequest;
+use App\Http\Resources\JobSearchResource;
 use App\Models\CvDocument;
 use App\Models\JobSearch;
 use App\Services\AtsScorer;
@@ -116,7 +117,7 @@ class JobsController
 
     public function saved(Request $r)
     {
-        return JobSearch::where('user_id', $r->user()->id)->latest()->limit(30)->get();
+        return JobSearchResource::collection(JobSearch::where('user_id', $r->user()->id)->latest()->limit(30)->get());
     }
 
     public function save(SaveJobSearchRequest $r)
@@ -124,7 +125,7 @@ class JobsController
         $d = $r->validated();
         $d['user_id'] = $r->user()->id;
 
-        return response()->json(JobSearch::create($d), 201);
+        return JobSearchResource::make(JobSearch::create($d))->response()->setStatusCode(201);
     }
 
     public function destroySaved(Request $r, JobSearch $search)

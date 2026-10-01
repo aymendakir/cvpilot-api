@@ -8,6 +8,8 @@ use App\Http\Requests\Admin\ListAuditEventsRequest;
 use App\Http\Requests\Admin\ListUsersRequest;
 use App\Http\Requests\Admin\SendWarningRequest;
 use App\Http\Requests\Admin\SuspendUserRequest;
+use App\Http\Resources\AdminApplicationResource;
+use App\Http\Resources\AdminUserResource;
 use App\Models\AdminReviewItem;
 use App\Models\Application;
 use App\Models\CareerReport;
@@ -34,8 +36,7 @@ class AdminController
 
     public function users(ListUsersRequest $r)
     {
-
-        return User::when($r->search, fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', '%'.$r->search.'%')->orWhere('email', 'like', '%'.$r->search.'%')))->orderByDesc('id')->paginate($r->perPage(20));
+        return AdminUserResource::paginate(User::when($r->search, fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', '%'.$r->search.'%')->orWhere('email', 'like', '%'.$r->search.'%')))->orderByDesc('id')->paginate($r->perPage(20)));
     }
 
     public function suspend(SuspendUserRequest $r, User $user)
@@ -47,7 +48,7 @@ class AdminController
         $user->save();
         AuthController::audit($r, 'user_'.$user->id.($user->suspended ? '_suspended' : '_enabled'), $r->user()->id);
 
-        return $user;
+        return AdminUserResource::make($user);
     }
 
     public function logs(ListAuditEventsRequest $r)
@@ -70,7 +71,7 @@ class AdminController
     {
         $validIds = AdminReviewItem::where('kind', 'application')->where('expires_at', '>', now())->pluck('record_id');
 
-        return Application::whereIn('id', $validIds)->with('user:id,name,email')->when($r->search, fn ($q) => $q->where(fn ($s) => $s->where('title', 'like', '%'.$r->search.'%')->orWhere('company', 'like', '%'.$r->search.'%')->orWhereHas('user', fn ($u) => $u->where('name', 'like', '%'.$r->search.'%')->orWhere('email', 'like', '%'.$r->search.'%'))))->when($r->status, fn ($q) => $q->where('status', $r->status))->latest()->paginate($r->perPage(20));
+        return AdminApplicationResource::paginate(Application::whereIn('id', $validIds)->with('user:id,name,email')->when($r->search, fn ($q) => $q->where(fn ($s) => $s->where('title', 'like', '%'.$r->search.'%')->orWhere('company', 'like', '%'.$r->search.'%')->orWhereHas('user', fn ($u) => $u->where('name', 'like', '%'.$r->search.'%')->orWhere('email', 'like', '%'.$r->search.'%'))))->when($r->status, fn ($q) => $q->where('status', $r->status))->latest()->paginate($r->perPage(20)));
     }
 
     public function warning(SendWarningRequest $r, User $user, PlatformMail $mail)

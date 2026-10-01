@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Models\User;
+use App\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 
 class CurrentUserController
 {
-    public function __invoke(Request $request): ?User
+    public function __invoke(Request $request): UserResource
     {
-        return $request->user();
+        return UserResource::make($request->user());
     }
 }

@@ -3,6 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\Career\LibraryRequest;
+use App\Http\Resources\ApplicationResource;
+use App\Http\Resources\CareerReportResource;
+use App\Http\Resources\CvDocumentResource;
+use App\Http\Resources\CvVersionResource;
+use App\Http\Resources\InterviewSessionResource;
+use App\Http\Resources\JobWorkspaceResource;
+use App\Http\Resources\ModelResource;
 use App\Models\Application;
 use App\Models\CareerReport;
 use App\Models\CvDocument;
@@ -12,6 +19,9 @@ use App\Models\JobWorkspace;
 
 class LibraryController
 {
+    /** @var array<string, class-string<ModelResource>> */
+    private const RESOURCES = ['cv' => CvVersionResource::class, 'interview' => InterviewSessionResource::class, 'workspace' => JobWorkspaceResource::class, 'report' => CareerReportResource::class, 'application' => ApplicationResource::class, 'upload' => CvDocumentResource::class, 'cover_letter' => CareerReportResource::class];
+
     public function __invoke(LibraryRequest $r)
     {
         $uid = $r->user()->id;
@@ -28,6 +38,6 @@ class LibraryController
             $q->where('type', 'cover_letter');
         }
 
-        return ['counts' => $counts, 'items' => $q->latest()->paginate($r->perPage(12))];
+        return ['counts' => $counts, 'items' => self::RESOURCES[$kind]::paginate($q->latest()->paginate($r->perPage(12)))];
     }
 }

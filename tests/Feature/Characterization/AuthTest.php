@@ -79,7 +79,7 @@ class AuthTest extends TestCase
         $this->assertNull($user->verified_at);
     }
 
-    public function test_login_success_returns_200_and_the_full_user_model(): void
+    public function test_login_success_returns_200_and_the_member_resource(): void
     {
         $user = $this->makeUser(['email' => 'login@example.test']);
 
@@ -92,9 +92,9 @@ class AuthTest extends TestCase
             ->assertJsonPath('role', 'user')
             ->assertJsonMissingPath('password');
 
-        // Pinned wart (SPEC 5.8): internal columns are returned.
-        $response->assertJsonPath('session_version', 1)
-            ->assertJsonPath('suspended', false);
+        // SPEC 5.8 (S3): internal columns are no longer returned.
+        $response->assertJsonMissingPath('session_version')->assertJsonMissingPath('suspended')
+            ->assertJsonMissingPath('last_seen_at');
 
         $this->assertSame($user->id, session('user_id'));
         $this->assertSame(1, session('session_version'));
@@ -278,14 +278,15 @@ class AuthTest extends TestCase
             ->assertJsonStructure(['message', 'errors' => ['password']]);
     }
 
-    public function test_me_returns_the_full_user_model_when_signed_in(): void
+    public function test_me_returns_the_member_resource_when_signed_in(): void
     {
         $user = $this->makeUser();
 
         $this->signIn($user)->getJson('/api/me')
             ->assertOk()
             ->assertJsonPath('id', $user->id)
-            ->assertJsonPath('session_version', 1)
+            ->assertJsonMissingPath('session_version')
+            ->assertJsonMissingPath('suspended')
             ->assertJsonMissingPath('password');
     }
 

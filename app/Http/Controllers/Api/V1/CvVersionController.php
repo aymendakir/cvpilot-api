@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\Career\StoreCvVersionRequest;
 use App\Http\Requests\Career\UpdateCvVersionRequest;
+use App\Http\Resources\CvVersionResource;
 use App\Models\CvVersion;
 use App\Models\JobWorkspace;
 use App\Services\AdminReview;
@@ -14,7 +15,7 @@ class CvVersionController
 {
     public function index(Request $r)
     {
-        return CvVersion::where('user_id', $r->user()->id)->latest()->limit(100)->get();
+        return CvVersionResource::collection(CvVersion::where('user_id', $r->user()->id)->latest()->limit(100)->get());
     }
 
     public function store(StoreCvVersionRequest $r)
@@ -27,14 +28,14 @@ class CvVersionController
         AdminReview::record('cv', $item);
         AuthController::audit($r, 'cv_saved', $r->user()->id);
 
-        return response()->json($item, 201);
+        return CvVersionResource::make($item)->response()->setStatusCode(201);
     }
 
     public function show(Request $r, CvVersion $version)
     {
         Gate::forUser($r->user())->authorize('view', $version);
 
-        return $version;
+        return CvVersionResource::make($version);
     }
 
     public function update(UpdateCvVersionRequest $r, CvVersion $version)
@@ -43,7 +44,7 @@ class CvVersionController
         $version->update($d);
         AdminReview::record('cv', $version);
 
-        return $version;
+        return CvVersionResource::make($version);
     }
 
     public function destroy(Request $r, CvVersion $version)

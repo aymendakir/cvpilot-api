@@ -158,11 +158,14 @@ class AdminAccessTest extends TestCase
             'cURL error 28: Operation timed out for https://generativelanguage.googleapis.com/v1beta/models/m:generateContent?key=GEMINI-KEY-123'
         ));
 
-        $response = $this->signIn($this->makeAdmin())->postJson("/api/admin/integrations/{$integration->id}/test")->assertStatus(422);
+        $response = $this->signIn($this->makeAdmin())->postJson("/api/admin/integrations/{$integration->id}/test")->assertStatus(503);
 
-        $this->assertStringContainsString('Connection failed: cURL error 28', $response->json('message'));
+        // S3 (SPEC decision 12): unreachable / timed out -> 503 with a generic body; the redacted reason is stored.
+        $this->assertSame('upstream_unavailable', $response->json('code'));
+        $this->assertStringNotContainsString('cURL error 28', $response->getContent());
         $this->assertStringNotContainsString('GEMINI-KEY-123', $response->getContent());
-        $this->assertStringNotContainsString('GEMINI-KEY-123', (string) $integration->refresh()->last_error);
+        $this->assertStringContainsString('cURL error 28', (string) $integration->refresh()->last_error);
+        $this->assertStringNotContainsString('GEMINI-KEY-123', (string) $integration->last_error);
     }
 
     public function test_cache_clear_is_a_closure_route_returning_200(): void

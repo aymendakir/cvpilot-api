@@ -11,6 +11,7 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\RequestOtpRequest;
 use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\PlatformMail;
 use App\Support\Redactor;
@@ -62,7 +63,7 @@ class AuthController
         $r->session()->put('session_version', $u->session_version);
         self::audit($r, 'login', $u->id);
 
-        return $u;
+        return UserResource::make($u);
     }
 
     public function code(RequestOtpRequest $r)
@@ -141,7 +142,7 @@ class AuthController
         $u->fill($r->validated());
         $u->save();
 
-        return $u;
+        return UserResource::make($u);
     }
 
     public function password(ChangePasswordRequest $r)

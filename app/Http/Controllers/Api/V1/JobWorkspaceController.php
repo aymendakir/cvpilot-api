@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\Career\StoreJobWorkspaceRequest;
+use App\Http\Resources\JobWorkspaceResource;
 use App\Models\JobWorkspace;
 use App\Services\AdminReview;
 use Illuminate\Http\Request;
@@ -12,7 +13,7 @@ class JobWorkspaceController
 {
     public function index(Request $r)
     {
-        return JobWorkspace::where('user_id', $r->user()->id)->latest()->limit(100)->get();
+        return JobWorkspaceResource::collection(JobWorkspace::where('user_id', $r->user()->id)->latest()->limit(100)->get());
     }
 
     public function store(StoreJobWorkspaceRequest $r)
@@ -23,13 +24,13 @@ class JobWorkspaceController
         AdminReview::record('workspace', $item);
         AuthController::audit($r, 'workspace_saved', $r->user()->id);
 
-        return response()->json($item, 201);
+        return JobWorkspaceResource::make($item)->response()->setStatusCode(201);
     }
 
     public function show(Request $r, JobWorkspace $workspace)
     {
         Gate::forUser($r->user())->authorize('view', $workspace);
 
-        return $workspace;
+        return JobWorkspaceResource::make($workspace);
     }
 }

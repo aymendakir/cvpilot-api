@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\Cv\ExtractCvTextRequest;
 use App\Http\Requests\Cv\StoreCvDocumentRequest;
+use App\Http\Resources\CvDocumentResource;
 use App\Models\CvDocument;
 use App\Services\AtsScorer;
 use App\Services\DocumentExtractor;
@@ -16,7 +17,7 @@ class CvController
 {
     public function index(Request $r)
     {
-        return CvDocument::where('user_id', $r->user()->id)->latest()->get();
+        return CvDocumentResource::collection(CvDocument::where('user_id', $r->user()->id)->latest()->get());
     }
 
     public function store(StoreCvDocumentRequest $r, DocumentExtractor $extractor)
@@ -31,7 +32,7 @@ class CvController
             }$doc = CvDocument::create(['user_id' => $r->user()->id, 'name' => $file->getClientOriginalName(), 'disk_path' => $path, 'mime' => $file->getMimeType(), 'size' => $file->getSize(), 'extracted_text' => $text, 'is_primary' => $r->boolean('is_primary'), 'expires_at' => now()->addHours(48)]);
             AuthController::audit($r, 'cv_uploaded', $r->user()->id);
 
-            return response()->json($doc, 201);
+            return CvDocumentResource::make($doc)->response()->setStatusCode(201);
         });
     }
 
