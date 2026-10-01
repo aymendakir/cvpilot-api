@@ -239,6 +239,7 @@ Build order; each slice is its own branch and PR (small atomic commits, tests, b
 17. A suspended or unverified account is `403` (`account_suspended` / `email_not_verified`) instead of `401`; unknown or revoked sessions stay `401`. _(S4)_
 18. `register` always answers `201` with the same body; an existing email gets a notice mail (one per address every 10 minutes) and no account is created. _(S4)_
 19. Every admin write and every read of user content is audited as `admin.<route name>` (legacy aliases as `admin.legacy.*`); admin copies of CV, workspace, interview and report records are no longer written and the existing ones are purged. All log lines are scrubbed of provider keys. _(S4)_
+20. New endpoints (S5): public `GET blog` and `GET blog/{slug}` (published posts only, cacheable for 60 s, no cookies), admin `admin/blog` CRUD, and `POST admin/users` (`201`, `AdminUserResource`, no email sent; `role=admin` needs `confirm_admin: true`). The deployed frontend calls the legacy paths, so they exist as deprecated aliases until S7. _(S5)_
 
 ## 12. Commands
 

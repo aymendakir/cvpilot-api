@@ -155,6 +155,11 @@
         "scope": "admin"
     },
     {
+        "method": "POST",
+        "uri": "v1/admin/users",
+        "scope": "admin"
+    },
+    {
         "method": "GET",
         "uri": "v1/admin/users/{user}",
         "scope": "admin"

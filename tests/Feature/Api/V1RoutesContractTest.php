@@ -17,9 +17,6 @@ class V1RoutesContractTest extends TestCase
     /** The successor uses another verb (SPEC §3.2): legacy "METHOD uri" => v1 method. */
     private const VERB_CHANGES = ['POST api/password' => 'PUT', 'POST api/admin/cache/clear' => 'DELETE'];
 
-    /** Routes that arrive in later slices (S5): never present in the S2 table. */
-    private const LATER_SLICES = ['POST v1/admin/users'];
-
     private function pinned(): array
     {
         return json_decode((string) file_get_contents(base_path('tests/fixtures/routes-v1.json')), true);
@@ -40,9 +37,6 @@ class V1RoutesContractTest extends TestCase
         sort($actual);
 
         $this->assertSame($expected, $actual, 'v1 routes differ from tests/fixtures/routes-v1.json (update the fixture only with SPEC §3.2)');
-        foreach (self::LATER_SLICES as $later) {
-            $this->assertNotContains('public '.$later, $actual);
-        }
     }
 
     public function test_every_v1_route_is_named_controller_based_and_has_numeric_ids(): void

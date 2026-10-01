@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Requests\Admin\CreateUserRequest;
 use App\Http\Requests\Admin\ListApplicationsRequest;
 use App\Http\Requests\Admin\ListAuditEventsRequest;
 use App\Http\Requests\Admin\ListUsersRequest;
@@ -26,6 +27,7 @@ use App\Services\PlatformMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController
 {
@@ -41,6 +43,30 @@ class AdminController
     public function users(ListUsersRequest $r)
     {
         return AdminUserResource::paginate(User::when($r->search, fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', '%'.$r->search.'%')->orWhere('email', 'like', '%'.$r->search.'%')))->orderByDesc('id')->paginate($r->perPage(20)));
+    }
+
+    /**
+     * Creates an account on behalf of an admin. No email is sent; an unverified account must
+     * verify its email before it can sign in. The password is only ever stored hashed.
+     */
+    public function storeUser(CreateUserRequest $r)
+    {
+        $d = $r->validated();
+
+        $user = new User;
+        $user->name = $d['name'];
+        $user->email = $d['email'];
+        $user->password = Hash::make($d['password']);
+        $user->role = $d['role'];
+        $user->verified_at = ! empty($d['verified']) ? now() : null;
+        $user->save();
+
+        AuthController::audit($r, 'user_created:'.$user->id, $r->user()->id);
+        if ($user->role === 'admin') {
+            AuthController::audit($r, 'admin_account_created:'.$user->id, $r->user()->id);
+        }
+
+        return AdminUserResource::make($user->refresh())->response()->setStatusCode(201);
     }
 
     public function suspend(SuspendUserRequest $r, User $user)

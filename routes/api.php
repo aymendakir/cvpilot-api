@@ -175,6 +175,7 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
 
         Route::prefix('users')->name('users.')->group(function () {
             Route::get('/', [AdminController::class, 'users'])->name('index');
+            Route::post('/', [AdminController::class, 'storeUser'])->middleware('throttle:10,1,admin-create-user:')->name('store');
             Route::get('{user}', [AdminController::class, 'detail'])->whereNumber('user')->name('show');
             Route::patch('{user}', [AdminController::class, 'suspend'])->whereNumber('user')->name('update');
             Route::post('{user}/warnings', [AdminController::class, 'storeWarning'])->whereNumber('user')->middleware('throttle:10,1,warning:')->name('warnings.store');

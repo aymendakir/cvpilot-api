@@ -126,6 +126,8 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
         Route::post('smtp/check', [MailSettingsController::class, 'check'])->middleware('throttle:3,1,smtp-check:')->middleware('deprecated:/api/v1/admin/smtp/check');
         Route::post('smtp/test', [MailSettingsController::class, 'test'])->middleware('throttle:3,1,smtp-test:')->middleware('deprecated:/api/v1/admin/smtp/test');
         Route::get('users', [AdminController::class, 'users'])->middleware('deprecated:/api/v1/admin/users');
+        // Added in S5 for the deployed frontend (removed with the other aliases in S7).
+        Route::post('users', [AdminController::class, 'storeUser'])->middleware('throttle:10,1,admin-create-user:')->middleware('deprecated:/api/v1/admin/users');
         Route::get('users/{user}', [AdminController::class, 'detail'])->middleware('deprecated:/api/v1/admin/users/{user}');
         Route::post('users/{user}/warning', [AdminController::class, 'warning'])->middleware('throttle:10,1,warning:')->middleware('deprecated:/api/v1/admin/users/{user}/warnings');
         Route::get('applications', [AdminController::class, 'applications'])->middleware('deprecated:/api/v1/admin/applications');

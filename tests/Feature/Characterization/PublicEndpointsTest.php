@@ -88,9 +88,10 @@ class PublicEndpointsTest extends TestCase
         $this->signIn($this->makeAdmin())->getJson('/api/admin/blog')->assertOk();
     }
 
-    public function test_admin_user_creation_the_frontend_calls_does_not_exist(): void
+    public function test_admin_user_creation_the_frontend_calls_exists(): void
     {
-        $this->signIn($this->makeAdmin())->postJson('/api/admin/users', ['name' => 'x'])->assertStatus(405); // GAP: S5 adds it
+        // S5 (SPEC §8.2): flipped from a GAP (405). Full behaviour lives in AdminCreateUserTest.
+        $this->signIn($this->makeAdmin())->postJson('/api/admin/users', ['name' => 'x'])->assertStatus(422);
     }
 
     public function test_the_root_serves_the_legacy_console_html(): void

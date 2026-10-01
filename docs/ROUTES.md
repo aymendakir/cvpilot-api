@@ -99,6 +99,7 @@ All paths are relative to the API origin. Errors use the envelope in [ERRORS.md]
 | admin | GET | `/api/v1/admin/summary` | `admin` | `v1.admin.summary` |
 | admin | GET | `/api/v1/admin/system` | `admin` | `v1.admin.system` |
 | admin | GET | `/api/v1/admin/users` | `admin` | `v1.admin.users.index` |
+| admin | POST | `/api/v1/admin/users` | `admin` + `10,1,admin-create-user:` | `v1.admin.users.store` |
 | admin | GET | `/api/v1/admin/users/{user}` | `admin` | `v1.admin.users.show` |
 | admin | PATCH | `/api/v1/admin/users/{user}` | `admin` | `v1.admin.users.update` |
 | admin | POST | `/api/v1/admin/users/{user}/warnings` | `admin` + `10,1,warning:` | `v1.admin.users.warnings.store` |
@@ -140,6 +141,7 @@ Every alias answers with `Deprecation: true`, a `Link: <successor>; rel="success
 | GET | `/api/admin/summary` | `/api/v1/admin/summary` |
 | GET | `/api/admin/system` | `/api/v1/admin/system` |
 | GET | `/api/admin/users` | `/api/v1/admin/users` |
+| POST | `/api/admin/users` | `/api/v1/admin/users` |
 | GET | `/api/admin/users/{user}` | `/api/v1/admin/users/{user}` |
 | PATCH | `/api/admin/users/{user}` | `/api/v1/admin/users/{user}` |
 | POST | `/api/admin/users/{user}/warning` | `/api/v1/admin/users/{user}/warnings` |
