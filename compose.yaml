@@ -9,6 +9,26 @@ services:
         condition: service_healthy
     volumes:
       - documents:/var/www/html/storage
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8080/up') === false ? 1 : 0);"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+  # Runs the Laravel scheduler (hourly retention: expired uploads, admin copies, old support messages).
+  # Same image, env and storage volume as the api; it never migrates (the api does).
+  scheduler:
+    build: .
+    command: ["php", "artisan", "schedule:work"]
+    env_file: .env
+    environment:
+      RUN_MIGRATIONS: "false"
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - documents:/var/www/html/storage
   db:
     image: mysql:8.4
     environment:
