@@ -1,11 +1,11 @@
 # Task list — Phase 3, slice S4 (`ats-api`)
 
 Branch `feature/ats-s4`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §5, §8.4.
-Status: **planned; waiting for approval of decisions 28–30.**
+Status: **T1–T3 built; at Checkpoint A.** Decisions 28–30 approved as written.
 
-- [ ] T1 File size format per locale (requested fix after S3)
-- [ ] T2 Route, request, controller, Resource
-- [ ] T3 Error cases (422 errors.file / cv_text / job_description / locale)
+- [x] T1 File size format per locale (requested fix after S3)
+- [x] T2 Route, request, controller, Resource
+- [x] T3 Error cases (422 errors.file / cv_text / job_description / locale)
 
 ### Checkpoint A
 
