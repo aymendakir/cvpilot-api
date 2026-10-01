@@ -15,9 +15,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('cv_documents', function (Blueprint $table) {
-            $table->string('disk_path')->nullable()->change();
-        });
+        // Repeatable: only alter the column while it is still NOT NULL.
+        $column = collect(Schema::getColumns('cv_documents'))->firstWhere('name', 'disk_path');
+        if ($column !== null && ! $column['nullable']) {
+            Schema::table('cv_documents', function (Blueprint $table) {
+                $table->string('disk_path')->nullable()->change();
+            });
+        }
 
         // Delete originals that are still on a disk (local or compose volumes; gone anyway on ephemeral hosts).
         DB::table('cv_documents')->whereNotNull('disk_path')->orderBy('id')->chunkById(100, function ($rows) {

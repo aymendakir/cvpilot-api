@@ -72,8 +72,9 @@ CV text and metadata are kept for **48 hours**, admin copies for 48 hours and su
 
 ## 5. Releases and migrations
 
-The container applies pending migrations on start (web role only, retrying while the database wakes up). Rules of thumb:
+The container applies pending migrations on start (web role only). It retries **only** while the database cannot be reached (connection refused, DNS, timeout, "server has gone away"), up to 12 times 5 seconds apart. Any other migration error (table already exists, bad password, SQL or PHP error) is printed once and the container exits, so the platform log shows the real cause instead of a misleading "database is not ready". Rules of thumb:
 
+0. **Migrations must be repeatable.** MySQL DDL is not transactional: a run that dies between two statements leaves a half-built table and no record, and a plain `Schema::create` then fails on every later start ("table already exists"). Create a table only if it is missing, add every column and index only if it is missing (`Schema::hasTable`, `hasColumn`, `hasIndex`). A test runs every recent migration twice and on half-built tables.
 1. Schema changes are **additive first**: a release adds columns/tables, a later release removes what is unused. A rolling deploy briefly runs old code against the new schema.
 2. Deploy order for this release: deploy the code (the new `sessions`, `cache`, `cache_locks` tables and the upload cleanup migration run at start), **then** switch the environment variables (`SESSION_DRIVER`, `CACHE_STORE`, `LOG_CHANNEL`, `TRUSTED_PROXIES`, `RUN_SCHEDULER`) and restart.
    Switching `SESSION_DRIVER` signs everyone out once; do it at a quiet moment.
