@@ -622,6 +622,10 @@ Report tabs map 1:1 to the response: Overview (`score`, `grade`, `summary`, top 
 
 S0 spike + fixtures (build.php, F1–F13) · S1 `ats-language` + `ats-parsing` · S2 `ats-checks` + `ats-keywords` · S3 `ats-scoring` (score, caps, what-if, suggestions, EN/FR messages) · S4 `ats-api` (route, request, Resource, JSON Schema, privacy tests) · S5 docs (`ats-scoring.md`, changelog) and calibration run · then Phase 3b (`cv-ai`) and, separately, removal of the legacy engine.
 
+### 16.1 Carried over from Phase 2 (S4): one prompt envelope for AI calls
+
+Moved here from Phase 2 §7 item 3 (decision after the S4 plan). Scope when this phase is planned: every AI call that interpolates untrusted text (`ai/chat`, `ai/cover-letter`, the career generators, interviews) sends CV, job and user text as a JSON-encoded block labelled as data, never as instructions; prompt _wording_ stays as is. It needs a model evaluation (before/after outputs on the fixture CVs) because it changes the text the model receives, so it is a separate task with its own acceptance check, not part of the deterministic ATS engine. The legacy `ai/ats-analysis` already uses a JSON data block.
+
 ## 17. Open questions (recommendation first)
 
 1. **Dependencies/extensions:** add `wamania/php-stemmer` (Snowball EN/FR) and `ext-intl` to the Dockerfile for normalization? (Recommended.) Alternative: a small in-house stemmer + `iconv` transliteration — less accurate.
