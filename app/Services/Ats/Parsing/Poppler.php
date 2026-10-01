@@ -2,6 +2,7 @@
 
 namespace App\Services\Ats\Parsing;
 
+use Illuminate\Process\Exceptions\ProcessTimedOutException;
 use Illuminate\Support\Facades\Process;
 
 /**
@@ -35,6 +36,30 @@ final class Poppler
         }
 
         return $problems;
+    }
+
+    /**
+     * Runs one binary on a PDF for the parser: `$args` then the file path, output to stdout.
+     *
+     * @param  list<string>  $args
+     * @return array{exit: int, output: string, error: string}
+     *
+     * @throws UnreadableDocument timeout, a binary that does not start, or output over the size cap
+     */
+    public function exec(string $name, array $args, string $path): array
+    {
+        try {
+            $result = Process::timeout((int) config('ats.poppler.timeout', 10))->run([$this->binary($name), ...$args, $path, ...($name === 'pdftotext' ? ['-'] : [])]);
+        } catch (ProcessTimedOutException) {
+            throw new UnreadableDocument(UnreadableDocument::TIMEOUT, "{$name} timed out");
+        } catch (\Throwable $e) {
+            throw new \RuntimeException("{$name} could not run: ".$e->getMessage(), previous: $e);
+        }
+        if (strlen($result->output()) > (int) config('ats.poppler.max_output', 20 * 1024 * 1024)) {
+            throw new UnreadableDocument(UnreadableDocument::CORRUPT, "{$name} output is too large");
+        }
+
+        return ['exit' => (int) $result->exitCode(), 'output' => $result->output(), 'error' => $result->errorOutput()];
     }
 
     /**
