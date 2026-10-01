@@ -27,21 +27,21 @@ Replace today's text-only checker with an engine that analyses **the actual file
 
 This request bundles several independently testable capabilities, so module boundaries come first. After you approve the map, each module gets `SPEC-ats-<id>.md` (objective, interfaces, tests) in build order; the cross-module contract (response shape, scoring model, fixtures) lives here.
 
-| Module id                    | Responsibility                                                                                                                                      | Depends on                    |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `ats-parsing`                | PDF / DOCX / text → `ParsedDocument` (text, lines, pages, structure signals: columns, tables, images, text boxes, header/footer text, glyph issues) | —                             |
-| `ats-language`               | Language detection (EN/FR), normalization (case, accents, Unicode), tokenization, stop words, Snowball stemming                                     | —                             |
-| `ats-keywords`               | Job-description keyword extraction + synonym/stem-aware matching with evidence, stuffing detection                                                  | `ats-language`                |
-| `ats-checks`                 | Format, section and content checks → `CheckResult[]`                                                                                                | `ats-parsing`, `ats-language` |
-| `ats-scoring`                | Weights, normalization, caps, grade, what-if impact, suggestion ranking, message catalog (EN/FR)                                                    | `ats-checks`, `ats-keywords`  |
-| `ats-api`                    | `POST ats/analyses`, FormRequest, report Resource, JSON Schema, error mapping                                                                       | `ats-scoring`                 |
-| `ats-ui` (Phase 4, `cv-ai`)  | Report UI built on the schema                                                                                                                       | `ats-api`                     |
+| Module id                   | Responsibility                                                                                                                                      | Depends on                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `ats-parsing`               | PDF / DOCX / text → `ParsedDocument` (text, lines, pages, structure signals: columns, tables, images, text boxes, header/footer text, glyph issues) | —                             |
+| `ats-language`              | Language detection (EN/FR), normalization (case, accents, Unicode), tokenization, stop words, Snowball stemming                                     | —                             |
+| `ats-keywords`              | Job-description keyword extraction + synonym/stem-aware matching with evidence, stuffing detection                                                  | `ats-language`                |
+| `ats-checks`                | Format, section and content checks → `CheckResult[]`                                                                                                | `ats-parsing`, `ats-language` |
+| `ats-scoring`               | Weights, normalization, caps, grade, what-if impact, suggestion ranking, message catalog (EN/FR)                                                    | `ats-checks`, `ats-keywords`  |
+| `ats-api`                   | `POST ats/analyses`, FormRequest, report Resource, JSON Schema, error mapping                                                                       | `ats-scoring`                 |
+| `ats-ui` (Phase 4, `cv-ai`) | Report UI built on the schema                                                                                                                       | `ats-api`                     |
 
 Build order: `ats-parsing` ∥ `ats-language` → `ats-keywords` ∥ `ats-checks` → `ats-scoring` → `ats-api` → `ats-ui` (Phase 4). No cycles. A **spike** (S0) on `ats-parsing` comes first because PDF structure detection is the main technical risk (§12 R1).
 
 ## 3. Assumptions (confirmed)
 
-1. Laravel 12 / PHP 8.3 (`php:8.3-apache` image); existing deps `smalot/pdfparser` and `phpoffice/phpword` are reused. `ext-zip`, `ext-dom` available. `ext-intl` is **not** in the Docker image today; it is added (with `wamania/php-stemmer`) in S1 (§17 answer 1).
+1. Laravel 12 / PHP 8.3 (`php:8.3-apache` image). PDFs are read with **poppler** (`poppler-utils`: `pdftotext -bbox-layout`, `pdfinfo`, `pdfimages`), installed in the image since S1; `smalot/pdfparser` was removed in S1 (the S0 spike showed it cannot see Canva layouts, `docs/ats-spike-s0.md`). DOCX is read from its raw XML (`ext-zip`, `ext-dom`). `ext-intl` and `wamania/php-stemmer` were added in S1 (§17 answer 1).
 2. The server receives the **file**; analysis is **stateless** — the upload lives only in a temp file for the request, is deleted in a `finally`, is never stored or logged, and no AI provider is called.
 3. Languages v1: **English and French** (detected from the CV; job description may differ). Any other language → still analysed with exact matching only and `language.supported=false`.
 4. Scores are **estimates of document quality and keyword coverage**, not an employer ATS result (shown in `limitations`).
@@ -62,17 +62,17 @@ input (file | cv_text) + optional job_description
 
 ### 4.1 Parsing signals (`structure`)
 
-| Signal        | DOCX (ZIP + XML)                                                                       | PDF (`smalot/pdfparser` text positions, XObjects)                                                                                 | Text paste |
-| ------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| Columns       | `w:sectPr/w:cols` with `w:num > 1` or `w:col` count > 1                                | Per page, cluster text-line start `x`; ≥ 2 clusters, each ≥ 8 lines, horizontal gap ≥ 25 % of page width, vertical overlap ≥ 50 % | unverified |
-| Tables        | any `w:tbl` containing text                                                            | ≥ 3 consecutive lines with ≥ 3 aligned cells (low confidence)                                                                     | unverified |
-| Images        | `w:drawing` / `w:pict` (`wp:extent` area vs page area)                                 | `Image` XObjects (pixel size, count)                                                                                              | unverified |
-| Text boxes    | `w:txbxContent`, `v:textbox`, `wps:txbx`                                               | n/a                                                                                                                               | unverified |
-| Header/footer | text in `word/header*.xml`, `word/footer*.xml`                                         | text in top/bottom 7 % of the page                                                                                                | unverified |
-| Glyph issues  | private-use / replacement characters (`U+E000–F8FF`, `U+FFFD`), letter-spaced headings | same                                                                                                                              | same       |
-| Pages         | `docProps/app.xml` if present, else `null`                                             | page count                                                                                                                        | `null`     |
+| Signal        | DOCX (ZIP + XML; confidence high)                                                                                                                                                                                                 | PDF (poppler)                                                                                                                                                                                                               | Text paste |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| Columns       | `w:sectPr/w:cols` with `w:num > 1` or `w:col` count > 1                                                                                                                                                                           | `pdftotext -bbox-layout` line boxes. Per page, cluster line-start `x`; ≥ 2 clusters, each ≥ 8 lines, gap ≥ 25 % of page width, vertical overlap ≥ 50 % → medium; each ≥ 12 lines and overlap ≥ 80 % → high; 5–7 lines → low | unverified |
+| Tables        | any `w:tbl` containing text                                                                                                                                                                                                       | ≥ 3 consecutive rows with ≥ 3 aligned cells (low confidence)                                                                                                                                                                | unverified |
+| Images        | `w:drawing` / `w:pict` (`wp:extent` or VML size vs `w:pgSz`)                                                                                                                                                                      | `pdfimages -list`: count, placed area = pixels ÷ ppi × 72 vs page area (cropping not visible → medium). No image is ever extracted or written                                                                               | unverified |
+| Text boxes    | `w:txbxContent` (DrawingML or VML box; the `mc:Fallback` copy is ignored)                                                                                                                                                         | n/a                                                                                                                                                                                                                         | unverified |
+| Header/footer | text in `word/header*.xml`, `word/footer*.xml`; `contact_only_there` when email/phone appear only there                                                                                                                           | text in the top/bottom 7 % band **that repeats on every page** (digits ignored, so page numbers repeat) of a ≥ 2-page PDF → medium; a **one-page PDF: not detected** (no separate header layer; the band only holds names)  | unverified |
+| Glyph issues  | private-use / replacement characters (`U+E000–F8FF`, `U+FFFD`), letter-spaced headings. A private-use character that starts **≥ 3 lines** is a symbol-font list bullet and is ignored; contact icons (each used once) still count | same                                                                                                                                                                                                                        | same       |
+| Pages         | `docProps/app.xml` if present, else `null`                                                                                                                                                                                        | `pdfinfo`                                                                                                                                                                                                                   | `null`     |
 
-Each structure finding carries `confidence: high | medium | low`. A check **fails** only with confidence ≥ medium; low confidence yields `status: "unverified"` plus an `info` suggestion. Encrypted/corrupt files are `422` (Phase 2 envelope); scanned PDFs (no extractable text) are a **`200` report** with `score_status: "unreadable"`, because the report itself tells the user how to fix it.
+Each structure finding carries `confidence: high | medium | low`. A check **fails** only with confidence ≥ medium; low confidence yields `status: "unverified"` plus an `info` suggestion. Encrypted/corrupt files, unsupported types and a poppler timeout (`ATS_POPPLER_TIMEOUT`) are `422` (Phase 2 envelope; `UnreadableDocument` reasons `password_protected`, `corrupt`, `unsupported_type`, `timeout`); a missing poppler binary is a `500`, never blamed on the file; scanned PDFs (no extractable text) are a **`200` report** with `score_status: "unreadable"`, because the report itself tells the user how to fix it.
 
 ## 5. API contract
 
@@ -447,14 +447,15 @@ Existing check logic (headings lists, action verbs, contribution heuristics) in 
 
 ### 6.2 Matching
 
-For each keyword, in order: **exact** (normalized token sequence) → **synonym** (same synonym group in `resources/ats/synonyms.{en,fr}.json`, e.g. `js↔javascript`, `k8s↔kubernetes`, `ci/cd↔continuous integration`, `gestion de projet↔project management`) → **stem** (Snowball stems of the token sequence equal, same order, stop words ignored). Matching respects token boundaries (`Java` ≠ `JavaScript`, `go` ≠ `going`). Evidence is the CV line(s) containing the match (≤ 2, ≤ 200 chars); `found_in` comes from the section the line sits in.
+For each keyword, in order: **exact** (normalized token sequence) → **synonym** (same synonym group in `resources/ats/synonyms.{en,fr}.json`, e.g. `js↔javascript`, `k8s↔kubernetes`, `ci/cd↔continuous integration`, `gestion de projet↔project management`) → **stem** (Snowball stems of the token sequence equal, same order, stop words ignored). Matching respects token boundaries (`Java` ≠ `JavaScript`, `go` ≠ `going`). **Terms of 3 letters or less and technical tokens (`c#`, `node.js`, `ci/cd`, `vue3`) are never stem-matched** (exact and synonym only): Snowball stems "going" to "go" (verified in S1), so stemming them would break the §8.3 `Go` row. Evidence is the CV line(s) containing the match (≤ 2, ≤ 200 chars); `found_in` comes from the section the line sits in.
 
 ## 7. Project structure
 
 ```text
 app/Services/Ats/
   AtsAnalyzer.php                 # orchestrator
-  Parsing/   DocumentParser.php (interface), PdfParser, DocxParser, TextParser, ParsedDocument, Structure
+  Parsing/   DocumentReader (entry), DocumentTypeDetector, DocumentParser (interface), PdfParser, DocxParser, TextParser,
+             Poppler (process wrapper), GlyphInspector, ParsedDocument, Line, Structure, Detection, Confidence, UnreadableDocument
   Language/  LanguageDetector, Normalizer, Tokenizer, StopWords, Stemmer
   Keywords/  KeywordExtractor, SynonymCatalog, KeywordMatcher, StuffingDetector
   Checks/    Check.php (interface), CheckResult, Format/*, Sections/*, Content/*
@@ -588,13 +589,13 @@ final class SingleColumnCheck implements Check
 
 ## 12. Risks
 
-| #   | Risk                                                                           | Mitigation                                                                                                                                                                                                  |
-| --- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1  | PDF column/table detection from `smalot/pdfparser` positions may be unreliable | **S0 spike** with F2/F4/F5 PDFs and real CVs before anything else; confidence levels; `unverified` instead of false failures; fallback option: poppler `pdftotext -bbox-layout` (needs a Docker change; **ask the maintainer first**, §17 answer 3) |
-| R2  | Stemming/synonym false positives or negatives                                  | Token-boundary matching, curated synonym groups, unit table §8.3, `match_type` shown so users see _why_                                                                                                     |
-| R3  | Score weights are opinionated                                                  | Calibration step, versioned model + changelog, weights in config                                                                                                                                            |
-| R4  | Large uploads slow the request                                                 | 15 MB cap, time budget tests, `max_execution_time` review                                                                                                                                                   |
-| R5  | Scope creep into OCR/AI/history                                                | Explicit non-goals; new items go to Phase 5                                                                                                                                                                 |
+| #   | Risk                                          | Mitigation                                                                                                                                                                                                                                           |
+| --- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | PDF column/table detection may be unreliable  | **Resolved in S0/S1:** the spike (`docs/ats-spike-s0.md`) showed smalot cannot see Canva layouts; poppler detects all 9 test PDFs correctly and is in the image since S1. Confidence levels and `unverified` remain the guard against false failures |
+| R2  | Stemming/synonym false positives or negatives | Token-boundary matching, curated synonym groups, unit table §8.3, `match_type` shown so users see _why_                                                                                                                                              |
+| R3  | Score weights are opinionated                 | Calibration step, versioned model + changelog, weights in config                                                                                                                                                                                     |
+| R4  | Large uploads slow the request                | 15 MB cap, time budget tests, `max_execution_time` review                                                                                                                                                                                            |
+| R5  | Scope creep into OCR/AI/history               | Explicit non-goals; new items go to Phase 5                                                                                                                                                                                                          |
 
 ## 13. What the UI gets (Phase 4, `cv-ai`; for reference)
 
@@ -604,9 +605,9 @@ Report tabs map 1:1 to the response: Overview (`score`, `grade`, `summary`, top 
 
 **Always:** write the fixture/golden test before the check it covers; keep scoring pure and deterministic; return evidence for every failure; state limitations in the report; delete uploads in `finally`; run `composer test`, `pint --test`, `composer audit` before each commit; small atomic commits.
 
-**Approved (§17):** `wamania/php-stemmer` and `ext-intl` in the Dockerfile; `setasign/fpdf` as a dev dependency.
+**Approved (§17):** `wamania/php-stemmer` and `ext-intl` in the Dockerfile; `setasign/fpdf` as a dev dependency; `poppler-utils` in the image (after S0).
 
-**Ask first:** any other dependency, including the poppler binary; other Docker/PHP extension changes; changing weights, caps or grades outside the S5 calibration; removing `ats/document`, `AtsDocumentReview`, `AtsScorer` or `tests/legacy/ats-document.php` (approved only as the follow-up PR in §17 answer 6); adding languages; persisting uploads or reports; calling AI from the engine; changing any AI prompt (§16.1).
+**Ask first:** any other dependency; other Docker/PHP extension changes; changing weights, caps or grades outside the S5 calibration; removing `ats/document`, `AtsDocumentReview`, `AtsScorer` or `tests/legacy/ats-document.php` (approved only as the follow-up PR in §17 answer 6); adding languages; persisting uploads or reports; calling AI from the engine; changing any AI prompt (§16.1).
 
 **Never:** claim an employer-ATS result or hiring probability; invent or auto-insert skills the user does not have; let AI output change the score; store, log or send CV content to third parties from this endpoint; return stack traces or internal paths; edit golden files without a changelog entry; skip or delete failing tests to get green; start a slice before the previous slice's PR is merged.
 
@@ -632,7 +633,7 @@ Moved here from Phase 2 §7 item 3 (decision after the S4 plan). Delivered as sl
 
 1. **Dependencies/extensions:** add `wamania/php-stemmer` (Snowball EN/FR) and `ext-intl` to the Dockerfile (S1).
 2. **PDF fixtures:** `setasign/fpdf` as a **dev** dependency; generated PDFs and `build.php` are committed (S0).
-3. **PDF structure accuracy:** start with `smalot/pdfparser` only; **ask the maintainer before adding poppler**.
+3. **PDF structure accuracy:** start with `smalot/pdfparser` only; **ask the maintainer before adding poppler**. _After S0:_ poppler-utils approved and added in S1; smalot removed.
 4. **Score ceiling:** no cap; keep the limitations text.
 5. **Weights/caps (§6):** accepted as the starting model; calibrated in S5 on 20 anonymized real CVs the maintainer provides.
 6. **Legacy removal** (`ats/document`, `AtsDocumentReview`, `AtsScorer`, `tests/legacy/ats-document.php`): a follow-up PR after the new engine is live and the UI uses it.

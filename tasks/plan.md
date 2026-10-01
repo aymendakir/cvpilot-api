@@ -33,7 +33,7 @@ resources/ats/stopwords.{en,fr}.txt
 - **`ParsedDocument`**: `type` (`pdf|docx|text`), `text`, `lines[]` (text, page, y, x when known), `pages`, `wordCount`, `textExtractable`, `structure` (null-safe: `inspected=false` for pasted text), `warnings[]`. No file names or paths are stored in it, only what the report needs.
 - **`Detection`** per signal: `detected: ?bool`, `confidence: high|medium|low|null`, `note`, plus extras (`count`, `largestAreaPct`, `contactOnlyThere`, evidence samples ≤ 3).
 - **`UnreadableDocument`** reasons: `password_protected`, `corrupt`, `unsupported_type`, `timeout`. S4 maps them to `422 errors.file`. A scanned PDF is **not** an exception: it parses to `textExtractable=false` (R4, `unreadable` report).
-- **Poppler wrapper**: argument arrays (no shell), a hard timeout from `config('ats.poppler.timeout')` (default 10 s), output size cap, reads the request's temp file only. `pdfinfo` → pages, encryption; `pdftotext -bbox-layout -enc UTF-8` → words and lines with boxes; `pdfimages -list` → images and placed area.
+- **Poppler wrapper**: argument arrays (every argument escaped by Symfony Process, never a hand-built command line), a hard timeout from `config('ats.poppler.timeout')` (default 10 s), output size cap, reads the request's temp file only. `pdfinfo` → pages, encryption; `pdftotext -bbox-layout -enc UTF-8` → words and lines with boxes; `pdfimages -list` → images and placed area.
 
 ### §4.1 signals as built in S1
 
@@ -100,7 +100,7 @@ DOCX text keeps body order, includes table cells and text boxes, and reads only 
 
 | Risk | Mitigation |
 | --- | --- |
-| Poppler parses untrusted PDFs | argument arrays, no shell, timeout, output cap, 15 MB upload limit; Debian package kept current through the base image |
+| Poppler parses untrusted PDFs | escaped argument arrays, timeout, output cap, 15 MB upload limit; Debian package kept current through the base image |
 | Image grows | `poppler-utils` adds roughly 10–20 MB to the image; stated in DEPLOYMENT.md |
 | Switching `cv-documents` to poppler changes extracted text | characterization test before/after (T6); decision 1 lets you keep smalot there instead |
 | Snowball stems short words aggressively (`going` → `go`) | recorded in T2; S2 matcher rule; §8.3 stays the acceptance target |
