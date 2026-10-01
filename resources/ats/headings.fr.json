@@ -1,0 +1,23 @@
+{
+  "_comment": "Titres de rubriques français (SPEC-ats.md §6 B), repris de l'ancien AtsDocumentReview. Comparés sans accents ni majuscules, espacement des lettres supprimé ; un préfixe et un suffixe facultatifs de la même rubrique sont acceptés.",
+  "experience": {
+    "phrases": ["experience", "experiences", "experience professionnelle", "experiences professionnelles", "parcours professionnel", "parcours", "projets", "projet", "stages", "stage", "stages et experiences", "experiences et stages", "benevolat", "missions", "mission", "emplois"],
+    "prefixes": [],
+    "suffixes": ["techniques", "technique", "professionnels", "professionnelles", "personnels", "academiques", "et projets", "et stages"]
+  },
+  "education": {
+    "phrases": ["formation", "formations", "education", "etudes", "diplomes", "diplome", "scolarite", "cursus", "parcours academique", "formation et diplomes", "formations et certifications"],
+    "prefixes": [],
+    "suffixes": ["academique", "academiques"]
+  },
+  "skills": {
+    "phrases": ["competences", "competence", "outils", "technologies", "savoir-faire", "savoir faire", "atouts", "aptitudes", "competences et outils"],
+    "prefixes": [],
+    "suffixes": ["techniques", "technique", "cles", "informatiques", "professionnelles", "transversales"]
+  },
+  "other": {
+    "phrases": ["profil", "resume", "a propos", "a propos de moi", "objectif", "objectif professionnel", "langues", "certifications", "certificats", "licences", "contact", "coordonnees", "references", "publications", "distinctions", "centres d'interet", "centres d interet", "loisirs", "interets", "activites"],
+    "prefixes": [],
+    "suffixes": []
+  }
+}

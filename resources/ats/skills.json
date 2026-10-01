@@ -1,0 +1,1339 @@
+{
+  "_comment": "Keyword taxonomy (SPEC-ats.md §6.1 step 3a, §6.2). Each skill's name and aliases form one synonym group; aliases are true synonyms or spellings only (the legacy AtsScorer groups SQL/PostgreSQL, Java/Spring, Docker/containers, ML/AI, REST/apis were split, S2 decision 4). anywhere=false: an ambiguous everyday word (Go, Rust, Spring, Flask, Sketch, Tableau) is taken from requirement list items only, never scanned from free text. capitalised: phrases that are also everyday words (French 'en vue de', 'tableau de bord') and only count when written with a capital letter; phrases of 1-2 letters (Go, JS, AI, ML) always need a capital letter and are never scanned from free text.",
+  "skills": [
+    {
+      "name": "React",
+      "category": "tech",
+      "aliases": [
+        "reactjs",
+        "react.js"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Next.js",
+      "category": "tech",
+      "aliases": [
+        "nextjs"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Vue.js",
+      "category": "tech",
+      "aliases": [
+        "vue",
+        "vuejs",
+        "vue3"
+      ],
+      "anywhere": true,
+      "capitalised": [
+        "vue"
+      ]
+    },
+    {
+      "name": "Angular",
+      "category": "tech",
+      "aliases": [
+        "angularjs"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "TypeScript",
+      "category": "tech",
+      "aliases": [
+        "ts"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "JavaScript",
+      "category": "tech",
+      "aliases": [
+        "js",
+        "ecmascript"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Node.js",
+      "category": "tech",
+      "aliases": [
+        "node",
+        "nodejs"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "PHP",
+      "category": "tech",
+      "aliases": [
+        "php8",
+        "php7"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Laravel",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Symfony",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Python",
+      "category": "tech",
+      "aliases": [
+        "python3"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Django",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "FastAPI",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Java",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Kotlin",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Swift",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "C#",
+      "category": "tech",
+      "aliases": [
+        "csharp"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": ".NET",
+      "category": "tech",
+      "aliases": [
+        "dotnet"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "ASP.NET",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "C++",
+      "category": "tech",
+      "aliases": [
+        "cpp"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Ruby",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Ruby on Rails",
+      "category": "tech",
+      "aliases": [
+        "rails"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "SQL",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "MySQL",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "PostgreSQL",
+      "category": "tech",
+      "aliases": [
+        "postgres"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "MongoDB",
+      "category": "tech",
+      "aliases": [
+        "mongo"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Redis",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Elasticsearch",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Docker",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Kubernetes",
+      "category": "tech",
+      "aliases": [
+        "k8s"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Terraform",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Ansible",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "AWS",
+      "category": "tech",
+      "aliases": [
+        "amazon web services"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Azure",
+      "category": "tech",
+      "aliases": [
+        "microsoft azure"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "GCP",
+      "category": "tech",
+      "aliases": [
+        "google cloud",
+        "google cloud platform"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "CI/CD",
+      "category": "tech",
+      "aliases": [
+        "ci cd",
+        "continuous integration",
+        "continuous delivery",
+        "continuous deployment",
+        "intégration continue"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "GitHub Actions",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "GitLab CI",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Jenkins",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Git",
+      "category": "tech",
+      "aliases": [
+        "github",
+        "gitlab"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "REST APIs",
+      "category": "tech",
+      "aliases": [
+        "rest api",
+        "restful api",
+        "restful apis",
+        "restful",
+        "api rest"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "GraphQL",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Tailwind CSS",
+      "category": "tech",
+      "aliases": [
+        "tailwind",
+        "tailwindcss"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "HTML",
+      "category": "tech",
+      "aliases": [
+        "html5"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "CSS",
+      "category": "tech",
+      "aliases": [
+        "css3"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Unit Testing",
+      "category": "tech",
+      "aliases": [
+        "unit tests",
+        "tests unitaires"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "PHPUnit",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Jest",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "pytest",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Cypress",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Microservices",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Linux",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Nginx",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Machine Learning",
+      "category": "tech",
+      "aliases": [
+        "ml",
+        "apprentissage automatique"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Artificial Intelligence",
+      "category": "tech",
+      "aliases": [
+        "ai",
+        "intelligence artificielle"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Agile",
+      "category": "tech",
+      "aliases": [
+        "scrum",
+        "méthodes agiles",
+        "methodologie agile"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "TDD",
+      "category": "tech",
+      "aliases": [
+        "test-driven development"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Go",
+      "category": "tech",
+      "aliases": [
+        "golang"
+      ],
+      "anywhere": false
+    },
+    {
+      "name": "Rust",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": false,
+      "capitalised": [
+        "rust"
+      ]
+    },
+    {
+      "name": "Spring",
+      "category": "tech",
+      "aliases": [
+        "spring boot"
+      ],
+      "anywhere": false,
+      "capitalised": [
+        "spring"
+      ]
+    },
+    {
+      "name": "Flask",
+      "category": "tech",
+      "aliases": [],
+      "anywhere": false,
+      "capitalised": [
+        "flask"
+      ]
+    },
+    {
+      "name": "Microsoft Excel",
+      "category": "data",
+      "aliases": [
+        "ms excel",
+        "excel spreadsheets"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Pivot Tables",
+      "category": "data",
+      "aliases": [
+        "tableaux croisés dynamiques"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "VLOOKUP",
+      "category": "data",
+      "aliases": [
+        "recherchev"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Power BI",
+      "category": "data",
+      "aliases": [
+        "powerbi"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Data Analysis",
+      "category": "data",
+      "aliases": [
+        "data analytics",
+        "analyse de données"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Statistics",
+      "category": "data",
+      "aliases": [
+        "statistical analysis",
+        "statistiques"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Data Visualization",
+      "category": "data",
+      "aliases": [
+        "data visualisation",
+        "dataviz",
+        "visualisation de données"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "A/B Testing",
+      "category": "data",
+      "aliases": [
+        "ab testing",
+        "split testing"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Tableau",
+      "category": "data",
+      "aliases": [],
+      "anywhere": false,
+      "capitalised": [
+        "tableau"
+      ]
+    },
+    {
+      "name": "SEO",
+      "category": "marketing",
+      "aliases": [
+        "search engine optimization",
+        "search engine optimisation",
+        "référencement naturel"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "SEM",
+      "category": "marketing",
+      "aliases": [
+        "ppc",
+        "paid search"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Google Ads",
+      "category": "marketing",
+      "aliases": [
+        "adwords"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Google Analytics",
+      "category": "marketing",
+      "aliases": [
+        "ga4"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Content Marketing",
+      "category": "marketing",
+      "aliases": [
+        "marketing de contenu"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Content Strategy",
+      "category": "marketing",
+      "aliases": [
+        "stratégie de contenu"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Social Media Marketing",
+      "category": "marketing",
+      "aliases": [
+        "social media management",
+        "community management"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Email Marketing",
+      "category": "marketing",
+      "aliases": [
+        "e-mail marketing",
+        "emailing"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Mailchimp",
+      "category": "marketing",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Copywriting",
+      "category": "marketing",
+      "aliases": [
+        "rédaction publicitaire"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Brand Strategy",
+      "category": "marketing",
+      "aliases": [
+        "stratégie de marque"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Branding",
+      "category": "marketing",
+      "aliases": [
+        "image de marque"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Marketing Automation",
+      "category": "marketing",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "HubSpot",
+      "category": "marketing",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Growth Marketing",
+      "category": "marketing",
+      "aliases": [
+        "growth hacking"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "CRM",
+      "category": "sales",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Salesforce",
+      "category": "sales",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Lead Generation",
+      "category": "sales",
+      "aliases": [
+        "génération de leads"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Prospecting",
+      "category": "sales",
+      "aliases": [
+        "prospection"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Cold Calling",
+      "category": "sales",
+      "aliases": [
+        "cold outreach",
+        "cold emailing"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Negotiation",
+      "category": "sales",
+      "aliases": [
+        "négociation"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Account Management",
+      "category": "sales",
+      "aliases": [
+        "key account management",
+        "gestion de comptes"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Pipeline Management",
+      "category": "sales",
+      "aliases": [
+        "sales pipeline"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "B2B",
+      "category": "sales",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "B2C",
+      "category": "sales",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Upselling",
+      "category": "sales",
+      "aliases": [
+        "cross-selling",
+        "vente incitative"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Figma",
+      "category": "design",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Adobe Photoshop",
+      "category": "design",
+      "aliases": [
+        "photoshop"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Adobe Illustrator",
+      "category": "design",
+      "aliases": [
+        "illustrator"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Adobe InDesign",
+      "category": "design",
+      "aliases": [
+        "indesign"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Adobe Creative Suite",
+      "category": "design",
+      "aliases": [
+        "adobe creative cloud"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "UI/UX",
+      "category": "design",
+      "aliases": [
+        "ux/ui"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "UX Design",
+      "category": "design",
+      "aliases": [
+        "user experience design"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "UI Design",
+      "category": "design",
+      "aliases": [
+        "user interface design"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Wireframing",
+      "category": "design",
+      "aliases": [
+        "wireframes"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Prototyping",
+      "category": "design",
+      "aliases": [
+        "prototypage"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Typography",
+      "category": "design",
+      "aliases": [
+        "typographie"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Motion Design",
+      "category": "design",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Adobe After Effects",
+      "category": "design",
+      "aliases": [
+        "after effects"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Design Systems",
+      "category": "design",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Sketch",
+      "category": "design",
+      "aliases": [],
+      "anywhere": false,
+      "capitalised": [
+        "sketch"
+      ]
+    },
+    {
+      "name": "Financial Modeling",
+      "category": "finance",
+      "aliases": [
+        "financial modelling",
+        "modélisation financière"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Budgeting",
+      "category": "finance",
+      "aliases": [
+        "budgétisation"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Forecasting",
+      "category": "finance",
+      "aliases": [
+        "prévisions financières"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "IFRS",
+      "category": "finance",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "GAAP",
+      "category": "finance",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Accounts Payable",
+      "category": "finance",
+      "aliases": [
+        "comptabilité fournisseurs"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Accounts Receivable",
+      "category": "finance",
+      "aliases": [
+        "comptabilité clients"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Bank Reconciliation",
+      "category": "finance",
+      "aliases": [
+        "rapprochement bancaire"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "SAP",
+      "category": "finance",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "QuickBooks",
+      "category": "finance",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Auditing",
+      "category": "finance",
+      "aliases": [
+        "audit"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Taxation",
+      "category": "finance",
+      "aliases": [
+        "tax compliance",
+        "fiscalité"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Accounting",
+      "category": "finance",
+      "aliases": [
+        "comptabilité"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Talent Acquisition",
+      "category": "hr",
+      "aliases": [
+        "recruiting",
+        "recrutement"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Onboarding",
+      "category": "hr",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "HRIS",
+      "category": "hr",
+      "aliases": [
+        "sirh"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Workday",
+      "category": "hr",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Performance Management",
+      "category": "hr",
+      "aliases": [
+        "gestion de la performance"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Payroll",
+      "category": "hr",
+      "aliases": [
+        "paie"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Compensation and Benefits",
+      "category": "hr",
+      "aliases": [
+        "rémunération et avantages"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Applicant Tracking Systems",
+      "category": "hr",
+      "aliases": [
+        "ats"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Zendesk",
+      "category": "support",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Customer Service",
+      "category": "support",
+      "aliases": [
+        "customer support",
+        "service client",
+        "relation client"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Help Desk",
+      "category": "support",
+      "aliases": [
+        "helpdesk",
+        "ticketing"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "SLA Management",
+      "category": "support",
+      "aliases": [
+        "service level agreement"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Customer Satisfaction",
+      "category": "support",
+      "aliases": [
+        "csat",
+        "satisfaction client"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "NPS",
+      "category": "support",
+      "aliases": [
+        "net promoter score"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Customer Retention",
+      "category": "support",
+      "aliases": [
+        "fidélisation client",
+        "churn reduction"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Live Chat",
+      "category": "support",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Supply Chain Management",
+      "category": "operations",
+      "aliases": [
+        "supply chain",
+        "chaîne d'approvisionnement"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Inventory Management",
+      "category": "operations",
+      "aliases": [
+        "stock management",
+        "gestion des stocks"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Procurement",
+      "category": "operations",
+      "aliases": [
+        "achats"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Logistics",
+      "category": "operations",
+      "aliases": [
+        "logistique"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "ERP",
+      "category": "operations",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Six Sigma",
+      "category": "operations",
+      "aliases": [
+        "lean six sigma"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Vendor Management",
+      "category": "operations",
+      "aliases": [
+        "supplier management",
+        "gestion des fournisseurs"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Lean Manufacturing",
+      "category": "operations",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Project Management",
+      "category": "project",
+      "aliases": [
+        "gestion de projet",
+        "conduite de projet"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "PMP",
+      "category": "project",
+      "aliases": [
+        "project management professional"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Jira",
+      "category": "project",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Trello",
+      "category": "project",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Asana",
+      "category": "project",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Gantt Charts",
+      "category": "project",
+      "aliases": [
+        "gantt"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Risk Management",
+      "category": "project",
+      "aliases": [
+        "gestion des risques"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Stakeholder Management",
+      "category": "project",
+      "aliases": [
+        "gestion des parties prenantes"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Litigation",
+      "category": "legal",
+      "aliases": [
+        "contentieux"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Contract Law",
+      "category": "legal",
+      "aliases": [
+        "droit des contrats"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Contract Drafting",
+      "category": "legal",
+      "aliases": [
+        "rédaction de contrats"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Legal Research",
+      "category": "legal",
+      "aliases": [
+        "recherche juridique"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Regulatory Compliance",
+      "category": "legal",
+      "aliases": [
+        "conformité réglementaire"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Due Diligence",
+      "category": "legal",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Patient Care",
+      "category": "health",
+      "aliases": [
+        "soins aux patients"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "EHR",
+      "category": "health",
+      "aliases": [
+        "emr",
+        "electronic health records",
+        "electronic medical records",
+        "dossier patient informatisé"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "HIPAA",
+      "category": "health",
+      "aliases": [],
+      "anywhere": true
+    },
+    {
+      "name": "Medical Terminology",
+      "category": "health",
+      "aliases": [
+        "terminologie médicale"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Nursing",
+      "category": "health",
+      "aliases": [
+        "soins infirmiers"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Curriculum Development",
+      "category": "education",
+      "aliases": [
+        "curriculum design",
+        "conception de programmes"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Lesson Planning",
+      "category": "education",
+      "aliases": [
+        "préparation de cours"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Classroom Management",
+      "category": "education",
+      "aliases": [
+        "gestion de classe"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "Student Assessment",
+      "category": "education",
+      "aliases": [
+        "évaluation des élèves"
+      ],
+      "anywhere": true
+    },
+    {
+      "name": "EdTech",
+      "category": "education",
+      "aliases": [
+        "educational technology"
+      ],
+      "anywhere": true
+    }
+  ]
+}

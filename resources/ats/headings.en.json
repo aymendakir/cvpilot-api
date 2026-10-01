@@ -1,0 +1,23 @@
+{
+  "_comment": "English section headings (SPEC-ats.md §6 B). Ported from the legacy AtsDocumentReview rules. A heading matches when, after folding (lower case, no accents, letter spacing collapsed, numbering and trailing ':' removed), it equals a phrase, optionally preceded by one prefix and followed by one suffix of its section.",
+  "experience": {
+    "phrases": ["experience", "experiences", "employment", "employment history", "work history", "career history", "professional background", "projects", "internships", "internship", "volunteering", "volunteer work", "missions"],
+    "prefixes": ["professional", "work", "relevant", "clinical", "teaching", "sales", "volunteer", "industry", "technical", "selected", "personal", "academic", "key"],
+    "suffixes": ["and projects", "and internships", "history"]
+  },
+  "education": {
+    "phrases": ["education", "academic background", "academic history", "qualifications", "degrees", "degree", "education and training", "education and certifications", "training"],
+    "prefixes": ["academic", "formal"],
+    "suffixes": []
+  },
+  "skills": {
+    "phrases": ["skills", "competencies", "technologies", "tools", "tech stack", "expertise", "strengths", "skills and tools", "skills and technologies"],
+    "prefixes": ["technical", "professional", "core", "key", "hard", "soft", "it", "computer", "software"],
+    "suffixes": ["summary"]
+  },
+  "other": {
+    "phrases": ["summary", "profile", "professional summary", "about me", "about", "objective", "career objective", "languages", "certifications", "certificates", "licenses", "contact", "contact details", "references", "publications", "awards", "honors", "interests", "hobbies", "activities"],
+    "prefixes": [],
+    "suffixes": []
+  }
+}

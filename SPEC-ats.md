@@ -426,6 +426,17 @@ Points are fixed constants in `config/ats.php`; every check is **pass/fail** (no
 
 Existing check logic (headings lists, action verbs, contribution heuristics) in `AtsDocumentReview` is **ported into the check classes**, not rewritten from scratch, so vocabulary coverage does not regress.
 
+**Check rules as built (S2).** Where the table leaves room, the checks apply these rules:
+
+- **Structure checks** (`single_column`, `layout_tables`, `images`, `text_boxes_headers`, `clean_characters`) are `unverified` for pasted text and for low-confidence detections (PDF tables). `images`: when the image area is unknown, it is judged on the count only. `text_boxes_headers` on a PDF judges the header/footer part only (text repeated on every page); a one-page PDF has no detectable header/footer. `file_supported` is `unverified` for pasted text.
+- **`clean_characters`:** the same private-use glyph starting ≥ 3 lines is a symbol-font bullet, not an icon.
+- **`phone`:** 8–15 digits, international or local format, not a year range or a date.
+- **Sections:** headings are recognised case- and accent-insensitively, with plurals, numbering, a trailing colon and letter-spacing (`S K I L L S`), ≤ 60 characters and ≤ 5 words; vocabulary in `resources/ats/headings.{en,fr}.json`, ported from `AtsDocumentReview`.
+- **`dates`:** style classes are `Mon YYYY` (EN/FR month names or abbreviations), `MM/YYYY` and `YYYY`; Present/Current/aujourd'hui/présent/en cours are valid ends; mixing classes fails.
+- **Bullets** are experience-section lines starting with a list marker (`•`, `-`, `*`, `▪`, `–`, `►`, `✓`, `1.`, a symbol-font bullet); wrapped PDF lines are joined. Without any marker, lines of ≥ 6 words that are not date lines count (Canva draws markers as shapes).
+- **`action_verbs`:** French action nouns ("Développement de…", "Mise en place…") count as action verbs, as in the legacy engine.
+- **`quantified_results`:** years and date ranges are not results.
+
 **Rules**
 
 - **R1 Normalization.** `score = round_half_up(100 × Σ earned / Σ max)` over **applicable** checks only. Without a job description `keyword_coverage` is absent (max 70 in full-file mode). Unverified checks (pasted text, low-confidence detections) are excluded from both sums, never counted as passes.
@@ -437,17 +448,22 @@ Existing check logic (headings lists, action verbs, contribution heuristics) in 
 - **R7 Determinism.** No randomness, no clock in scoring, no network; the same input produces an identical report except `generated_at`.
 - **R8 Grade:** `strong ≥ 85`, `good 70–84`, `needs_work 50–69`, `poor < 50`.
 
-### 6.1 Keyword extraction (deterministic)
+### 6.1 Keyword extraction (deterministic, as built in S2)
 
-1. Normalize the job description (NFKC, lowercase, strip accents for comparison but keep display form), detect language, split into lines/blocks.
-2. **Block kind:** a heading matching `requirements|qualifications|must have|required|what you'll need|profil recherché|compétences requises|exigences|vous avez` starts a _required_ block; `nice to have|preferred|bonus|a plus|souhaité|atout` starts a _preferred_ block; both end at the next heading.
-3. **Candidates:** (a) every term/alias from `resources/ats/skills.json` (seeded from today's `AtsScorer` lexicon) found in the text; (b) 1–3-word n-grams that are not stop words, ≥ 3 letters, and occur ≥ 2 times or inside a required block; tech tokens (`c#`, `.net`, `node.js`, `ci/cd`) are kept whole.
-4. **Kind/weight:** in a required block → required (2); in a preferred block → preferred (1); otherwise frequency ≥ 2 → required, else preferred.
-5. Drop generic terms (blocklist: `team`, `experience`, `responsibilities`, `work`, …); keep at most 40 by (weight, frequency, taxonomy hit).
+1. Normalize the job description (NFKC, typographic punctuation made plain); comparisons use the folded form (lower case, no accents), terms keep the job description's wording.
+2. **Blocks:** a short line (≤ 6 words) naming requirements opens a _required_ block (`requirements`, `qualifications`, `must have`, `required`, `what you'll need`, `what we're looking for`, `skills`, `profil recherché`, `votre profil`, `compétences (requises)`, `exigences`, `vous avez`, `prérequis`…), one naming extras opens a _preferred_ block (`nice to have`, `preferred`, `bonus`, `a plus`, `un plus`, `souhaité`, `atout`, `apprécié`, `optional`…); preferred wins when both appear ("Preferred qualifications"). With a colon the label only has to contain those words, and text after the colon is read as items; without a colon the whole line must be the heading phrase, so an item such as "Communication skills" stays an item. A block ends at any other short line ending with ":", or at a line without a list marker after a blank line once the block has items ("What we offer").
+3. **Candidates (rule b′):**
+   - inside a block, each **list item** (a line, or a part split on `,` `;` `•` `|` and, unless the part is a taxonomy phrase, on "and/et/&"; text in parentheses is a list of its own) of **≤ 4 words**, after removing the list marker, filler ("Experience with", "Strong knowledge of", "Bonne maîtrise de", "… experience") and trailing punctuation, is one keyword **as written**. An item that contains taxonomy phrases without being one gives those phrases instead ("Experience with Redis caching" → Redis). Longer items give their taxonomy phrases only;
+   - **outside blocks, only taxonomy phrases** from skills with `anywhere: true` (not ambiguous words, not 1–2-letter words); no free n-grams.
+   Taxonomy: `resources/ats/skills.json` (curated from the `AtsScorer` lexicon; non-synonym legacy groups split) plus extra groups in `synonyms.{en,fr}.json`; groups sharing a phrase are merged; both files are always loaded (the job description and the CV can differ in language).
+4. **Kind/weight:** in a required block → required (2); in a preferred block → preferred (1); outside blocks, ≥ 2 occurrences of the term or its synonyms → required, else preferred. One keyword per taxonomy group: block wording and kind win over a free-text hit, and required wins over preferred.
+5. Drop generic items (blocklist `resources/ats/keyword-blocklist.{en,fr}.txt`: `experience`, `team`, `skills`, `years`, `équipe`, `compétences`…; stop words only; "3+ years"; no letters); keep at most 40 by (weight, frequency, taxonomy term, order).
 
 ### 6.2 Matching
 
 For each keyword, in order: **exact** (normalized token sequence) → **synonym** (same synonym group in `resources/ats/synonyms.{en,fr}.json`, e.g. `js↔javascript`, `k8s↔kubernetes`, `ci/cd↔continuous integration`, `gestion de projet↔project management`) → **stem** (Snowball stems of the token sequence equal, same order, stop words ignored). Matching respects token boundaries (`Java` ≠ `JavaScript`, `go` ≠ `going`). **Terms of 3 letters or less and technical tokens (`c#`, `node.js`, `ci/cd`, `vue3`) are never stem-matched** (exact and synonym only): Snowball stems "going" to "go" (verified in S1), so stemming them would break the §8.3 `Go` row. Evidence is the CV line(s) containing the match (≤ 2, ≤ 200 chars); `found_in` comes from the section the line sits in.
+
+As built in S2: tokens keep tech forms whole (`c#`, `.net`, `node.js`, `ci/cd`); a slash token is split into its parts unless every part has ≤ 3 characters (`docker/kubernetes` → two tokens, `ci/cd`, `a/b`, `ui/ux` stay whole). **Guarded words** only count when written with a capital, in the job description and in the CV: single words of 1–2 letters (`Go`, `JS`, `AI`, `ML`) and the phrases listed as `capitalised` in `skills.json` (`Vue` vs "en vue de", `Tableau` vs "tableau de bord", `Spring`, `Rust`, `Flask`, `Sketch`). Stem matching runs only for CVs detected as English or French. Evidence lists experience lines first, then skills, education, other; `matched_as` is the CV wording of the first such match ("gestion de projets"). Stuffing counts the term and its synonyms (> 10 → reported).
 
 ## 7. Project structure
 
@@ -457,14 +473,16 @@ app/Services/Ats/
   Parsing/   DocumentReader (entry), DocumentTypeDetector, DocumentParser (interface), PdfParser, DocxParser, TextParser,
              Poppler (process wrapper), GlyphInspector, ParsedDocument, Line, Structure, Detection, Confidence, UnreadableDocument
   Language/  LanguageDetector, Normalizer, Tokenizer, StopWords, Stemmer
-  Keywords/  KeywordExtractor, SynonymCatalog, KeywordMatcher, StuffingDetector
-  Checks/    Check.php (interface), CheckResult, Format/*, Sections/*, Content/*
+  Keywords/  Taxonomy, Tokens, KeywordExtractor, JobKeyword, CvIndex, KeywordMatcher, KeywordMatch, StuffingDetector,
+             KeywordReport, KeywordAnalyzer
+  Sections/  SectionDetector, Sections, DateRanges
+  Checks/    Check.php (interface), CheckResult, CheckStatus, CheckContext, CheckRunner, Format/*, Sections/*, Content/*
   Scoring/   ScoreCalculator, Caps, Grade, WhatIf, SuggestionBuilder, MessageCatalog
   Report/    AtsReport (DTO), AtsReportResource
 app/Http/Controllers/Api/V1/Ats/AnalysisController.php
 app/Http/Requests/Ats/StoreAtsAnalysisRequest.php
 config/ats.php                    # weights, thresholds, version
-resources/ats/                    # skills.json, synonyms.en|fr.json, stopwords.*, action-verbs.*, headings.*
+resources/ats/                    # skills.json, synonyms.en|fr.json, keyword-blocklist.*, stopwords.*, action-verbs.*, action-nouns.fr, headings.*
 lang/{en,fr}/ats.php              # findings, actions, titles, summaries
 docs/ats-report.schema.json       # JSON Schema of §5.2 (contract test source)
 docs/ats-scoring.md               # model, weights, changelog per version
@@ -652,3 +670,11 @@ Also decided: Phase 3b is skipped (the ATS UI is built in Phase 4), and the prom
 14. Keyword suggestion ids keep the lower-cased term with spaces (§5.2).
 15. `caps[]` lists only triggered caps (R3, §5.2).
 16. §6.1 candidate rule (b) is too broad for job ads written in sentences (every phrase in a requirements block would become a keyword). S2 specifies a tighter rule (taxonomy terms plus short stand-alone lines) before building the extractor; the fixture job descriptions use one term per line.
+
+**S2 plan decisions, approved:**
+
+17. Keyword extraction rule (b′) as in §6.1: list items of ≤ 4 words inside requirement blocks, taxonomy phrases everywhere, no free n-grams outside blocks.
+18. Dates "one consistent style" as in the §6 rules as built (`Mon YYYY` / `MM/YYYY` / `YYYY`, open ends allowed).
+19. French action nouns count as action verbs.
+20. Legacy lexicon groups that are not synonyms (SQL/PostgreSQL, Java/Spring, Docker/containers, ML/AI, REST/apis) are split.
+21. Points and messages stay in S3; S2 returns statuses, evidence, message keys and the keyword report. The French vocabulary (headings, action verbs/nouns, taxonomy aliases) is reviewed by the maintainer during S5 calibration.

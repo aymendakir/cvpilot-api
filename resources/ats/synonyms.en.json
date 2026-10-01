@@ -1,0 +1,9 @@
+{
+  "_comment": "Extra English synonym groups for matching (SPEC-ats.md §6.2) that are not skills of their own. Each group is a list of equivalent phrases; an entry that names a skill from skills.json extends that skill's group instead.",
+  "groups": [
+    ["web development", "web application development"],
+    ["database design", "data modeling", "data modelling"],
+    ["code review", "peer review"],
+    ["team leadership", "team management", "people management"]
+  ]
+}

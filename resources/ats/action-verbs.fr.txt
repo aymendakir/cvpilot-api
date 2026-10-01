@@ -1,0 +1,77 @@
+# Verbes d'action qui ouvrent une puce d'expérience (SPEC-ats.md §6 action_verbs). Repris de la liste
+# de l'ancien AtsDocumentReview et complétés. Comparés sur les racines Snowball et sans accents, donc
+# "développé", "développée" et "développer" sont une seule entrée. Les locutions sont comparées telles quelles.
+accompagné
+adapté
+administré
+amélioré
+analysé
+animé
+assuré
+audité
+automatisé
+budgétisé
+collaboré
+commercialisé
+conçu
+configuré
+conseillé
+contribué
+coordonné
+corrigé
+créé
+débogué
+déployé
+développé
+diagnostiqué
+dirigé
+documenté
+élaboré
+embauché
+encadré
+enseigné
+établi
+évalué
+facilité
+fiabilisé
+formé
+géré
+installé
+implémenté
+intégré
+lancé
+livré
+maintenu
+migré
+modernisé
+négocié
+optimisé
+organisé
+participé
+piloté
+planifié
+porté
+préparé
+présenté
+promu
+prospecté
+réalisé
+recruté
+rédigé
+réduit
+refondu
+renforcé
+résolu
+restructuré
+sécurisé
+simplifié
+suivi
+supervisé
+testé
+traité
+vendu
+mis en place
+mis en œuvre
+mise en place
+mise en œuvre
+pris en charge
