@@ -1,22 +1,19 @@
-# Task list — Phase 3, slice S2 (`ats-checks` + `ats-keywords`)
+# Task list — Phase 3, slice S3 (`ats-scoring`)
 
-Branch `feature/ats-s2`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §6, §6.1, §6.2, §8.
-Status: **T0–T6 built; PR opened (Checkpoint B).** Decisions 1–5 approved as recommended; Checkpoint A approved (French vocabulary reviewed in S5).
+Branch `feature/ats-s3`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §5.2, §6, §8.
+Status: **planned; waiting for approval of decisions 22–27.**
 
-- [x] T0 CI fix on `main` (temp-dir scan), first commit of this branch
-- [x] T1 Section detection and ported vocabulary (headings, action verbs/nouns)
-- [x] T2 Checks (17) and runner; expected statuses reproduced for every fixture
+- [ ] T1 Points, categories, caps, grade, status; golden scores reproduced
+- [ ] T2 What-if and suggestions; golden top-3 ids and impacts reproduced
+- [ ] T3 EN/FR message catalog with parity test
 
 ### Checkpoint A
 
-- [x] Review with maintainer (rules table, fixture statuses, vocabulary)
+- [ ] Maintainer reviews the French and English copy and the scoring rules table
 
-- [x] T3 Taxonomy (skills, synonyms, blocklists) with validation
-- [x] T4 Keyword extraction (rule b′), fixture terms and kinds reproduced
-- [x] T5 Matching, evidence, stuffing; §8.3 and fixture match types reproduced
-- [x] T6 Spec, open the PR, **STOP**
+- [ ] T4 Report assembly and `AtsAnalyzer` (full §5.2 shape, determinism, time budget)
+- [ ] T5 Spec, docs, open the PR, **STOP**
 
 ### Checkpoint B (final)
 
-- [x] PR opened
-- [ ] S3 planned after merge
+- [ ] PR opened; S4 planned after merge

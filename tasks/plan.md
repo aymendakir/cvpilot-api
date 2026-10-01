@@ -1,130 +1,162 @@
-# Implementation Plan: Phase 3, slice S2 — `ats-checks` + `ats-keywords`
+# Implementation Plan: Phase 3, slice S3 — `ats-scoring`
 
-Spec: `SPEC-ats.md` §2, §4, §6 (check table, R2, R6), §6.1, §6.2, §8 (fixtures, §8.3, §8.4), §17 items 12–16. S1 is merged and live (poppler parsing, language module). This plan covers **S2 only**.
+Spec: `SPEC-ats.md` §5.2 (report contract), §6 (points, R1–R8), §8.1–§8.2 (golden scores), §17. S2 is merged (checks + keyword report). This plan covers **S3 only**.
 
-Branch: `feature/ats-s2` (from `main`). One PR. Stop after opening it.
+Branch: `feature/ats-s3` (from `main`). One PR. Stop after opening it.
+
+Delivery order from here (noted in `SPEC-ats.md` §16): **S3 → S4 → Phase 4 (frontend) → S5 calibration and S6 prompt envelope** (after or alongside Phase 4, since neither changes the API contract).
 
 ## Overview
 
-S2 turns a `ParsedDocument` into **check results** (§6 A/B/C: status, confidence, evidence) and a **keyword report** (extraction from the job description, exact/synonym/stem matching, evidence, stuffing). It does **not** compute points, caps, scores, suggestions or message text: that is S3, which reads what S2 returns. Everything stays deterministic and offline.
+S3 turns S2's check results and keyword report into the **scored report**:
 
-The S0 golden files already pin what S2 must produce: every expected `checks.*.status` and every keyword item's `status`/`match_type` in `tests/fixtures/ats/expected/*.json`. S2's acceptance test runs the parser + checks + keywords on each fixture and compares against them.
+- points per check;
+- category totals;
+- raw score and caps;
+- grade and status;
+- what-if impact for every suggestion;
+- the ranked suggestion list;
+- EN/FR text for every title, finding, action, summary, cap reason and limitation.
 
-## T0 — `main` is red: land the temp-dir test fix first
+All of it is pure and deterministic. The clock is injected, so only `generated_at` varies.
 
-PR #24 merged before its CI finished, so `main` still has the `ParsingFixturesTest` check that walks all of `/tmp` and fails on GitHub runners ("Permission denied" on systemd directories). The one-file fix (list only the top level of the temp dir) is already the first commit on this branch (cherry-picked from `fix/ats-temp-dir-scan`, which can then be deleted). No separate PR.
+S3 ends with an in-process `AtsAnalyzer` that returns the full §5.2 shape. S4 then only adds the HTTP layer: route, FormRequest, Resource, JSON Schema, privacy and error tests.
+
+The golden files already pin everything S3 must produce:
+
+- `score`, `raw_score`, `grade` and `caps`;
+- per-check `status` and `earned`;
+- the top-3 suggestion ids and `impact_points`.
+
+All 15 cases (F1–F13, F4b, F7/F8 fixed) are reproduced through the real pipeline.
 
 ## What I checked before planning
 
-- **Legacy vocabulary** (§6: ported, not rewritten): `AtsDocumentReview` holds the EN/FR heading rules (incl. "FORMATIONS", "Stages et expériences", "Projets techniques") and an action-verb list of ~200 EN/FR verbs; French CVs there also count **action nouns** ("Développement de…", "Création de…", "Mise en place…") as contributions (decision 3).
-- **Taxonomy seed:** `AtsScorer::$domainLexicons` (tech, data, sales, health, …) is the seed for `resources/ats/skills.json`. Several of its alias groups are **not synonyms** and contradict §8.3: `SQL ↔ MySQL/PostgreSQL`, `Java ↔ Spring`, `Docker ↔ containers`, `Machine Learning ↔ AI`, `REST APIs ↔ apis`. They are split or dropped in the new files (decision 4). `JobsController` keeps using `AtsScorer` unchanged.
-- `tests/legacy/ats-document.php` cases (letter-spaced `D É V E L O P P E U R`, `FORMATIONS`, `COMPÉTENCES`) become check-level tests (§8.4).
+- **Golden figures are consistent with R1–R6.** Some examples:
+
+  | Case | Figures | Why |
+  | --- | --- | --- |
+  | F4b | 87 raw, capped to 84; `single_column` +9, `keyword:redis` +0 | the cap stays binding |
+  | F5 | 93 raw, capped to 84; `layout_tables` +16 | fixing it lifts the cap |
+  | F9 | 44, two caps triggered but not binding | both limits are above 44 |
+  | F3 | `aws`/`redis` +3 tie, ordered by id; preferred +2 (severity `info`) | R5 tie-break |
+  | F13 | three +5 ties, ordered by id | R5 tie-break |
+  | F6 | unreadable: `impact_points: null` | R4 |
+
+- **Keyword earned points:** `keyword_coverage` earned is `round_half_up(30 × coverage)`; F4b's 22.5 rounds to 23. The check's status is `fail` whenever coverage < 1 (F3, F4b), as the golden files show.
+- **Message keys:** S2 checks return message keys and parameters. The keys are: `ok`, `found`, `missing`, `empty`, `no_text`, `too_short`, `garbled`, `too_many`, `too_large`, `text_boxes`, `contact_in_header`, `glyphs`, `low_confidence`, `not_inspected`, `no_experience_section`, `too_few`, `mixed_styles`, `no_bullets`, `weak_start`, `too_long`, `duplicates`. With the check id they map 1:1 to catalog entries.
+- **Translation files:** there is no `lang/` directory yet, so `lang/{en,fr}/ats.php` are new. Laravel's translator loads them with no extra setup.
 
 ## Design
 
 ```text
+config/ats.php            + points/severity per check, caps, grade bands, suggestion limits
 app/Services/Ats/
-  Sections/  SectionDetector, Sections (experience/education/skills/other with line ranges, heading, line no.)
-  Checks/    Check (interface), CheckResult, CheckContext, CheckRunner,
-             Format/  ReadableText, SingleColumn, LayoutTables, Images, TextBoxesHeaders, FileSupported, CleanCharacters
-             Sections/ Email, Phone, ExperienceSection, EducationSection, SkillsSection, Dates
-             Content/ ActionVerbs, QuantifiedResults, Length, NoDuplicates
-  Keywords/  Taxonomy (skills + synonym groups), KeywordExtractor, KeywordMatcher, StuffingDetector,
-             JobKeyword, KeywordMatch, KeywordReport
-resources/ats/  skills.json, synonyms.en.json, synonyms.fr.json, keyword-blocklist.{en,fr}.txt,
-                headings.{en,fr}.json, action-verbs.{en,fr}.txt, action-nouns.fr.txt
+  Scoring/  ScoreCalculator (R1 + categories), Caps (R3), Grade (R8), ScoreResult,
+            WhatIf (R5), SuggestionBuilder (R6 + ranking), Suggestion, MessageCatalog
+  Report/   AtsReport (DTO, toArray() = §5.2 shape), FormattingReport, SectionsReport
+  AtsAnalyzer.php          parse → checks → keywords → score → suggestions → report
+lang/en/ats.php, lang/fr/ats.php
 ```
 
-- **`CheckResult`**: `id`, `status` (`pass|fail|unverified`), `confidence`, `findingKey` + `params` (S3 turns them into EN/FR text), `evidence` (≤ 3 lines, ≤ 200 chars). No points.
-- **`CheckRunner`**: runs the 17 document checks in §6 order. R4 at check level: no extractable text → `readable_text` fails and every other check is `unverified` (F6). Structure checks are `unverified` when `structure.inspected` is false (pasted text) or the detection is low confidence.
-- **`SectionDetector`**: recognises headings (EN/FR, accent- and case-insensitive, plural forms, letter-spaced, trailing colon) from the ported lists, and assigns every line to a section; used by the section/content checks and by keyword `found_in`.
-- **Keyword report** (feeds §5.2 `KeywordReport`): `status` (`ok | insufficient_job_description`), items with `term`, `kind`, `weight`, `status`, `match_type`, `matched_as`, `found_in`, `evidence`, `job_context`, plus `stuffing`. Coverage is computed here (R2); the 30-point conversion is S3.
+- **`ScoreCalculator`** is pure. Input: check results and the optional keyword report. Output: per-check `earned`/`max`/`applicable`, category totals, `raw_score`, `score`, `caps` and `score_status`.
+- **`WhatIf`** re-runs the calculator with one item flipped. For a check, it passes. For a keyword, it becomes matched and the coverage is recomputed. The impact is `max(0, new score − score)`, caps included. It is null when the score is null.
+- **`SuggestionBuilder`** creates one suggestion per failed check and the keyword suggestions (R6). It ranks them by impact, then severity, then id, and numbers the ranks 1..n.
+- **`MessageCatalog`** resolves text from the locale and keys with Laravel's translator. It never builds sentences by string concatenation.
 
-### Check rules as built (the §6 table, made precise)
+### Rules as I will build them (R1–R8 made precise; decisions below)
 
-| Check | Pass when (S2 precision in italics) |
+| Topic | Rule |
 | --- | --- |
-| `readable_text` | text extractable, ≥ 40 words, replacement characters ≤ 1 % of characters |
-| `single_column` | no columns detection at ≥ medium; *low → unverified* |
-| `layout_tables` | no table detection at ≥ medium (*PDF tables are low → unverified*) |
-| `images` | ≤ 2 images and none ≥ 15 % of the page; *area unknown → judged on count only* |
-| `text_boxes_headers` | no text boxes, and contact details not only in a header/footer; *PDF: text boxes n/a, header part only* |
-| `file_supported` | PDF or DOCX, ≤ 5 MB; *pasted text → unverified* |
-| `clean_characters` | glyph detection negative (*symbol-bullet rule from S1 applies*) |
-| `email` / `phone` | a valid email / *a phone number of 8–15 digits, international or local format* in the body text |
-| `experience_section` / `education_section` / `skills_section` | recognised heading followed by ≥ 1 entry line |
-| `dates` | ≥ 2 date ranges in the experience section, *all in one style* (decision 2) |
-| `action_verbs` | ≥ 60 % of experience bullets start with an action verb (*or, in French, an action noun*, decision 3) |
-| `quantified_results` | ≥ 2 bullets with a number, % or currency amount (*years and date ranges do not count*) |
-| `length` | 250–1 000 words |
-| `no_duplicates` | no two bullets equal after normalisation |
-
-*Bullets* = experience-section lines that start with a list marker (`•`, `-`, `*`, `▪`, `–`, numbered items, or a symbol-font bullet). If the section has none, lines of ≥ 6 words that are not a role/date line count as bullets (common in Canva exports where markers are drawings).
-
-### Keyword extraction (§6.1 rule (b), tightened — decision 1)
-
-1. Block detection as §6.1 step 2 (EN/FR required/preferred headings).
-2. Candidates:
-   - **(a)** every taxonomy term or alias found anywhere in the job description;
-   - **(b′)** inside a required/preferred block, each **list item** — a line, or a comma/semicolon/"and/et"-separated part of a line — of **≤ 4 words** after removing bullet markers and trailing punctuation, is one candidate term as written ("REST APIs", "Gestion de projet");
-   - longer sentences contribute **only** taxonomy hits;
-   - outside blocks, **only** taxonomy hits (no free n-grams).
-3. Kind/weight as §6.1 step 4; generic blocklist (step 5); at most 40 terms.
-
-This is what the fixture job descriptions already assume (one term per line) and keeps a job ad written in sentences from producing dozens of junk keywords.
-
-### Matching (§6.2 as updated in S1)
-
-exact (normalised token sequence, token boundaries) → synonym (same group in `synonyms.{en,fr}.json`) → stem (Snowball, stop words ignored, same order), with **no stem matching for terms of ≤ 3 letters or technical tokens**. Evidence: ≤ 2 CV lines (≤ 200 chars); `found_in` from `SectionDetector`; `keyword_skills_only` facts for S3 (term found only in Skills); stuffing = > 10 occurrences (never affects coverage).
+| Points | §6 table in `config/ats.php`; `pass` earns max, `fail`/`unverified` earn 0; `unverified` → `applicable: false`, excluded from Σ max |
+| Raw score | `round_half_up(100 × Σ earned / Σ max)` over applicable checks; categories in fixed order format, sections, content, keywords? |
+| Keywords | `earned = round_half_up(30 × coverage)`; `pass` only at coverage 1; with `insufficient_job_description` the check is `unverified` (not applicable) |
+| Caps | triggered when the condition holds (failed major format check → 84, `email` fails → 79, `experience_section` fails → 74); `applied` = `limit < raw_score`; score = min(raw, binding limits) |
+| Status | no extractable text, or `readable_text` failed for garbled text → `unreadable` (other checks `unverified`); text but < 40 words → `insufficient_text` (checks still run and are shown); both → `score`, `raw_score`, `grade` null, `impact_points` null |
+| Grade | strong ≥ 85, good 70–84, needs_work 50–69, poor < 50 |
+| Suggestions | one per failed check, with severity from §6; up to 5 missing required keywords (severity `minor`, weight order, then id); up to 3 missing preferred keywords (`info`); `keyword_skills_only` and `keyword_stuffing` (`info`, impact 0) |
+| Ranking | `impact_points` desc → severity (`blocker > major > minor > info`) → `id`; `rank` 1..n |
+| Locale | request `locale`, else detected CV language when en/fr, else `en` |
+| Limitations | always the estimate disclaimer; plus PDF heuristics (PDF), no OCR (when unreadable), pasted text format checks unverified (text), CV language not EN/FR: exact matching only (other) |
 
 ## Tasks
 
-### T0 — CI fix on `main` (already committed here)
+### T1 — Points, categories, caps, grade, status
 
-### T1 — Section detection and ported vocabulary
-- `headings.{en,fr}.json`, `action-verbs.{en,fr}.txt`, `action-nouns.fr.txt` ported from `AtsDocumentReview`; `SectionDetector`.
-- **Acceptance:** §8.4 section table (`Work Experience`, `Expérience professionnelle`, `Projects`, `Formations`, `Compétences techniques`, `S K I L L S` found; prose lines that merely contain those words not found); the legacy `ats-document.php` heading cases; every fixture's sections as the expected files imply.
+- Add the scoring constants to `config/ats.php`. Build `ScoreCalculator`, `Caps`, `Grade` and `ScoreResult`.
+- **Acceptance:**
+  - For every golden case: per-check `earned`, `score`, `raw_score`, `grade`, `caps` (id, limit, applied) and `score_status` are reproduced through the real pipeline.
+  - Unit tests cover round-half-up edges (x.5) and the status rules above.
 
-### T2 — Checks and runner
-- The 17 document checks + `CheckRunner` (R4 at check level, `unverified` rules).
-- **Acceptance:** pass/fail/unverified unit cases per check; **every `checks.*.status` in `expected/*.json` (F1–F13, F4b, F7/F8 fixed) reproduced** by parsing the fixture and running the checks.
+### T2 — What-if and suggestions
+
+- Build `WhatIf`, `SuggestionBuilder` and `Suggestion`, and the ranking.
+- **Acceptance:**
+  - The top-3 suggestion ids and `impact_points` of every golden file are reproduced. This includes F4b `keyword:redis` = 0 (cap binding), F5 `layout_tables` = 16 (cap lifted) and F6 = null.
+  - `stuffing.docx` gives the same score as `clean-en.docx` plus one `keyword:laravel` stuffing suggestion with impact 0.
+  - Limits hold: at most 5 required and 3 preferred keyword suggestions.
+  - Ranks are 1..n with no gaps.
+
+### T3 — EN/FR message catalog
+
+- Write `lang/en/ats.php` and `lang/fr/ats.php` and `MessageCatalog`. They cover:
+  - check titles;
+  - findings for every (check, key) pair, with the S2 params (`:count`, `:percent`, `:found`…);
+  - actions, cap reasons and suggestion titles/details/actions, including the keyword ones ("add only if true for you");
+  - summaries per status/grade and the main issue;
+  - formatting notes and limitations.
+- **Acceptance:**
+  - Parity test: the same keys exist in EN and FR with the same placeholders.
+  - Every key the checks can emit has an entry.
+  - Running all fixtures in both locales gives no raw key and no unreplaced `:placeholder`.
+  - F11 is in French.
 
 ### Checkpoint A
-- [ ] Review with maintainer: check rules table, fixture statuses, ported vocabulary.
 
-### T3 — Taxonomy
-- `skills.json` (curated from `AtsScorer`), `synonyms.en.json`, `synonyms.fr.json`, blocklists; a validation test (every alias in one group only; §8.3 guards: `sql`/`postgresql`, `java`/`javascript`, `react`/`reactive` never grouped).
+- [ ] You review the **French and English copy** (§17 item 11) and the scoring rules table above before I wire the report.
 
-### T4 — Keyword extraction
-- `KeywordExtractor` with rule (b′); **acceptance:** the four fixture job descriptions give exactly the expected terms and kinds (`expected/F3|F4b|F11|F13.json`), and a realistic sentence-style job ad (new fixture `jobs/sentences-en.txt`) yields only taxonomy terms plus short list items, ≤ 40.
+### T4 — Report assembly and analyzer
 
-### T5 — Matching, evidence, stuffing
-- `KeywordMatcher`, `StuffingDetector`, coverage (R2).
-- **Acceptance:** the §8.3 table row by row (including `Go`/"going" → no match); every keyword item's `status`/`match_type` in the four expected files; `stuffing.docx` reports Laravel × 15 and the same coverage as `clean-en.docx`.
+- Build `AtsAnalyzer` and `AtsReport` with the full §5.2 shape:
+  - `document`, `language`, `categories`, `keywords` (S2 report), `sections` (contact values, heading, line), `formatting` (detections with notes);
+  - `caps`, `suggestions`, `limitations`, `generated_at` (injected clock).
+- **Acceptance:**
+  - Every fixture produces every §5.2 field with the right types.
+  - Determinism: two runs give identical output except `generated_at`.
+  - Σ earned / Σ max of applicable checks reproduces `raw_score`.
+  - Performance budget: F1/F2 ≤ 1.5 s.
 
-### T6 — Spec, PR, STOP
-- `SPEC-ats.md` §6/§6.1 updated with the rules as built; `tasks/todo.md`; open the PR.
+### T5 — Spec, docs, PR, STOP
+
+- Update `SPEC-ats.md` with the rules as built and decisions 22–27, and `tasks/todo.md`.
+- Run the full suite, the legacy scripts, `pint --test`, `composer audit` and a fresh-clone check.
+- Open the PR and stop.
 
 ### Checkpoint B (final)
-- [ ] PR opened; S3 (scoring, suggestions, EN/FR messages) planned after merge.
+
+- [ ] PR opened; S4 (route, request, Resource, JSON Schema, privacy and error tests) planned after merge.
 
 ## Risks
 
 | Risk | Mitigation |
 | --- | --- |
-| Heading and action-verb lists miss real-world wording | ported legacy lists (already tuned on real CVs) + S5 calibration on your 20 CVs |
-| Real job ads write requirements as sentences, so rule (b′) finds few keywords | taxonomy hits still apply; the sentence fixture measures it; S5 calibration includes real job ads if you have them |
-| Synonym groups too loose (false matches) or too tight | curated groups, §8.3 guards in a test, `match_type` shown to users |
-| Bullets without markers (Canva) | fallback rule above, checked on the generated two-column PDF |
+| What-if under caps confuses users (a +0 keyword) | R5 is exact by design; the copy says the cap is why (cap reason shown in the report); UI explains it in Phase 4 |
+| French copy quality | your review at Checkpoint A; vocabulary review again during S5 |
+| S5 calibration changes weights after the UI is built | weights are config only; the contract does not change; golden files and the changelog (`docs/ats-scoring.md`) are updated in S5 |
+| Too many suggestions on weak CVs | per-type limits (R6) and ranking; the UI shows the top 4 on Overview |
 
 ## Decisions needed (recommendation first)
 
-1. **Extraction rule (b′)** as written above: list items of ≤ 4 words inside requirement blocks, taxonomy hits everywhere, no free n-grams outside blocks. *Recommended.*
-2. **Dates "one consistent style":** style classes are `Mon YYYY` (EN/FR month names or abbreviations), `MM/YYYY`, `YYYY`; "Present/Current/aujourd'hui/présent/en cours" are valid ends. A CV mixing `Mar 2022` and `03/2022` fails; `Mar 2022 – Present` and `Jun 2019 – Feb 2022` pass. *Recommended.*
-3. **French action nouns** ("Développement de…", "Création de…", "Mise en place…", "Gestion de…") count like action verbs, as the legacy engine did: it is the normal French CV style. *Recommended.*
-4. **Taxonomy curation:** split the non-synonym groups of the legacy lexicon (`SQL`/`PostgreSQL`, `Java`/`Spring`, `Docker`/containers, ML/AI, REST/"apis") into separate skills. *Recommended* (required by §8.3).
-5. **Points and messages stay in S3:** S2 returns statuses, evidence and message keys only. *Recommended.*
+22. **Scope boundary with S4:** S3 includes `AtsAnalyzer` and the full §5.2 report (sections, formatting, summary, limitations), so the golden tests run the complete pipeline in-process. S4 adds only the HTTP layer. *Recommended.*
+23. **`unreadable` vs `insufficient_text`:** `unreadable` when there is no extractable text or the text is garbled (replacement characters > 1 %), with every other check `unverified`. `insufficient_text` when the text is readable but under 40 words: the checks still run and are shown, and `score`, `grade` and `impact_points` are null. *Recommended.*
+24. **Short job description** (`insufficient_job_description`):
+    - `keyword_coverage` is `unverified` (not applicable), so the report is scored like document mode.
+    - One suggestion is added: id `keyword_coverage`, check_id `keyword_coverage`, severity `info`, impact 0, "paste the full job description".
+    - *Recommended.*
+25. **Unverified checks get no suggestion.** Pasted text gets a limitation line ("format checks need the original file") instead. *Recommended.*
+26. **`keyword_skills_only`:** up to 3, severity `info`, impact 0, required terms first, then by id. R6 sets no limit, and a long skills list could otherwise flood the list. *Recommended.*
+27. **Summary sentence:** chosen from the status, then the top suggestion's check, e.g. "Good content, but the two-column layout can scramble text in many ATS parsers." Otherwise a sentence per grade. *Recommended.*
 
 ## Out of scope
 
-Points, caps, score, grade, what-if, suggestions, EN/FR message text (S3); the route and JSON Schema (S4); calibration (S5); the prompt envelope (S6); any UI.
+The route, FormRequest, Resource, JSON Schema, 422 error cases and privacy tests (S4). Calibration and `docs/ats-scoring.md` (S5). The keyword-source choice (requirement blocks only vs. the whole job ad), which is decided in S5 with real job ads. The prompt envelope (S6). Any UI (Phase 4).

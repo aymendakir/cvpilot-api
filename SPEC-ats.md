@@ -643,6 +643,8 @@ Report tabs map 1:1 to the response: Overview (`score`, `grade`, `summary`, top 
 
 S0 spike + fixtures (build.php, F1–F13) · S1 `ats-language` + `ats-parsing` (adds `ext-intl` + `wamania/php-stemmer`) · S2 `ats-checks` + `ats-keywords` · S3 `ats-scoring` (score, caps, what-if, suggestions, EN/FR messages) · S4 `ats-api` (route, request, Resource, JSON Schema, privacy tests) · S5 docs (`ats-scoring.md`, changelog) and calibration on the maintainer's 20 anonymized CVs · S6 prompt envelope (§16.1, evaluation first). Then Phase 4 builds the UI on this API, and a separate PR removes the legacy engine once the UI uses the new one (§17 answer 6).
 
+**Delivery order (decided after S2):** S3 → S4 → **Phase 4 (frontend)** → S5 calibration and S6 prompt envelope. S5 and S6 run after or alongside Phase 4 because neither changes the API contract (S5 changes weights and vocabulary in config/resources, with golden files and the changelog updated; S6 changes AI prompts only).
+
 ### 16.1 Carried over from Phase 2 (S4): one prompt envelope for AI calls
 
 Moved here from Phase 2 §7 item 3 (decision after the S4 plan). Delivered as slice S6. Scope: every AI call that interpolates untrusted text (`ai/chat`, `ai/cover-letter`, the career generators, interviews) sends CV, job and user text as a JSON-encoded block labelled as data, never as instructions; prompt _wording_ stays as is. **No prompt changes before a model evaluation:** it changes the text the model receives, so S6 first records before/after outputs on the fixture CVs, and the maintainer accepts the comparison before any prompt is changed. It is a separate slice with its own acceptance check, not part of the deterministic ATS engine. The legacy `ai/ats-analysis` already uses a JSON data block.
@@ -678,3 +680,7 @@ Also decided: Phase 3b is skipped (the ATS UI is built in Phase 4), and the prom
 19. French action nouns count as action verbs.
 20. Legacy lexicon groups that are not synonyms (SQL/PostgreSQL, Java/Spring, Docker/containers, ML/AI, REST/apis) are split.
 21. Points and messages stay in S3; S2 returns statuses, evidence, message keys and the keyword report. The French vocabulary (headings, action verbs/nouns, taxonomy aliases) is reviewed by the maintainer during S5 calibration.
+
+**After S2:**
+
+- Keyword source (requirement blocks only when the job ad has them, vs. the whole job ad as built in S2): decided in S5 with real job ads.
