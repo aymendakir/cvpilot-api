@@ -115,3 +115,7 @@ DOCX text keeps body order, includes table cells and text boxes, and reads only 
 ## Out of scope
 
 Checks and scoring (S2/S3), the route (S4), the keyword taxonomy and synonyms (S2), OCR, anything in `cv-ai`.
+
+## Carried to S2 (matcher)
+
+- **Short and technical terms are never stem-matched.** Snowball stems "going" to "go" (verified in `LanguageTest`), so `Go` would stem-match "going to the office", which §8.3 says must not match. S2's matcher uses exact and synonym matching only for terms of **3 letters or less** and for **technical tokens** (`c#`, `node.js`, `ci/cd`, `vue3`, …); stem matching applies to longer alphabetic terms. The §8.3 row stays the acceptance target.
