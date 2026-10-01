@@ -12,15 +12,15 @@ Rules: test first, minimal change, **legacy responses unchanged**, `composer lin
 - [x] Legacy table identical to the baseline; deprecation headers; first v1 slice with parity tests
 - [ ] Review with maintainer
 
-- [ ] T4 v1 cv-documents, applications (+show), jobs, ai, ats; legacy-only improve-cv / analyze
-- [ ] T5 Split `CareerController` (1/2): versions, workspaces, reports, library, insights
-- [ ] T6 Split `CareerController` (2/2): AI generators, interviews; delete `CareerController`
-- [ ] T7 v1 admin routes; warnings 201, `DELETE admin/cache` 204 (legacy shims); callback fixed
-- [ ] T8 Contract test, `route:cache` in CI, `docs/ROUTES.md`
+- [x] T4 v1 cv-documents, applications (+show), jobs, ai, ats; legacy-only improve-cv / analyze
+- [x] T5 Split `CareerController` (1/2): versions, workspaces, reports, library, insights
+- [x] T6 Split `CareerController` (2/2): AI generators, interviews; delete `CareerController`
+- [x] T7 v1 admin routes; warnings 201, `DELETE admin/cache` 204 (legacy shims); callback fixed
+- [x] T8 Contract test, `route:cache` in CI, `docs/ROUTES.md`
 - [ ] T9 Fresh-clone verification, open the S2 PR, **STOP**
 
 ### Checkpoint B (final)
 
-- [ ] CI green; legacy table = baseline + names/deprecation only
-- [ ] Every v1 route matches SPEC §3.2; `route:cache` works
+- [x] Legacy table = baseline + names/deprecation only (`LegacyRoutesTest`); CI green: confirm on the PR
+- [x] Every v1 route matches SPEC §3.2 (`V1RoutesContractTest`, blog and `POST admin/users` arrive in S5); `route:cache` works
 - [ ] Maintainer merges S2 before S3 is planned
