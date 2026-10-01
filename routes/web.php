@@ -1,20 +1,20 @@
 <?php
 
-use App\Http\Controllers\AccountDataController;
-use App\Http\Controllers\AdminController;
-use App\Http\Controllers\AiController;
-use App\Http\Controllers\AnalyticsController;
-use App\Http\Controllers\ApplicationController;
-use App\Http\Controllers\AtsDocumentController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CareerController;
-use App\Http\Controllers\CvController;
-use App\Http\Controllers\CvTemplateController;
-use App\Http\Controllers\IntegrationController;
-use App\Http\Controllers\JobsController;
-use App\Http\Controllers\MailSettingsController;
-use App\Http\Controllers\SiteSettingsController;
-use App\Http\Controllers\SupportController;
+use App\Http\Controllers\Api\V1\AccountDataController;
+use App\Http\Controllers\Api\V1\Admin\AdminController;
+use App\Http\Controllers\Api\V1\Admin\IntegrationController;
+use App\Http\Controllers\Api\V1\Admin\MailSettingsController;
+use App\Http\Controllers\Api\V1\AiController;
+use App\Http\Controllers\Api\V1\AnalyticsController;
+use App\Http\Controllers\Api\V1\ApplicationController;
+use App\Http\Controllers\Api\V1\AtsDocumentController;
+use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CareerController;
+use App\Http\Controllers\Api\V1\CvController;
+use App\Http\Controllers\Api\V1\CvTemplateController;
+use App\Http\Controllers\Api\V1\JobsController;
+use App\Http\Controllers\Api\V1\SiteSettingsController;
+use App\Http\Controllers\Api\V1\SupportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;

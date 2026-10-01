@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Http\Controllers\Api\V1\AuthController;
 use App\Models\Integration;
 use App\Services\AiGateway;
 use App\Services\JobSearchService;
