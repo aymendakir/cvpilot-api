@@ -17,12 +17,28 @@ S3 does **not** touch: ATS scoring or AI prompts (Phase 3 owns the `ai/ats-analy
 - Models return their full attribute set. `User` exposes `session_version`, `suspended`, `role`, `phone` … on `me` and login. `CvDocument` hides `disk_path`/`extracted_text`; `Integration` hides `secret`; `MailSetting` hides secrets.
 - Frontend (unchanged until Phase 2b): admin screens read `suspended` and `extracted_text` on admin user detail; `workspace/page.tsx` reads an optional `extracted_text` on the user's own CV list (never sent today since the model hides it).
 
-## Decisions I need from you (before /build)
+## Decisions (answered by the maintainer)
 
-1. **Shared vs v1-only strictness.** Recommended: legacy and v1 share FormRequests and Resources (one code path; S7 deletes only routes). Consequence: legacy routes also return `422` for invalid enums/pagination and no longer return `session_version` on `me`/login. The current frontend does not read `session_version`. Alternative: keep legacy lenient — doubles the controller code, I advise against it.
-2. **Admin reading user CV text** (open since S0): KEEP or REMOVE? REMOVE = admin user detail stops returning `uploads.*.extracted_text` and `GET admin/cv-documents/{cv}/file` is removed from v1 (legacy `uploads/{cv}` too), which changes the admin panel's CV viewer. KEEP = it stays in `AdminUserResource` and is documented. Not guessing; default if you say nothing: **KEEP**, recorded as a privacy risk in the PR.
-3. **Provider connection failures** (§18.12): `IntegrationController::test` and `MailSettingsController` check/test move from `422` to `502 upstream_invalid_response` (provider answered with an error) / `503 upstream_unavailable` (unreachable, timeout). The admin UI shows these errors today from `message` on a 422; it will see 502/503 instead. OK?
-4. **Pagination.** Spec: `page` ≥ 1, `per_page` 1–50 default 20. Library keeps 12 and applications 20 as defaults (so shapes don't change); `per_page` is added as an optional param. OK?
+1. **Shared strictness: yes.** Legacy and v1 share FormRequests and Resources.
+2. **Admin CV text: REMOVE** (T12). Drop `extracted_text` from admin user detail and remove `GET admin/cv-documents/{cv}/file` (and legacy `admin/uploads/{cv}`), with tests; the PR lists what breaks in the admin UI. _The answer also contained a parenthetical "or: KEEP for now"; I read the first, flat "REMOVE" as the decision and will confirm at Checkpoint A before T12._
+3. **502/503 for provider failures: yes** (T11); see the UI finding below.
+4. **`per_page` 1–50 with today's defaults** (library 12, applications 20, others 20).
+
+## Frontend audit: calls that carry newly validated values (`cv-ai` @ main, every call goes through `backendRequest`)
+
+| Call | Value sent | New rule | Result |
+| --- | --- | --- | --- |
+| `admin/analytics?days=` (dashboard) | `7`, `30`, `90` (select options) | `in:7,30,90` | no new 422 |
+| `career/library?kind=` (workspace) | `cover_letter`, `report`, `interview`; none (→ `cv`) | `in:cv,interview,workspace,report,application,upload,cover_letter` (already validated today) | no new 422 |
+| `admin/contact-messages?page=&status=` | `status` is `""`, `new`, `read`, `closed` | `nullable|in:new,read,closed` (already today) | no new 422: `""` becomes null; pinned by a test in T7 |
+| `admin/logs?page=&event=` | `event` free text from filter chips, `page` int | `nullable|string|max:100`, `page` int ≥ 1 (already today) | no new 422 |
+| `admin/users?page=&search=` | trimmed search text, `page` int | `string|max:120`, `page` int ≥ 1 (already today) | no new 422 (a >120-char search already 422s) |
+| `POST cv` (upload) | `file` only | `is_primary` boolean (already today) | the frontend never sends `is_primary` |
+| `per_page` | never sent | `integer|between:1,50`, optional | none |
+
+No frontend call would receive a new 422, so no frontend expectation needs to change. The only strictness that is **new** is `days` (silent default → 422) and the optional `per_page`.
+
+**502/503 finding (decision 3):** every admin handler (`testIntegration`, SMTP check/test/connect, SMTP panel test) catches the error and shows `err.message` in a notice, so there is no blank page. But `backendRequest` replaces any status ≥ 500 with a generic "This service is temporarily unavailable. Your information was not submitted…" message, and S1 also forces a generic server message for 5xx. Consequence: the admin loses the specific reason that a 422 carried (e.g. "SMTP authentication failed"). For integrations the redacted reason is still shown through `last_error` in the list. For SMTP check/test no reason is stored anywhere, so those notices become generic. Options for you at Checkpoint A: accept it; or (cheap, no DB change) log the redacted reason with the request id and let Phase 2b show `request_id`.
 
 ## Architecture
 
