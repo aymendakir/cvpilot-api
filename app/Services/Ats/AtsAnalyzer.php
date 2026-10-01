@@ -38,7 +38,13 @@ final class AtsAnalyzer
     /** @throws UnreadableDocument password-protected, corrupt, unsupported or timed out (→ 422 in S4) */
     public function analyzeFile(string $path, string $fileName, ?string $jobDescription = null, ?string $locale = null, bool $includeText = false): AtsReport
     {
-        return $this->analyze($this->reader->parseFile($path, $fileName), 'file', $fileName, $jobDescription, $locale, $includeText);
+        $document = $this->reader->parseFile($path, $fileName);
+        if ($document->type === 'text') {
+            // §5.1: an uploaded file must be a PDF or DOCX; plain text is sent as `cv_text`.
+            throw new UnreadableDocument(UnreadableDocument::UNSUPPORTED_TYPE);
+        }
+
+        return $this->analyze($document, 'file', $fileName, $jobDescription, $locale, $includeText);
     }
 
     public function analyzeText(string $cvText, ?string $jobDescription = null, ?string $locale = null, bool $includeText = false): AtsReport

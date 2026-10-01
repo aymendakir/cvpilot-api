@@ -35,6 +35,7 @@ All paths are relative to the API origin. Errors use the envelope in [ERRORS.md]
 | auth | GET | `/api/v1/applications/{application}` | shared `api` limiter | `v1.applications.show` |
 | auth | PATCH | `/api/v1/applications/{application}` | shared `api` limiter | `v1.applications.update` |
 | auth | PUT | `/api/v1/applications/{application}` | shared `api` limiter | `v1.applications.update` |
+| auth | POST | `/api/v1/ats/analyses` | `20,1,ats-analyses:` | `v1.ats.analyses.store` |
 | auth | POST | `/api/v1/ats/document` | `20,1,ats-document:` | `v1.ats.document` |
 | auth | POST | `/api/v1/auth/logout` | shared `api` limiter | `v1.auth.logout` |
 | auth | GET | `/api/v1/cv-documents` | shared `api` limiter | `v1.cv-documents.index` |
