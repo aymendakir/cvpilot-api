@@ -9,6 +9,6 @@
 use App\Http\Controllers\Api\V1\Admin\MailSettingsController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['throttle:api', 'member', 'admin'])
+Route::middleware(['throttle:api', 'auth.session', 'admin'])
     ->get('admin/smtp/microsoft/callback', [MailSettingsController::class, 'microsoftCallback'])
     ->name('smtp.microsoft.callback');

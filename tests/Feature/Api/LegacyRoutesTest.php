@@ -56,6 +56,9 @@ class LegacyRoutesTest extends TestCase
         'CareerController@diagnostic' => 'CareerAiController@diagnostic',
     ];
 
+    /** Middleware aliases that were renamed (the pinned baseline still says `member`). */
+    private const RENAMED_MIDDLEWARE = ['auth.session' => 'member'];
+
     /** Middleware that legacy routes gain (never removed or reordered): `deprecated`, optionally with a successor path. */
     private const ADDED_MIDDLEWARE_PREFIX = 'deprecated';
 
@@ -109,9 +112,9 @@ class LegacyRoutesTest extends TestCase
                 $problems[] = "action changed: {$key} {$row['action']} -> {$current[$key]['action']} (expected {$expectedAction})";
             }
 
-            $middleware = array_values(array_filter(
-                $current[$key]['middleware'],
-                fn ($m) => ! str_starts_with($m, self::ADDED_MIDDLEWARE_PREFIX),
+            $middleware = array_values(array_map(
+                fn ($m) => self::RENAMED_MIDDLEWARE[$m] ?? $m,
+                array_filter($current[$key]['middleware'], fn ($m) => ! str_starts_with($m, self::ADDED_MIDDLEWARE_PREFIX)),
             ));
             if ($middleware !== $row['middleware']) {
                 $problems[] = "middleware changed: {$key} [".implode(',', $row['middleware']).'] -> ['.implode(',', $middleware).']';

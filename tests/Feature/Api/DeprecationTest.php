@@ -49,7 +49,7 @@ class DeprecationTest extends TestCase
 
         $this->assertNotNull($route);
         $this->assertSame('api/admin/smtp/microsoft/callback', $route->uri());
-        $this->assertSame(['web', 'throttle:api', 'member', 'admin'], $route->gatherMiddleware());
+        $this->assertSame(['web', 'throttle:api', 'auth.session', 'admin'], $route->gatherMiddleware());
 
         config(['app.url' => 'https://api.example.test']);
         $this->assertSame(

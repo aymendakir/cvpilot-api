@@ -306,13 +306,14 @@ class AuthTest extends TestCase
         $this->withSession($session)->getJson('/api/me')->assertStatus(401);
     }
 
-    public function test_suspended_and_unverified_members_are_401_on_member_routes(): void
+    public function test_suspended_and_unverified_members_are_403_with_their_own_codes(): void
     {
         $suspended = $this->makeUser(['suspended' => true]);
         $unverified = $this->makeUser(['verified_at' => null]);
 
-        $this->signIn($suspended)->getJson('/api/me')->assertStatus(401);
-        $this->signIn($unverified)->getJson('/api/me')->assertStatus(401);
+        // S4 (SPEC §6): the account state is a 403 with a distinct code, not a 401.
+        $this->signIn($suspended)->getJson('/api/me')->assertStatus(403)->assertJsonPath('code', 'account_suspended');
+        $this->signIn($unverified)->getJson('/api/me')->assertStatus(403)->assertJsonPath('code', 'email_not_verified');
     }
 
     public function test_a_session_for_a_deleted_user_is_401(): void

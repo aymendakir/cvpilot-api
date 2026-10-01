@@ -2,10 +2,10 @@
 
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\Admin;
+use App\Http\Middleware\AuthSession;
 use App\Http\Middleware\Deprecated;
 use App\Http\Middleware\EnsureErrorEnvelope;
 use App\Http\Middleware\ForceJsonResponses;
-use App\Http\Middleware\Member;
 use App\Http\Middleware\RejectMalformedJson;
 use App\Http\Middleware\RequestId;
 use App\Http\Middleware\SecurityHeaders;
@@ -46,10 +46,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Authenticate (member, admin) before route-model binding, so an anonymous request for a
         // missing id gets 401 instead of a 404 that reveals which ids exist.
         $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: Admin::class);
-        $middleware->prependToPriorityList(before: Admin::class, prepend: Member::class);
+        $middleware->prependToPriorityList(before: Admin::class, prepend: AuthSession::class);
         $middleware->alias([
-            'member' => Member::class,
-            'auth.session' => Member::class,
+            'auth.session' => AuthSession::class,
             'admin' => Admin::class,
             'deprecated' => Deprecated::class,
         ]);
