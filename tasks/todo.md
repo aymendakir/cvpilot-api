@@ -1,11 +1,11 @@
 # Task list — Phase 3, slice S1 (`ats-language` + `ats-parsing`)
 
 Branch `feature/ats-s1`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §2–§4, §7, §8.3, §17; input `docs/ats-spike-s0.md`.
-Status: **planned; waiting for maintainer approval** (decisions 1–3 in the plan).
+Status: **T1–T3 built; at Checkpoint A.** Decisions: smalot removed in S1 behind a behaviour test; one-page PDF header/footer band = not detected; PDF image area from pdfimages (pixels ÷ ppi), medium, nothing written to disk.
 
-- [ ] T1 Tooling: poppler-utils + intl in Docker/CI, `wamania/php-stemmer`, `config/ats.php`, failing-if-missing test, DEPLOYMENT/README
-- [ ] T2 `ats-language`: normalizer, tokenizer, stop words, stemmer, language detector; §8.3 stem facts
-- [ ] T3 Parsing core, `TextParser`, `DocxParser`
+- [x] T1 Tooling: poppler-utils + intl in Docker/CI, `wamania/php-stemmer`, `config/ats.php`, failing-if-missing test, DEPLOYMENT/README
+- [x] T2 `ats-language`: normalizer, tokenizer, stop words, stemmer, language detector; §8.3 stem facts
+- [x] T3 Parsing core, `TextParser`, `DocxParser`
 
 ### Checkpoint A
 
