@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Middleware\Admin;
+use App\Http\Middleware\ForceJsonResponses;
 use App\Http\Middleware\Member;
+use App\Http\Middleware\RequestId;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -13,6 +15,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(web: __DIR__.'/../routes/web.php', health: '/up')
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->prepend([RequestId::class, ForceJsonResponses::class]);
         $middleware->validateCsrfTokens(except: ['api/analytics/events', 'api/contact']);
         $middleware->append(SecurityHeaders::class);
         $middleware->alias(['member' => Member::class, 'admin' => Admin::class]);

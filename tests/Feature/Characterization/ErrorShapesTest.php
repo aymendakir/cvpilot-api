@@ -49,12 +49,12 @@ class ErrorShapesTest extends TestCase
             ->assertJsonPath('message', 'The route api/does-not-exist could not be found.'); // WART
     }
 
-    public function test_unknown_api_route_without_an_accept_header_is_not_json(): void
+    public function test_unknown_api_route_without_an_accept_header_is_json(): void
     {
         $response = $this->get('/api/does-not-exist');
 
         $response->assertStatus(404);
-        $this->assertStringNotContainsString('application/json', (string) $response->headers->get('Content-Type')); // WART
+        $this->assertStringContainsString('application/json', (string) $response->headers->get('Content-Type'));
     }
 
     public function test_another_users_record_is_404_with_an_empty_message(): void
@@ -228,7 +228,7 @@ class ErrorShapesTest extends TestCase
         $this->assertSame('strict-origin-when-cross-origin', $response->headers->get('Referrer-Policy'));
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
         $this->assertFalse($response->headers->has('Content-Security-Policy'));
-        $this->assertFalse($response->headers->has('X-Request-Id')); // WART: no request id
+        $this->assertTrue($response->headers->has('X-Request-Id'));
     }
 
     public function test_cors_never_echoes_a_foreign_origin_and_allows_credentials(): void
