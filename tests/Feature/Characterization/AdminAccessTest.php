@@ -2,9 +2,13 @@
 
 namespace Tests\Feature\Characterization;
 
+use App\Models\CareerReport;
 use App\Models\CvDocument;
+use App\Models\CvVersion;
 use App\Models\Integration;
+use App\Models\InterviewSession;
 use App\Models\User;
+use App\Services\AdminReview;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
@@ -86,18 +90,30 @@ class AdminAccessTest extends TestCase
             ->assertStatus(422)->assertJsonPath('message', 'Admin accounts cannot be suspended here.');
     }
 
-    public function test_user_detail_exposes_uploaded_cv_text_to_admins(): void
+    public function test_user_detail_never_returns_cv_text_to_admins(): void
     {
         $admin = $this->makeAdmin();
         $user = $this->makeUser();
+        $cv = 'PRIVATE CV TEXT '.str_repeat('x', 40);
         CvDocument::create([
             'user_id' => $user->id, 'name' => 'cv.pdf', 'disk_path' => 'cv/1/x.pdf', 'mime' => 'application/pdf',
-            'size' => 10, 'extracted_text' => 'PRIVATE CV TEXT', 'expires_at' => now()->addHours(48),
+            'size' => 10, 'extracted_text' => $cv, 'expires_at' => now()->addHours(48),
         ]);
+        $version = CvVersion::create(['user_id' => $user->id, 'name' => 'Saved CV', 'content' => $cv, 'source' => 'manual']);
+        InterviewSession::create(['user_id' => $user->id, 'title' => 'Dev', 'cv_text' => $cv, 'job_description' => 'job', 'transcript' => [['role' => 'assistant', 'content' => 'Q?']]]);
+        CareerReport::create(['user_id' => $user->id, 'type' => 'skill_gap', 'input' => ['cv_text' => $cv], 'output' => 'report text']);
+        AdminReview::record('cv', $version);
 
-        $this->signIn($admin)->getJson("/api/admin/users/{$user->id}")->assertOk()
-            ->assertJsonStructure(['user', 'counts', 'activity', 'uploads', 'cv_versions', 'applications', 'interviews', 'reports', 'reviews'])
-            ->assertJsonPath('uploads.0.extracted_text', 'PRIVATE CV TEXT'); // pinned: admin can read CV text
+        $response = $this->signIn($admin)->getJson("/api/admin/users/{$user->id}")->assertOk()
+            ->assertJsonStructure(['user', 'counts', 'activity', 'uploads', 'cv_versions', 'applications', 'interviews', 'reports'])
+            ->assertJsonPath('uploads.0.name', 'cv.pdf')
+            ->assertJsonPath('cv_versions.0.name', 'Saved CV')
+            ->assertJsonMissingPath('uploads.0.extracted_text')
+            ->assertJsonMissingPath('cv_versions.0.content')
+            ->assertJsonMissingPath('interviews.0.cv_text')
+            ->assertJsonMissingPath('reports.0.input')
+            ->assertJsonMissingPath('reviews');
+        $this->assertStringNotContainsString('PRIVATE CV TEXT', $response->getContent());
         $this->assertDatabaseHas('audit_events', ['event' => "user_reviewed:{$user->id}", 'user_id' => $admin->id]);
     }
 

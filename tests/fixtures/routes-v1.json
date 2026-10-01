@@ -31,11 +31,6 @@
     },
     {
         "method": "GET",
-        "uri": "v1/admin/cv-documents/{cv}/file",
-        "scope": "admin"
-    },
-    {
-        "method": "GET",
         "uri": "v1/admin/cv-templates",
         "scope": "admin"
     },

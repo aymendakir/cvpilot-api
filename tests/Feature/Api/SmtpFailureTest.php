@@ -143,4 +143,17 @@ class SmtpFailureTest extends TestCase
 
         $this->signIn($this->makeAdmin())->postJson('/api/admin/smtp/check')->assertStatus(503)->assertJsonPath('code', 'upstream_unavailable');
     }
+
+    public function test_our_own_php_errors_are_a_generic_500_but_still_store_a_reason(): void
+    {
+        $this->settings();
+        $this->failingMail(new \Error('Call to undefined function '.self::PASSWORD.'()'));
+
+        $response = $this->signIn($this->makeAdmin())->postJson('/api/v1/admin/smtp/test')->assertStatus(500);
+
+        $this->assertSame('server_error', $response->json('code'));
+        $this->assertNoSecret($response->getContent(), 'response');
+        $this->assertStringContainsString('PHP runtime error', (string) MailSetting::first()->last_error);
+        $this->assertNoSecret((string) MailSetting::first()->last_error, 'stored last_error');
+    }
 }

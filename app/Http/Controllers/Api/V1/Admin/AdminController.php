@@ -9,7 +9,12 @@ use App\Http\Requests\Admin\ListUsersRequest;
 use App\Http\Requests\Admin\SendWarningRequest;
 use App\Http\Requests\Admin\SuspendUserRequest;
 use App\Http\Resources\AdminApplicationResource;
+use App\Http\Resources\AdminCareerReportResource;
+use App\Http\Resources\AdminCvDocumentResource;
+use App\Http\Resources\AdminCvVersionResource;
+use App\Http\Resources\AdminInterviewSessionResource;
 use App\Http\Resources\AdminUserResource;
+use App\Http\Resources\ApplicationResource;
 use App\Models\AdminReviewItem;
 use App\Models\Application;
 use App\Models\CareerReport;
@@ -21,7 +26,6 @@ use App\Services\PlatformMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class AdminController
 {
@@ -57,14 +61,28 @@ class AdminController
         return DB::table('audit_events')->leftJoin('users', 'users.id', '=', 'audit_events.user_id')->select('audit_events.*', 'users.name as user_name', 'users.email as user_email')->when($r->event, fn ($q) => $q->where('event', $r->event))->orderByDesc('audit_events.id')->paginate($r->perPage(30));
     }
 
+    /**
+     * Account overview for support: metadata and activity only. CV text (uploaded text, saved CV
+     * versions, the CV inside interviews and reports, the temporary admin copies) is not returned.
+     */
     public function detail(Request $r, User $user)
     {
         $counts = [];
         foreach (['cv_documents', 'cv_versions', 'interview_sessions', 'job_workspaces', 'applications', 'career_reports'] as $table) {
             $counts[$table] = DB::table($table)->where('user_id', $user->id)->count();
-        }AuthController::audit($r, 'user_reviewed:'.$user->id, $r->user()->id);
+        }
+        AuthController::audit($r, 'user_reviewed:'.$user->id, $r->user()->id);
 
-        return ['user' => $user, 'counts' => $counts, 'activity' => DB::table('audit_events')->where('user_id', $user->id)->latest('id')->limit(100)->get(['id', 'event', 'ip', 'user_agent', 'created_at']), 'uploads' => CvDocument::where('user_id', $user->id)->latest()->get()->makeVisible(['extracted_text']), 'cv_versions' => CvVersion::where('user_id', $user->id)->latest()->get(), 'applications' => Application::where('user_id', $user->id)->latest()->get(), 'interviews' => InterviewSession::where('user_id', $user->id)->latest()->get(), 'reports' => CareerReport::where('user_id', $user->id)->latest()->get(), 'reviews' => AdminReviewItem::where('user_id', $user->id)->latest('updated_at')->limit(50)->get()];
+        return [
+            'user' => AdminUserResource::make($user),
+            'counts' => $counts,
+            'activity' => DB::table('audit_events')->where('user_id', $user->id)->latest('id')->limit(100)->get(['id', 'event', 'ip', 'user_agent', 'created_at']),
+            'uploads' => AdminCvDocumentResource::collection(CvDocument::where('user_id', $user->id)->latest()->get()),
+            'cv_versions' => AdminCvVersionResource::collection(CvVersion::where('user_id', $user->id)->latest()->get()),
+            'applications' => ApplicationResource::collection(Application::where('user_id', $user->id)->latest()->get()),
+            'interviews' => AdminInterviewSessionResource::collection(InterviewSession::where('user_id', $user->id)->latest()->get()),
+            'reports' => AdminCareerReportResource::collection(CareerReport::where('user_id', $user->id)->latest()->get()),
+        ];
     }
 
     public function applications(ListApplicationsRequest $r)
@@ -95,15 +113,6 @@ class AdminController
     public function storeWarning(SendWarningRequest $r, User $user, PlatformMail $mail)
     {
         return response()->json($this->warning($r, $user, $mail), 201);
-    }
-
-    public function download(Request $r, CvDocument $cv)
-    {
-        abort_if($cv->expires_at && $cv->expires_at->isPast(), 404, 'File not found or expired.');
-        abort_unless(Storage::disk('local')->exists($cv->disk_path), 404, 'File not found on storage.');
-        AuthController::audit($r, 'upload_reviewed:'.$cv->id, $r->user()->id);
-
-        return Storage::disk('local')->download($cv->disk_path, $cv->name, ['Cache-Control' => 'private, no-store']);
     }
 
     public function integrations()

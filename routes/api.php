@@ -136,7 +136,6 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
         Route::get('analytics', [AnalyticsController::class, 'report'])->name('analytics');
         Route::get('audit-events', [AdminController::class, 'logs'])->name('audit-events.index');
         Route::get('applications', [AdminController::class, 'applications'])->name('applications.index');
-        Route::get('cv-documents/{cv}/file', [AdminController::class, 'download'])->whereNumber('cv')->name('cv-documents.file');
         Route::delete('cache', [CacheController::class, 'destroy'])->name('cache.destroy');
 
         Route::get('contact-messages', [SupportController::class, 'index'])->name('contact-messages.index');

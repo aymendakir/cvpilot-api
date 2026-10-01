@@ -30,7 +30,7 @@ final class UpstreamFailure
             if ($error instanceof ConnectionException || $error instanceof MailConfigurationException || $error instanceof DecryptException) {
                 return true;
             }
-            if (preg_match('/timed out|timeout|could not be established|could not resolve|resolve host|getaddrinfo|connection refused|unreachable|name or service not known/i', $error->getMessage())) {
+            if (preg_match('/timed out|timeout|could not be established|could not resolve|resolve host|getaddrinfo|connection refused|connection closed|closed unexpectedly|disconnect|unreachable|name or service not known/i', $error->getMessage())) {
                 return true;
             }
         }

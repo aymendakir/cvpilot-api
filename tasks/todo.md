@@ -1,7 +1,7 @@
 # Task list — Phase 2, slice S3 (validation, Resources, Policies)
 
 Branch `refactor/api-s3-validation`. Detail: `tasks/plan.md`. Spec: `SPEC.md` §5, §6, §11.
-Status: **T1–T8 built; stopped at Checkpoint A for review.** Decisions 1–4 answered (see plan).
+Status: **T1–T12 built; S3 PR opened. Waiting for the maintainer to merge before S4 is planned.**
 
 - [x] T1 `ApiFormRequest`, `Limits`, audit-guard test (red)
 - [x] T2 Policies + IDOR matrix
@@ -15,13 +15,13 @@ Status: **T1–T8 built; stopped at Checkpoint A for review.** Decisions 1–4 a
 ### Checkpoint A
 
 - [x] Guard strict (no allow-list); owner-access matrix green on v1 and legacy
-- [ ] Review with maintainer
+- [x] Review with maintainer
 
-- [ ] T9 `UserResource` / `AdminUserResource`
-- [ ] T10 Resources for owned models and admin lists; poisoned-model test
-- [ ] T11 Provider failure codes 502/503
-- [ ] T12 Admin CV text (per decision)
+- [x] T9 `UserResource` / `AdminUserResource`
+- [x] T10 Resources for owned models and admin lists; poisoned-model test
+- [x] T11 Provider failure codes 502/503
+- [x] T12 Admin CV text (per decision)
 
 ### Checkpoint B (final)
 
-- [ ] CI green; legacy table unchanged; open S3 PR; STOP
+- [x] Legacy table unchanged except the removed admin CV download; fresh-clone checks run; S3 PR opened; STOP

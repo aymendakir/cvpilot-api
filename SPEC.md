@@ -231,6 +231,10 @@ Build order; each slice is its own branch and PR (small atomic commits, tests, b
 9. Gemini key sent in a header; provider errors redacted.
 10. A JSON request body that is not valid JSON returns `400 bad_request` (previously it was read as empty input and usually ended as a `422`). _(S1)_
 11. Every response carries `X-Request-Id`; 5xx responses always use a generic message (the cause is logged with the request id); `abort(503)` stays `503` instead of being rewritten to `500`; API routes answer JSON regardless of `Accept`. _(S1)_
+12. Query and pagination values are validated: `per_page` (1–50, each endpoint keeps its current default size), admin analytics `days` (7, 30 or 90; was silently 30), admin application `status` (enum). Legacy routes get the same rules. _(S3)_
+13. `me`, login and profile update return `UserResource` (no `session_version`, `suspended`, `last_seen_at`, `created_at`); every other model response is an explicit field list. _(S3)_
+14. Provider failures: integration test and SMTP check/test/connect answer `502 upstream_invalid_response` (provider answered with an error) or `503 upstream_unavailable` (unreachable, timed out, not configured) with a generic body; local PHP/template/database failures are `500`. The redacted reason is stored in `integrations.last_error` / `mail_settings.last_error` (new nullable column), returned in the admin resources and logged with the request id. _(S3)_
+15. Admins no longer read user CV text: admin user detail drops `extracted_text`, CV version `content`, interview `cv_text`, report `input` and the temporary `reviews`; `GET admin/cv-documents/{id}/file` (legacy `admin/uploads/{id}`) is removed. _(S3)_
 
 ## 12. Commands
 

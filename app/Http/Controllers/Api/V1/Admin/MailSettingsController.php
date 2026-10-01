@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Exceptions\ApiException;
+use App\Exceptions\ErrorCode;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Requests\Admin\SaveSmtpSettingsRequest;
 use App\Http\Resources\MailSettingResource;
@@ -13,10 +14,12 @@ use App\Services\MicrosoftSmtpOAuth;
 use App\Services\PlatformMail;
 use App\Support\Redactor;
 use App\Support\UpstreamFailure;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\ViewException;
 
 class MailSettingsController
 {
@@ -35,6 +38,11 @@ class MailSettingsController
             'operation' => $operation, 'reason' => $reason, 'reference' => $diagnostic['diagnostic']['reference'] ?? null,
             'request_id' => Context::get('request_id'),
         ]);
+
+        // Our own failures (PHP error, broken template, unreadable settings) are not the mail provider's fault.
+        if ($error instanceof \Error || $error instanceof ViewException || $error instanceof QueryException) {
+            return new ApiException(ErrorCode::ServerError, $reason, previous: $error);
+        }
 
         return UpstreamFailure::exception($error, $reason);
     }
