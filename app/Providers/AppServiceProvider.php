@@ -24,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(30)->by('login-ip:'.$r->ip()),
             Limit::perMinute(5)->by('login-account:'.hash('sha256', strtolower(trim((string) $r->input('email'))).'|'.$r->ip())),
         ]);
-        // Admin routes get their own bucket on top of the shared `api` limiter; v1 and legacy paths share it.
+        // Admin routes get their own bucket on top of the shared `api` limiter.
         RateLimiter::for('admin', fn (Request $r) => Limit::perMinute(60)->by('admin:'.($r->session()->get('user_id') ?: $r->ip())));
         RateLimiter::for('register', fn (Request $r) => Limit::perMinute(5)->by('register:'.$r->ip()));
         RateLimiter::for('otp-send', fn (Request $r) => [
