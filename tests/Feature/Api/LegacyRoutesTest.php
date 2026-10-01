@@ -13,13 +13,19 @@ use Tests\TestCase;
 class LegacyRoutesTest extends TestCase
 {
     /** Closures turned into controllers: "METHOD uri" => new "Controller@method". */
-    private const ACTION_CHANGES = [];
+    private const ACTION_CHANGES = [
+        'GET /' => 'ConsoleController@__invoke',
+        'GET api/csrf' => 'CsrfTokenController@__invoke',
+        'GET api/me' => 'CurrentUserController@__invoke',
+    ];
 
     /** Legacy shims whose action differs from the shared v1 action: "METHOD uri" => "Controller@method". */
-    private const SHIMS = [];
+    private const SHIMS = [
+        'POST api/admin/cache/clear' => 'CacheController@clear',
+    ];
 
-    /** Middleware that legacy routes gain (never removed or reordered). */
-    private const ADDED_MIDDLEWARE = ['deprecated'];
+    /** Middleware that legacy routes gain (never removed or reordered): `deprecated`, optionally with a successor path. */
+    private const ADDED_MIDDLEWARE_PREFIX = 'deprecated';
 
     /** @return array<string, array{action: string, middleware: array<int, string>}> */
     private function currentTable(): array
@@ -30,8 +36,9 @@ class LegacyRoutesTest extends TestCase
                 if ($method === 'HEAD') {
                     continue;
                 }
-                $action = $route->getActionName();
-                $action = $action === 'Closure' ? 'Closure' : preg_replace('/^.*\\\\([A-Za-z]+@[A-Za-z]+)$/', '$1', $action);
+                $action = $route->getActionName() === 'Closure'
+                    ? 'Closure'
+                    : class_basename($route->getControllerClass()).'@'.(str_contains($route->getActionMethod(), '\\') ? '__invoke' : $route->getActionMethod());
                 $table[$method.' '.$route->uri()] = [
                     'action' => $action,
                     'middleware' => array_values(array_map(fn ($m) => is_string($m) ? $m : 'Closure', $route->gatherMiddleware())),
@@ -62,7 +69,10 @@ class LegacyRoutesTest extends TestCase
                 $problems[] = "action changed: {$key} {$row['action']} -> {$current[$key]['action']} (expected {$expectedAction})";
             }
 
-            $middleware = array_values(array_diff($current[$key]['middleware'], self::ADDED_MIDDLEWARE));
+            $middleware = array_values(array_filter(
+                $current[$key]['middleware'],
+                fn ($m) => ! str_starts_with($m, self::ADDED_MIDDLEWARE_PREFIX),
+            ));
             if ($middleware !== $row['middleware']) {
                 $problems[] = "middleware changed: {$key} [".implode(',', $row['middleware']).'] -> ['.implode(',', $middleware).']';
             }
