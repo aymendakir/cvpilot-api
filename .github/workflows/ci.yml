@@ -50,5 +50,8 @@ jobs:
       - name: Legacy script tests
         run: composer test:scripts
 
+      - name: Route cache (no closures in routes)
+        run: php artisan route:cache && php artisan route:clear
+
       - name: Security audit
         run: composer audit

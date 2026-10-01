@@ -1,0 +1,442 @@
+[
+    {
+        "method": "GET",
+        "uri": "v1/admin/analytics",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/applications",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/audit-events",
+        "scope": "admin"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/admin/cache",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/contact-messages",
+        "scope": "admin"
+    },
+    {
+        "method": "PATCH",
+        "uri": "v1/admin/contact-messages/{message}",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/cv-documents/{cv}/file",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/cv-templates",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/admin/cv-templates",
+        "scope": "admin"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/admin/cv-templates/{template}",
+        "scope": "admin"
+    },
+    {
+        "method": "PATCH",
+        "uri": "v1/admin/cv-templates/{template}",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/integrations",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/admin/integrations",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/admin/integrations/reorder",
+        "scope": "admin"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/admin/integrations/{integration}",
+        "scope": "admin"
+    },
+    {
+        "method": "PATCH",
+        "uri": "v1/admin/integrations/{integration}",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/admin/integrations/{integration}/test",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/site-settings",
+        "scope": "admin"
+    },
+    {
+        "method": "PUT",
+        "uri": "v1/admin/site-settings",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/smtp",
+        "scope": "admin"
+    },
+    {
+        "method": "PUT",
+        "uri": "v1/admin/smtp",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/admin/smtp/check",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/admin/smtp/microsoft/connect",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/admin/smtp/test",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/summary",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/system",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/users",
+        "scope": "admin"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/admin/users/{user}",
+        "scope": "admin"
+    },
+    {
+        "method": "PATCH",
+        "uri": "v1/admin/users/{user}",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/admin/users/{user}/warnings",
+        "scope": "admin"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/ai/application-pack",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/ai/ats-analysis",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/ai/career-diagnostic",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/ai/chat",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/ai/cover-letter",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/ai/follow-up",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/ai/portfolio-review",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/ai/recruiter-view",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/ai/skill-gap",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/ai/tailor-cv",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/applications",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/applications",
+        "scope": "auth"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/applications/{application}",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/applications/{application}",
+        "scope": "auth"
+    },
+    {
+        "method": "PATCH",
+        "uri": "v1/applications/{application}",
+        "scope": "auth"
+    },
+    {
+        "method": "PUT",
+        "uri": "v1/applications/{application}",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/ats/document",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/auth/logout",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/cv-documents",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/cv-documents",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/cv-documents/extract",
+        "scope": "auth"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/cv-documents/{cv}",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/cv-versions",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/cv-versions",
+        "scope": "auth"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/cv-versions/{version}",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/cv-versions/{version}",
+        "scope": "auth"
+    },
+    {
+        "method": "PATCH",
+        "uri": "v1/cv-versions/{version}",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/interviews",
+        "scope": "auth"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/interviews/{session}",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/interviews/{session}",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/interviews/{session}/finish",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/interviews/{session}/reply",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/job-workspaces",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/job-workspaces",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/job-workspaces/{workspace}",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/jobs/links",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/jobs/saved-searches",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/jobs/saved-searches",
+        "scope": "auth"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/jobs/saved-searches/{search}",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/jobs/search",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/library",
+        "scope": "auth"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/me",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/me",
+        "scope": "auth"
+    },
+    {
+        "method": "PATCH",
+        "uri": "v1/me",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/me/analytics",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/me/dashboard",
+        "scope": "auth"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/me/export",
+        "scope": "auth"
+    },
+    {
+        "method": "PUT",
+        "uri": "v1/me/password",
+        "scope": "auth"
+    },
+    {
+        "method": "DELETE",
+        "uri": "v1/reports/{report}",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/analytics/events",
+        "scope": "public"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/auth/login",
+        "scope": "public"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/auth/otp/request",
+        "scope": "public"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/auth/otp/verify",
+        "scope": "public"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/auth/register",
+        "scope": "public"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/contact-messages",
+        "scope": "public"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/csrf",
+        "scope": "public"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/cv-templates",
+        "scope": "public"
+    },
+    {
+        "method": "GET",
+        "uri": "v1/site-settings",
+        "scope": "public"
+    }
+]
