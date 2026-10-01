@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\UpstreamUnavailableException;
 use App\Models\Integration;
 use App\Support\Redactor;
 use Illuminate\Support\Collection;
@@ -45,7 +46,9 @@ class AiGateway
             $query->where('provider', $requestedProvider);
         }
         $list = $query->orderBy('priority')->orderBy('id')->get();
-        abort_unless($list->isNotEmpty(), 503, 'No enabled AI provider. Configure one in Admin > API Keys.');
+        if ($list->isEmpty()) {
+            throw new UpstreamUnavailableException('No enabled AI provider. Configure one in Admin > API Keys.');
+        }
 
         return $list;
     }
@@ -110,9 +113,8 @@ class AiGateway
             }
         }
 
-        throw new \RuntimeException(
+        throw new UpstreamUnavailableException(
             "All available AI providers failed.\n".implode("\n", $attemptErrors),
-            503,
             $lastError
         );
     }

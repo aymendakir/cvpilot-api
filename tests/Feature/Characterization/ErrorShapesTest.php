@@ -189,7 +189,7 @@ class ErrorShapesTest extends TestCase
             ->assertJsonPath('message', 'The service is temporarily unavailable. Please try again later.');
     }
 
-    public function test_ai_when_every_provider_fails_is_a_generic_500(): void
+    public function test_ai_when_every_provider_fails_is_503_upstream_unavailable(): void
     {
         Integration::create([
             'provider' => 'openai', 'type' => 'ai', 'secret' => 'sk-test-secret', 'model' => 'gpt-4o-mini',
@@ -198,8 +198,8 @@ class ErrorShapesTest extends TestCase
         Http::fake(['*' => Http::response(['error' => 'boom'], 500)]);
 
         $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
-            ->assertStatus(500) // WART: should be 503 upstream_unavailable (T4)
-            ->assertJsonPath('code', 'server_error');
+            ->assertStatus(503)
+            ->assertJsonPath('code', 'upstream_unavailable');
 
         $this->assertDatabaseHas('ai_usage', ['provider' => 'openai', 'success' => false]);
     }
@@ -216,8 +216,8 @@ class ErrorShapesTest extends TestCase
         Log::spy();
 
         $response = $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
-            ->assertStatus(500)
-            ->assertJsonPath('code', 'server_error');
+            ->assertStatus(503)
+            ->assertJsonPath('code', 'upstream_unavailable');
 
         $this->assertStringNotContainsString('GEMINI-KEY-123', $response->getContent());
         $usage = \DB::table('ai_usage')->first();
