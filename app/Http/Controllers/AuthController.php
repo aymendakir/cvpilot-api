@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ApiException;
+use App\Exceptions\ErrorCode;
+use App\Exceptions\UpstreamUnavailableException;
 use App\Models\User;
 use App\Services\PlatformMail;
+use App\Support\Redactor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class AuthController
 {
@@ -37,12 +42,16 @@ class AuthController
         if (! $u || ! Hash::check($d['password'], $u->password)) {
             self::audit($r, 'login_failed');
 
-            return response()->json(['message' => 'Invalid credentials.'], 401);
-        }if ($u->suspended) {
+            throw new ApiException(ErrorCode::InvalidCredentials);
+        }
+        if ($u->suspended) {
             self::audit($r, 'login_blocked', $u->id);
 
-            return response()->json(['message' => 'This account has been suspended by an administrator. Please contact support.'], 403);
-        }abort_unless($u->verified_at, 403, 'Verify your email first.');
+            throw new ApiException(ErrorCode::AccountSuspended);
+        }
+        if (! $u->verified_at) {
+            throw new ApiException(ErrorCode::EmailNotVerified);
+        }
         $r->session()->regenerate();
         $r->session()->put('user_id', $u->id);
         $r->session()->put('session_version', $u->session_version);
@@ -63,8 +72,9 @@ class AuthController
                 app(PlatformMail::class)->send($u->email, $d['purpose'] === 'reset' ? 'Reset your CVPilot password' : 'Verify your CVPilot account', 'emails.verification', ['name' => $u->name, 'code' => $code, 'purpose' => $d['purpose']]);
             } catch (\Throwable $e) {
                 Cache::forget($key);
+                Log::warning('Verification email delivery failed', ['exception' => $e::class, 'message' => Redactor::scrub($e->getMessage())]);
 
-                return response()->json(['message' => 'Email delivery failed. Try again later.'], 503);
+                throw new UpstreamUnavailableException('Email delivery failed.', $e);
             }
         }
 

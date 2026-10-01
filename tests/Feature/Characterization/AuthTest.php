@@ -106,14 +106,16 @@ class AuthTest extends TestCase
 
         $this->postJson('/api/login', ['email' => 'login@example.test', 'password' => 'wrong-password-123'])
             ->assertStatus(401)
-            ->assertExactJson(['message' => 'Invalid credentials.']);
+            ->assertJsonPath('code', 'invalid_credentials')
+            ->assertJsonPath('message', 'Invalid credentials.');
     }
 
-    public function test_login_with_an_unknown_email_is_401_with_the_same_body(): void
+    public function test_login_with_an_unknown_email_is_401_with_the_same_code_and_message(): void
     {
         $this->postJson('/api/login', ['email' => 'nobody@example.test', 'password' => self::PASSWORD])
             ->assertStatus(401)
-            ->assertExactJson(['message' => 'Invalid credentials.']);
+            ->assertJsonPath('code', 'invalid_credentials')
+            ->assertJsonPath('message', 'Invalid credentials.');
     }
 
     public function test_login_of_a_suspended_account_is_403_after_the_password_check(): void
@@ -122,6 +124,7 @@ class AuthTest extends TestCase
 
         $this->postJson('/api/login', ['email' => 'suspended@example.test', 'password' => self::PASSWORD])
             ->assertStatus(403)
+            ->assertJsonPath('code', 'account_suspended')
             ->assertJsonPath('message', 'This account has been suspended by an administrator. Please contact support.');
 
         $this->postJson('/api/login', ['email' => 'suspended@example.test', 'password' => 'wrong-password-123'])
@@ -134,6 +137,7 @@ class AuthTest extends TestCase
 
         $this->postJson('/api/login', ['email' => 'unverified@example.test', 'password' => self::PASSWORD])
             ->assertStatus(403)
+            ->assertJsonPath('code', 'email_not_verified')
             ->assertJsonPath('message', 'Verify your email first.');
     }
 
@@ -178,7 +182,7 @@ class AuthTest extends TestCase
             ->assertJsonStructure(['message', 'errors' => ['purpose']]);
     }
 
-    public function test_otp_request_is_503_when_mail_delivery_fails(): void
+    public function test_otp_request_is_503_upstream_unavailable_when_mail_delivery_fails(): void
     {
         $this->makeUser(['email' => 'known@example.test', 'verified_at' => null]);
         $this->app->instance(PlatformMail::class, new class extends PlatformMail
@@ -193,7 +197,9 @@ class AuthTest extends TestCase
 
         $this->postJson('/api/otp/request', ['email' => 'known@example.test', 'purpose' => 'verify'])
             ->assertStatus(503)
-            ->assertExactJson(['message' => 'Email delivery failed. Try again later.']);
+            ->assertJsonPath('code', 'upstream_unavailable')
+            ->assertHeader('Retry-After', '30');
+        $this->assertNull(Cache::get('otp:verify:'.User::firstWhere('email', 'known@example.test')->id), 'the code is discarded');
     }
 
     public function test_otp_verify_marks_the_email_verified_and_the_code_is_single_use(): void
