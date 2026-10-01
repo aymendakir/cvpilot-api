@@ -90,6 +90,8 @@ Each structure finding carries `confidence: high | medium | low`. A check **fail
 
 Errors (Phase 2 envelope): `422` validation (both/neither of `file`/`cv_text`, bad sizes, unsupported type, password-protected, corrupt/unreadable file → `errors.file`), `401`, `429`, `503`-never (no external calls).
 
+**As built (S4).** Route `POST /api/v1/ats/analyses` (`v1.ats.analyses.store`), signed-in members, 20 analyses a minute per user. The file type is decided from the content (a `.txt` upload is refused: plain text goes in `cv_text`). `errors.file` holds one stable reason token instead of a sentence: `missing`, `both_given`, `upload_failed`, `too_large`, `unsupported_type`, `password_protected`, `corrupt`, `timeout` (listed in `docs/ERRORS.md`); other fields keep Laravel's messages. A scanned PDF is not refused (`200`, `score_status: "unreadable"`); a body over 20 MB is `413`. The upload is read in place and nothing is stored. With `LOG_LEVEL=info`, one content-free `ats.analysis` log line per analysis (outcome, mode, type, pages, duration). The response is validated by `docs/ats-report.schema.json` in the contract test.
+
 ### 5.2 Response (`200`) — TypeScript contract
 
 ```ts
@@ -492,6 +494,7 @@ app/Services/Ats/
   Report/    ReportBuilder, AtsReport (DTO, toArray() = §5.2); AtsReportResource in S4
 app/Http/Controllers/Api/V1/Ats/AnalysisController.php
 app/Http/Requests/Ats/StoreAtsAnalysisRequest.php
+app/Http/Resources/AtsReportResource.php   # §5.2 body, unchanged
 config/ats.php                    # weights, thresholds, version
 resources/ats/                    # skills.json, synonyms.en|fr.json, keyword-blocklist.*, stopwords.*, action-verbs.*, action-nouns.fr, headings.*
 lang/{en,fr}/ats.php              # findings, actions, titles, summaries
@@ -706,3 +709,11 @@ Also decided: Phase 3b is skipped (the ATS UI is built in Phase 4), and the prom
 27. Summary sentence from the status, then the top suggestion's gain, then the grade.
 
 **S3 Checkpoint A (copy review), approved:** suggestion ids `keyword_skills_only:<term>` and `keyword_stuffing:<term>` (§5.2); French non-breaking spaces; French copy changes (images, clean_characters title, `needs_work` verdict, skills_section reason). The date parser's French month names, abbreviations and open ends ("mars 2022 – aujourd'hui") are pinned by tests.
+
+**S4 plan decisions, approved:**
+
+28. `opis/json-schema` as a dev dependency for the contract test.
+29. `errors.file` carries a reason token the client maps to EN/FR text.
+30. One content-free log line per analysis; visible with `LOG_LEVEL=info` (both channels were fixed at `warning`).
+
+**S4 Checkpoint A, approved:** file sizes with two decimals per locale ("0.01 MB", « 0,01 Mo »); column evidence labelled in the report locale; page lists in the plural ("pages 1 and 2", « aux pages 1 et 2 »).
