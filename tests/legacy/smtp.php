@@ -1,84 +1,137 @@
 <?php
+
 // php tests/smtp.php — isolated DB, fake OAuth HTTP, intercepted mail; no real messages.
 require __DIR__.'/../../vendor/autoload.php';
 putenv('APP_ENV=testing');
 putenv('APP_KEY=base64:'.base64_encode(random_bytes(32)));
-putenv('DB_CONNECTION=sqlite'); putenv('DB_DATABASE=:memory:'); putenv('SESSION_SECURE_COOKIE=false');
+putenv('DB_CONNECTION=sqlite');
+putenv('DB_DATABASE=:memory:');
+putenv('SESSION_SECURE_COOKIE=false');
 $app = require __DIR__.'/../../bootstrap/app.php';
 // Keep boot-time rate limiters out of the application's file cache.
-$app->afterBootstrapping(Illuminate\Foundation\Bootstrap\LoadConfiguration::class, function () {
-    config(['cache.default'=>'array', 'cache.stores.array'=>['driver'=>'array']]);
+$app->afterBootstrapping(LoadConfiguration::class, function () {
+    config(['cache.default' => 'array', 'cache.stores.array' => ['driver' => 'array']]);
 });
-$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class); $kernel->bootstrap();
+$kernel = $app->make(Kernel::class);
+$kernel->bootstrap();
 config([
-    'database.default'=>'sqlite', 'database.connections.sqlite'=>['driver'=>'sqlite', 'database'=>':memory:', 'prefix'=>'', 'foreign_key_constraints'=>true],
-    'cache.default'=>'array', 'cache.stores.array'=>['driver'=>'array'], 'session.driver'=>'array', 'session.secure'=>false,
-    'hashing.bcrypt.rounds'=>4, 'app.url'=>'https://api.example.test', 'mail.frontend_url'=>'https://app.example.test',
-    'mail.mailers.smtp'=>['transport'=>'smtp', 'scheme'=>'smtps', 'host'=>'smtp.example.test', 'port'=>465,
-        'username'=>'sender@example.test', 'password'=>'env-secret', 'require_tls'=>true, 'timeout'=>15],
-    'mail.from'=>['address'=>'sender@example.test', 'name'=>'Environment Sender'],
+    'database.default' => 'sqlite', 'database.connections.sqlite' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '', 'foreign_key_constraints' => true],
+    'cache.default' => 'array', 'cache.stores.array' => ['driver' => 'array'], 'session.driver' => 'array', 'session.secure' => false,
+    'hashing.bcrypt.rounds' => 4, 'app.url' => 'https://api.example.test', 'mail.frontend_url' => 'https://app.example.test',
+    'mail.mailers.smtp' => ['transport' => 'smtp', 'scheme' => 'smtps', 'host' => 'smtp.example.test', 'port' => 465,
+        'username' => 'sender@example.test', 'password' => 'env-secret', 'require_tls' => true, 'timeout' => 15],
+    'mail.from' => ['address' => 'sender@example.test', 'name' => 'Environment Sender'],
 ]);
-Illuminate\Support\Facades\Artisan::call('migrate', ['--force'=>true]);
-set_exception_handler(function (Throwable $error) { fwrite(STDERR, $error->getMessage()."\n".$error->getTraceAsString()."\n"); exit(1); });
+Artisan::call('migrate', ['--force' => true]);
+set_exception_handler(function (Throwable $error) {
+    fwrite(STDERR, $error->getMessage()."\n".$error->getTraceAsString()."\n");
+    exit(1);
+});
 
 use App\Models\MailSetting;
+use App\Models\User;
+use App\Services\MailConfigurationException;
 use App\Services\MicrosoftSmtpOAuth;
 use App\Services\PlatformMail;
-use Illuminate\Support\Facades\{Cache, DB, Event, Http, Mail};
+use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Foundation\Bootstrap\LoadConfiguration;
+use Illuminate\Http\Request;
+use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Mail\Mailer;
+use Illuminate\Mail\MailManager;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\View\ViewException;
+use Psr\Log\AbstractLogger;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\Transport\Smtp\Auth\XOAuth2Authenticator;
+use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
 
-function check(bool $condition, string $label): void {
-    if (!$condition) throw new RuntimeException($label);
+function check(bool $condition, string $label): void
+{
+    if (! $condition) {
+        throw new RuntimeException($label);
+    }
     echo "PASS $label\n";
 }
-function api(string $method, string $path, array $body = [], array &$cookies = []): array {
+function api(string $method, string $path, array $body = [], array &$cookies = []): array
+{
     global $kernel;
     // Match fresh HTTP requests while preserving the in-memory session handler.
     app('session')->driver()->flush();
-    $request = Illuminate\Http\Request::create('https://api.example.test/api/'.$path, $method, [], $cookies, [], [
-        'HTTP_ACCEPT'=>'application/json', 'CONTENT_TYPE'=>'application/json', 'REMOTE_ADDR'=>'127.0.0.1',
+    $request = Request::create('https://api.example.test/api/'.(str_starts_with($path, 'admin/smtp/microsoft/callback') ? '' : 'v1/').$path, $method, [], $cookies, [], [
+        'HTTP_ACCEPT' => 'application/json', 'CONTENT_TYPE' => 'application/json', 'REMOTE_ADDR' => '127.0.0.1',
     ], json_encode($body));
     $response = $kernel->handle($request);
-    foreach ($response->headers->getCookies() as $cookie) $cookies[$cookie->getName()] = $cookie->getValue();
+    foreach ($response->headers->getCookies() as $cookie) {
+        $cookies[$cookie->getName()] = $cookie->getValue();
+    }
     $kernel->terminate($request, $response);
+
     return [$response->getStatusCode(), json_decode($response->getContent(), true), $response];
 }
-function account(string $email, string $role): App\Models\User {
-    $user = new App\Models\User;
-    $user->name = 'SMTP Test'; $user->email = $email; $user->role = $role;
-    $user->password = Illuminate\Support\Facades\Hash::make('test-password-1234'); $user->verified_at = now(); $user->save();
+function account(string $email, string $role): User
+{
+    $user = new User;
+    $user->name = 'SMTP Test';
+    $user->email = $email;
+    $user->role = $role;
+    $user->password = Hash::make('test-password-1234');
+    $user->verified_at = now();
+    $user->save();
+
     return $user;
 }
-class InspectMailManager extends Illuminate\Mail\MailManager {
-    public ?Illuminate\Mail\Mailer $built = null;
-    public ?Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport $probeTransport = null;
-    public function build($config) {
+class InspectMailManager extends MailManager
+{
+    public ?Mailer $built = null;
+
+    public ?EsmtpTransport $probeTransport = null;
+
+    public function build($config)
+    {
         $this->built = parent::build($config);
-        if ($this->probeTransport) $this->built->setSymfonyTransport($this->probeTransport);
+        if ($this->probeTransport) {
+            $this->built->setSymfonyTransport($this->probeTransport);
+        }
+
         return $this->built;
     }
 }
 $manager = new InspectMailManager($app);
 Mail::swap($manager);
 $lastMessage = null;
-Event::listen(Illuminate\Mail\Events\MessageSending::class, function ($event) use (&$lastMessage) {
+Event::listen(MessageSending::class, function ($event) use (&$lastMessage) {
     $lastMessage = $event->message;
+
     return false; // Stop before any network connection or recipient delivery.
 });
 Http::preventStrayRequests();
-$tokenResponse = ['access_token'=>'access-one', 'refresh_token'=>'refresh-one', 'expires_in'=>3600];
+$tokenResponse = ['access_token' => 'access-one', 'refresh_token' => 'refresh-one', 'expires_in' => 3600];
 $tokenStatus = 200;
 $requests = [];
-Http::fake(['https://login.microsoftonline.com/*'=>function ($request) use (&$tokenResponse, &$tokenStatus, &$requests) {
+Http::fake(['https://login.microsoftonline.com/*' => function ($request) use (&$tokenResponse, &$tokenStatus, &$requests) {
     $requests[] = $request;
+
     return Http::response($tokenResponse, $tokenStatus);
 }]);
-$owner = []; $member = []; $guest = [];
-$admin = account('admin@example.test', 'admin'); account('member@example.test', 'user');
-check(api('POST', 'login', ['email'=>$admin->email, 'password'=>'test-password-1234'], $owner)[0] === 200, 'administrator signed in');
-check(api('POST', 'login', ['email'=>'member@example.test', 'password'=>'test-password-1234'], $member)[0] === 200, 'member signed in');
-foreach (['GET'=>'admin/smtp', 'PUT'=>'admin/smtp', 'POST'=>'admin/smtp/microsoft/connect'] as $method=>$path) {
+$owner = [];
+$member = [];
+$guest = [];
+$admin = account('admin@example.test', 'admin');
+account('member@example.test', 'user');
+check(api('POST', 'auth/login', ['email' => $admin->email, 'password' => 'test-password-1234'], $owner)[0] === 200, 'administrator signed in');
+check(api('POST', 'auth/login', ['email' => 'member@example.test', 'password' => 'test-password-1234'], $member)[0] === 200, 'member signed in');
+foreach (['GET' => 'admin/smtp', 'PUT' => 'admin/smtp', 'POST' => 'admin/smtp/microsoft/connect'] as $method => $path) {
     $denied = api($method, $path, [], $member);
-    check($denied[0] === 403, "$method $path denies non-admin (status ".$denied[0].")");
+    check($denied[0] === 403, "$method $path denies non-admin (status ".$denied[0].')');
 }
 check(api('POST', 'admin/smtp/check', [], $guest)[0] === 401, 'guest cannot check SMTP credentials');
 check(api('POST', 'admin/smtp/check', [], $member)[0] === 403, 'member cannot check SMTP credentials');
@@ -86,61 +139,62 @@ $guestTest = api('POST', 'admin/smtp/test', [], $guest);
 check($guestTest[0] === 401, 'guest cannot send tests (status '.$guestTest[0].')');
 $settings = api('GET', 'admin/smtp', [], $owner)[1];
 check($settings['encryption'] === 'ssl' && $settings['has_password'] && $settings['from_name'] === 'Environment Sender', 'environment secret and SSL settings are reflected accurately');
-check(!str_contains(json_encode($settings), 'env-secret'), 'environment password stays private');
+check(! str_contains(json_encode($settings), 'env-secret'), 'environment password stays private');
 $mail = new PlatformMail;
-$mail->send('recipient@example.test', 'Environment test', 'emails.notice', ['name'=>'Test', 'heading'=>'Test', 'noticeMessage'=>'Test <script>alert(1)</script>']);
+$mail->send('recipient@example.test', 'Environment test', 'emails.notice', ['name' => 'Test', 'heading' => 'Test', 'noticeMessage' => 'Test <script>alert(1)</script>']);
 check($manager->built->getSymfonyTransport()->getStream()->isTLS(), 'environment fallback uses implicit TLS on port 465');
 check($lastMessage->getFrom()[0]->getName() === 'Environment Sender', 'environment fallback honors sender name');
-check(str_contains($lastMessage->getHtmlBody(), 'Test &lt;script&gt;') && !str_contains($lastMessage->getHtmlBody(), '<script>'), 'notice email renders through Laravel and escapes its content');
-$custom = ['host'=>'smtp.example.test', 'port'=>465, 'encryption'=>'ssl', 'username'=>'sender@example.test',
-    'password'=>'', 'from_address'=>'sender@example.test', 'from_name'=>'CVPilot'];
+check(str_contains($lastMessage->getHtmlBody(), 'Test &lt;script&gt;') && ! str_contains($lastMessage->getHtmlBody(), '<script>'), 'notice email renders through Laravel and escapes its content');
+$custom = ['host' => 'smtp.example.test', 'port' => 465, 'encryption' => 'ssl', 'username' => 'sender@example.test',
+    'password' => '', 'from_address' => 'sender@example.test', 'from_name' => 'CVPilot'];
 check(api('PUT', 'admin/smtp', $custom, $owner)[0] === 200 && MailSetting::first()->password === 'env-secret', 'saving environment settings keeps the existing secret');
-check(api('PUT', 'admin/smtp', array_replace($custom, ['port'=>587]), $owner)[0] === 422, 'mismatched TLS and port rejected');
-check(api('PUT', 'admin/smtp', array_replace($custom, ['host'=>'smtp.other.test']), $owner)[0] === 422, 'changed host cannot reuse saved password');
+check(api('PUT', 'admin/smtp', array_replace($custom, ['port' => 587]), $owner)[0] === 422, 'mismatched TLS and port rejected');
+check(api('PUT', 'admin/smtp', array_replace($custom, ['host' => 'smtp.other.test']), $owner)[0] === 422, 'changed host cannot reuse saved password');
 check(MailSetting::first()->host === $custom['host'], 'failed validation preserves working configuration');
-check(api('PUT', 'admin/smtp', array_replace($custom, ['username'=>'other@example.test']), $owner)[0] === 422, 'changed mailbox needs a fresh password');
-$gmail = array_replace($custom, ['host'=>'  SMTP.GMAIL.COM ', 'port'=>587, 'encryption'=>'tls',
-    'username'=>' sender@gmail.com ', 'from_address'=>' sender@gmail.com ', 'password'=>'abcd efgh ijkl mnop']);
+check(api('PUT', 'admin/smtp', array_replace($custom, ['username' => 'other@example.test']), $owner)[0] === 422, 'changed mailbox needs a fresh password');
+$gmail = array_replace($custom, ['host' => '  SMTP.GMAIL.COM ', 'port' => 587, 'encryption' => 'tls',
+    'username' => ' sender@gmail.com ', 'from_address' => ' sender@gmail.com ', 'password' => 'abcd efgh ijkl mnop']);
 check(api('PUT', 'admin/smtp', $gmail, $owner)[0] === 200, 'Gmail preset settings save');
 $stored = MailSetting::first();
 check($stored->host === 'smtp.gmail.com' && $stored->username === 'sender@gmail.com' && $stored->password === 'abcdefghijklmnop', 'host, mailbox and grouped Google App Password are normalized');
-check(!str_contains(DB::table('mail_settings')->value('password'), 'abcdefghijklmnop'), 'SMTP password encrypted at rest');
-$gmail = array_replace($gmail, ['host'=>'smtp.gmail.com', 'username'=>'sender@gmail.com', 'from_address'=>'sender@gmail.com', 'password'=>'']);
+check(! str_contains(DB::table('mail_settings')->value('password'), 'abcdefghijklmnop'), 'SMTP password encrypted at rest');
+$gmail = array_replace($gmail, ['host' => 'smtp.gmail.com', 'username' => 'sender@gmail.com', 'from_address' => 'sender@gmail.com', 'password' => '']);
 check(api('PUT', 'admin/smtp', $gmail, $owner)[0] === 200 && MailSetting::first()->password === 'abcdefghijklmnop', 'blank password preserves same Gmail account');
 check(api('POST', 'admin/smtp/test', [], $owner)[0] === 200, 'test endpoint uses configured mail service');
 check($lastMessage->getTo()[0]->getAddress() === $admin->email && $lastMessage->getFrom()[0]->getAddress() === 'sender@gmail.com', 'test sent only to signed-in admin with saved sender');
 $transport = $manager->built->getSymfonyTransport();
-check($transport->isTlsRequired() && !$transport->getStream()->isTLS() && $transport->getStream()->getPort() === 587, 'STARTTLS required on Gmail submission transport');
+check($transport->isTlsRequired() && ! $transport->getStream()->isTLS() && $transport->getStream()->getPort() === 587, 'STARTTLS required on Gmail submission transport');
 $gmailFailure = $mail->failureMessage(new RuntimeException('535 Failed to authenticate abcdefghijklmnop'));
-check(str_contains($gmailFailure, 'App Password') && !str_contains($gmailFailure, 'abcdefghijklmnop'), 'Gmail authentication error gives safe actionable guidance');
+check(str_contains($gmailFailure, 'App Password') && ! str_contains($gmailFailure, 'abcdefghijklmnop'), 'Gmail authentication error gives safe actionable guidance');
 check(str_contains($mail->failureMessage(new RuntimeException('Connection could not be established')), 'hosting provider'), 'connection errors explain hosting SMTP restrictions');
 check(str_contains($mail->failureMessage(new RuntimeException('certificate verify failed')), 'certificate'), 'TLS errors explain certificate failure');
-check(!str_contains($mail->failureMessage(new RuntimeException('Unknown failure SECRET')), 'SECRET'), 'unclassified errors never echo credentials');
+check(! str_contains($mail->failureMessage(new RuntimeException('Unknown failure SECRET')), 'SECRET'), 'unclassified errors never echo credentials');
 // Brevo uses a technical login and a separately verified sender address.
-$brevo = array_replace($gmail, ['host'=>'smtp-relay.brevo.com', 'port'=>587, 'encryption'=>'tls',
-    'username'=>'12345@smtp-brevo.com', 'password'=>"  xsmtpsib-test-smtp-key \n", 'from_address'=>'verified@example.test']);
+$brevo = array_replace($gmail, ['host' => 'smtp-relay.brevo.com', 'port' => 587, 'encryption' => 'tls',
+    'username' => '12345@smtp-brevo.com', 'password' => "  xsmtpsib-test-smtp-key \n", 'from_address' => 'verified@example.test']);
 check(api('PUT', 'admin/smtp', $brevo, $owner)[0] === 200, 'Brevo saves a separate SMTP login and verified sender');
 check(MailSetting::first()->password === 'xsmtpsib-test-smtp-key', 'Brevo SMTP key is trimmed without truncation');
-check(!str_contains(json_encode(api('GET', 'admin/smtp', [], $owner)[1]), 'xsmtpsib-test-smtp-key') &&
-    !str_contains(DB::table('mail_settings')->value('password'), 'xsmtpsib-test-smtp-key'), 'Brevo SMTP key encrypted and absent from settings response');
+check(! str_contains(json_encode(api('GET', 'admin/smtp', [], $owner)[1]), 'xsmtpsib-test-smtp-key') &&
+    ! str_contains(DB::table('mail_settings')->value('password'), 'xsmtpsib-test-smtp-key'), 'Brevo SMTP key encrypted and absent from settings response');
 $brevo['password'] = '';
 check(api('PUT', 'admin/smtp', $brevo, $owner)[0] === 200 && MailSetting::first()->password === 'xsmtpsib-test-smtp-key', 'Brevo blank key preserves the saved SMTP key');
 foreach ([
-    ['username'=>'smtp-relay.brevo.com', 'password'=>'new-key'],
-    ['password'=>'xkeysib-api-key'],
-    ['from_address'=>'12345@smtp-brevo.com'],
-    ['from_address'=>'12345@SMTP-BREVO.COM'],
-    ['port'=>25],
-    ['port'=>2525, 'encryption'=>'ssl'],
-    ['username'=>'other@smtp-brevo.com', 'password'=>'   '],
+    ['username' => 'smtp-relay.brevo.com', 'password' => 'new-key'],
+    ['password' => 'xkeysib-api-key'],
+    ['from_address' => '12345@smtp-brevo.com'],
+    ['from_address' => '12345@SMTP-BREVO.COM'],
+    ['port' => 25],
+    ['port' => 2525, 'encryption' => 'ssl'],
+    ['username' => 'other@smtp-brevo.com', 'password' => '   '],
 ] as $invalid) {
     check(api('PUT', 'admin/smtp', array_replace($brevo, $invalid), $owner)[0] === 422, 'Brevo rejects invalid '.implode('/', array_keys($invalid)));
     check(MailSetting::first()->username === $brevo['username'] && MailSetting::first()->password === 'xsmtpsib-test-smtp-key', 'invalid Brevo settings preserve the saved configuration');
 }
-foreach ([587=>'tls', 2525=>'tls', 465=>'ssl'] as $port=>$encryption) {
-    $brevo['port'] = $port; $brevo['encryption'] = $encryption;
+foreach ([587 => 'tls', 2525 => 'tls', 465 => 'ssl'] as $port => $encryption) {
+    $brevo['port'] = $port;
+    $brevo['encryption'] = $encryption;
     check(api('PUT', 'admin/smtp', $brevo, $owner)[0] === 200, "Brevo port $port configuration saves");
-    $mail->send('recipient@example.test', 'Brevo test', 'emails.notice', ['name'=>'Test', 'heading'=>'Test', 'noticeMessage'=>'Test']);
+    $mail->send('recipient@example.test', 'Brevo test', 'emails.notice', ['name' => 'Test', 'heading' => 'Test', 'noticeMessage' => 'Test']);
     $transport = $manager->built->getSymfonyTransport();
     check($transport->isTlsRequired() && $transport->getStream()->getPort() === $port &&
         $transport->getStream()->isTLS() === ($port === 465), "Brevo port $port uses the matching TLS transport");
@@ -148,16 +202,16 @@ foreach ([587=>'tls', 2525=>'tls', 465=>'ssl'] as $port=>$encryption) {
         $lastMessage->getFrom()[0]->getAddress() === 'verified@example.test', 'Brevo sends using SMTP credentials and the separate verified sender');
 }
 foreach ([
-    '535 Failed to authenticate secret-value'=>'SMTP key',
-    'Failed to authenticate username 123525452@smtp-brevo.com, code 535'=>'SMTP key',
-    '525 Failed to authenticate: unauthorized IP secret-value'=>'outbound IP',
-    'Connection could not be established'=>'2525',
-    '550 Invalid sender'=>'Verify the sender',
-    '550 sending quota exceeded'=>'quota',
-    '550 transactional account not activated'=>'activation',
-] as $failure=>$expected) {
+    '535 Failed to authenticate secret-value' => 'SMTP key',
+    'Failed to authenticate username 123525452@smtp-brevo.com, code 535' => 'SMTP key',
+    '525 Failed to authenticate: unauthorized IP secret-value' => 'outbound IP',
+    'Connection could not be established' => '2525',
+    '550 Invalid sender' => 'Verify the sender',
+    '550 sending quota exceeded' => 'quota',
+    '550 transactional account not activated' => 'activation',
+] as $failure => $expected) {
     $message = $mail->failureMessage(new RuntimeException($failure));
-    check(str_contains($message, $expected) && !str_contains($message, 'secret-value'), 'Brevo reports safe guidance for '.substr($failure, 0, 3));
+    check(str_contains($message, $expected) && ! str_contains($message, 'secret-value'), 'Brevo reports safe guidance for '.substr($failure, 0, 3));
 }
 // Match real Symfony failure strings that previously fell through to the generic message.
 foreach ([
@@ -166,22 +220,40 @@ foreach ([
     'Unable to write bytes on the wire.',
     'Expected response code "220" but got empty code.',
 ] as $failure) {
-    check(str_contains($mail->failureMessage(new Symfony\Component\Mailer\Exception\TransportException($failure)), 'Cannot connect to Brevo'), 'disconnected or empty SMTP response is classified as connection failure');
+    check(str_contains($mail->failureMessage(new TransportException($failure)), 'Cannot connect to Brevo'), 'disconnected or empty SMTP response is classified as connection failure');
 }
-check(str_contains($mail->failureMessage(new Symfony\Component\Mailer\Exception\TransportException('Provider rejected command', 535)), 'SMTP key'), 'numeric SMTP authentication code works without keyword matching');
-check(str_contains($mail->failureMessage(new Symfony\Component\Mailer\Exception\TransportException('Failed to find an authenticator supported by the SMTP server', 504)), 'login method'), 'unsupported authenticators are diagnosed');
-check(str_contains($mail->failureMessage(new Symfony\Component\Mailer\Exception\TransportException('Provider unavailable SECRET', 451)), 'SMTP 451'), 'unclassified SMTP rejection retains its numeric response code');
-$originalLogger = Illuminate\Support\Facades\Log::getFacadeRoot();
-$logger = new class extends Psr\Log\AbstractLogger {
+check(str_contains($mail->failureMessage(new TransportException('Provider rejected command', 535)), 'SMTP key'), 'numeric SMTP authentication code works without keyword matching');
+check(str_contains($mail->failureMessage(new TransportException('Failed to find an authenticator supported by the SMTP server', 504)), 'login method'), 'unsupported authenticators are diagnosed');
+check(str_contains($mail->failureMessage(new TransportException('Provider unavailable SECRET', 451)), 'SMTP 451'), 'unclassified SMTP rejection retains its numeric response code');
+$originalLogger = Log::getFacadeRoot();
+$logger = new class extends AbstractLogger
+{
     public array $records = [];
-    public function log($level, string|Stringable $message, array $context = []): void { $this->records[] = compact('level', 'message', 'context'); }
+
+    public function log($level, string|Stringable $message, array $context = []): void
+    {
+        $this->records[] = compact('level', 'message', 'context');
+    }
 };
-Illuminate\Support\Facades\Log::swap($logger);
-$probe = new class extends Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport {
+Log::swap($logger);
+$probe = new class extends EsmtpTransport
+{
     public array $calls = [];
+
     public ?Throwable $failure = null;
-    public function start(): void { $this->calls[] = 'start'; if ($this->failure) throw $this->failure; }
-    public function stop(): void { $this->calls[] = 'stop'; }
+
+    public function start(): void
+    {
+        $this->calls[] = 'start';
+        if ($this->failure) {
+            throw $this->failure;
+        }
+    }
+
+    public function stop(): void
+    {
+        $this->calls[] = 'stop';
+    }
 };
 // Keep this endpoint scenario independent of earlier authorization probes.
 Cache::flush();
@@ -191,88 +263,105 @@ $result = api('POST', 'admin/smtp/check', [], $owner);
 check($result[0] === 200 && str_contains($result[1]['message'], 'No email was sent') && $lastMessage === $beforeMessage &&
     $probe->calls === ['start', 'stop'], 'connection check starts and stops SMTP without rendering or sending a message');
 $probe->calls = [];
-$probe->failure = new Symfony\Component\Mailer\Exception\TransportException('Connection closed unexpectedly secret-value', 0);
+$probe->failure = new TransportException('Connection closed unexpectedly secret-value', 0);
 $result = api('POST', 'admin/smtp/check', [], $owner);
 // S3 (SPEC decision 12): 503 with a generic body; the actionable reason is stored in last_error and logged.
-check($result[0] === 503 && $result[1]['code'] === 'upstream_unavailable' && !str_contains(json_encode($result[1]), 'Brevo') && $probe->calls === ['start', 'stop'], 'failed connection check disconnects and answers a generic 503');
+check($result[0] === 503 && $result[1]['code'] === 'upstream_unavailable' && ! str_contains(json_encode($result[1]), 'Brevo') && $probe->calls === ['start', 'stop'], 'failed connection check disconnects and answers a generic 503');
 $lastFailure = array_values(array_filter($logger->records, fn ($r) => $r['message'] === 'SMTP operation failed'))[0] ?? ['message' => '', 'context' => []];
-check(str_contains((string) MailSetting::first()?->last_error, 'Cannot connect to Brevo') && !str_contains((string) MailSetting::first()?->last_error, 'secret-value'), 'connection failure stores the actionable reason without secrets');
-check($lastFailure['message'] === 'SMTP operation failed' && $lastFailure['context']['operation'] === 'connection' && !empty($lastFailure['context']['reference']) && ($lastFailure['context']['request_id'] ?? null) === $result[1]['request_id'], 'connection failure logs a reference and the request id');
+check(str_contains((string) MailSetting::first()?->last_error, 'Cannot connect to Brevo') && ! str_contains((string) MailSetting::first()?->last_error, 'secret-value'), 'connection failure stores the actionable reason without secrets');
+check($lastFailure['message'] === 'SMTP operation failed' && $lastFailure['context']['operation'] === 'connection' && ! empty($lastFailure['context']['reference']) && ($lastFailure['context']['request_id'] ?? null) === $result[1]['request_id'], 'connection failure logs a reference and the request id');
 $manager->probeTransport = null;
-app()->instance(PlatformMail::class, new class extends PlatformMail {
-    public function send(string $to, string $subject, string $view, array $data): void { throw new Error('Sensitive runtime failure secret-value'); }
+app()->instance(PlatformMail::class, new class extends PlatformMail
+{
+    public function send(string $to, string $subject, string $view, array $data): void
+    {
+        throw new Error('Sensitive runtime failure secret-value');
+    }
 });
 $result = api('POST', 'admin/smtp/test', [], $owner);
 // S3: a local PHP error is our fault (500, generic body); the actionable reason is stored for the admin.
-check($result[0] === 500 && $result[1]['code'] === 'server_error' && !str_contains(json_encode($result[1]), 'runtime error') &&
+check($result[0] === 500 && $result[1]['code'] === 'server_error' && ! str_contains(json_encode($result[1]), 'runtime error') &&
     str_contains((string) MailSetting::first()?->last_error, 'PHP runtime error'), 'test email distinguishes runtime failures from SMTP login failures');
 app()->forgetInstance(PlatformMail::class);
-$wrapped = new Illuminate\View\ViewException('Email view failed secret-value', 0, E_ERROR, __FILE__, __LINE__, new Error('Missing extension secret-value'));
+$wrapped = new ViewException('Email view failed secret-value', 0, E_ERROR, __FILE__, __LINE__, new Error('Missing extension secret-value'));
 $details = $mail->failureResponse($wrapped, 'send');
 check(str_contains($details['message'], 'email template') && $details['diagnostic']['type'] === 'Error', 'view failure identifies email rendering and the root exception');
-check(!str_contains(json_encode([$result[1], $details, $logger->records]), 'secret-value') && !str_contains((string) MailSetting::first()?->last_error, 'secret-value'), 'responses, stored reasons and diagnostic logs exclude raw exceptions and credentials');
-Illuminate\Support\Facades\Log::swap($originalLogger);
-$stored = MailSetting::first(); $stored->from_address = $stored->username; $stored->save();
+check(! str_contains(json_encode([$result[1], $details, $logger->records]), 'secret-value') && ! str_contains((string) MailSetting::first()?->last_error, 'secret-value'), 'responses, stored reasons and diagnostic logs exclude raw exceptions and credentials');
+Log::swap($originalLogger);
+$stored = MailSetting::first();
+$stored->from_address = $stored->username;
+$stored->save();
 try {
     $mail->send('recipient@example.test', 'Invalid saved sender', 'emails.notice', []);
     throw new LogicException('Expected Brevo sender rejection');
-} catch (App\Services\MailConfigurationException $error) {
+} catch (MailConfigurationException $error) {
     check(str_contains($error->getMessage(), 'sender'), 'previously saved Brevo technical sender is rejected before transport');
 }
-$legacyLogin = array_replace($brevo, ['username'=>'verified@example.test', 'password'=>'legacy-smtp-key']);
+$legacyLogin = array_replace($brevo, ['username' => 'verified@example.test', 'password' => 'legacy-smtp-key']);
 check(api('PUT', 'admin/smtp', $legacyLogin, $owner)[0] === 200, 'Brevo legacy email login can match a real verified sender');
-$outlook = array_replace($gmail, ['host'=>'smtp-mail.outlook.com', 'username'=>'sender@outlook.com', 'from_address'=>'sender@outlook.com', 'password'=>'wrong-password']);
+$outlook = array_replace($gmail, ['host' => 'smtp-mail.outlook.com', 'username' => 'sender@outlook.com', 'from_address' => 'sender@outlook.com', 'password' => 'wrong-password']);
 check(api('PUT', 'admin/smtp', $outlook, $owner)[0] === 422, 'Outlook.com rejects password-only configuration');
-$outlook = array_replace($outlook, ['auth_mode'=>'microsoft', 'password'=>'', 'oauth_tenant'=>'common',
-    'oauth_client_id'=>'12345678-1234-4123-8123-123456789012', 'oauth_client_secret'=>'client-secret']);
+$outlook = array_replace($outlook, ['auth_mode' => 'microsoft', 'password' => '', 'oauth_tenant' => 'common',
+    'oauth_client_id' => '12345678-1234-4123-8123-123456789012', 'oauth_client_secret' => 'client-secret']);
 check(api('PUT', 'admin/smtp', $outlook, $owner)[0] === 200, 'Microsoft application configuration saves');
 check(MailSetting::first()->password === null, 'switching to OAuth discards SMTP password');
-check(api('PUT', 'admin/smtp', array_replace($outlook, ['host'=>'smtp.untrusted.test']), $owner)[0] === 422, 'OAuth tokens cannot be configured for another SMTP host');
+check(api('PUT', 'admin/smtp', array_replace($outlook, ['host' => 'smtp.untrusted.test']), $owner)[0] === 422, 'OAuth tokens cannot be configured for another SMTP host');
 $beforeConnect = api('POST', 'admin/smtp/test', [], $owner);
 check($beforeConnect[0] === 503 && $beforeConnect[1]['code'] === 'upstream_unavailable' && str_contains((string) MailSetting::first()?->last_error, 'Connect your Microsoft account'), 'sending without Microsoft authorization stores a clear reason and answers 503');
-function beginMicrosoft(array &$owner): array {
+function beginMicrosoft(array &$owner): array
+{
     $response = api('POST', 'admin/smtp/microsoft/connect', [], $owner);
     check($response[0] === 200, 'Microsoft authorization starts');
     parse_str(parse_url($response[1]['url'], PHP_URL_QUERY), $query);
+
     return $query;
 }
 $query = beginMicrosoft($owner);
-check($query['scope'] === MicrosoftSmtpOAuth::SCOPE && $query['code_challenge_method'] === 'S256' && !empty($query['code_challenge']), 'authorization requests SMTP scope, offline access and PKCE');
+check($query['scope'] === MicrosoftSmtpOAuth::SCOPE && $query['code_challenge_method'] === 'S256' && ! empty($query['code_challenge']), 'authorization requests SMTP scope, offline access and PKCE');
 check($query['redirect_uri'] === 'https://api.example.test/api/admin/smtp/microsoft/callback', 'callback uses configured public backend URL');
 check(api('GET', 'admin/smtp/microsoft/callback?state=wrong&code=bad', [], $owner)[0] === 422 && count($requests) === 0, 'invalid state cannot exchange an authorization code');
 $query = beginMicrosoft($owner);
-check(api('GET', 'admin/smtp/microsoft/callback?'.http_build_query(['state'=>$query['state'], 'error'=>'access_denied']), [], $owner)[0] === 422 && count($requests) === 0, 'declined consent makes no token request');
+check(api('GET', 'admin/smtp/microsoft/callback?'.http_build_query(['state' => $query['state'], 'error' => 'access_denied']), [], $owner)[0] === 422 && count($requests) === 0, 'declined consent makes no token request');
 $query = beginMicrosoft($owner);
-$callback = 'admin/smtp/microsoft/callback?'.http_build_query(['state'=>$query['state'], 'code'=>'authorization-code']);
+$callback = 'admin/smtp/microsoft/callback?'.http_build_query(['state' => $query['state'], 'code' => 'authorization-code']);
 $result = api('GET', $callback, [], $owner);
 check($result[0] === 200 && str_contains($result[2]->getContent(), '/dashboard?section=smtp'), 'Microsoft callback connects and links back to SMTP settings');
 check($result[2]->headers->get('Referrer-Policy') === 'no-referrer', 'callback does not forward authorization URL as referrer');
-check($requests[0]['grant_type'] === 'authorization_code' && !empty($requests[0]['code_verifier']), 'authorization exchange includes original PKCE verifier');
+check($requests[0]['grant_type'] === 'authorization_code' && ! empty($requests[0]['code_verifier']), 'authorization exchange includes original PKCE verifier');
 check(rtrim(strtr(base64_encode(hash('sha256', $requests[0]['code_verifier'], true)), '+/', '-_'), '=') === $query['code_challenge'], 'PKCE verifier matches authorization challenge');
 check(api('GET', $callback, [], $owner)[0] === 422 && count($requests) === 1, 'callback authorization cannot be replayed');
 $settings = api('GET', 'admin/smtp', [], $owner)[1];
 check($settings['oauth_connected'] && $settings['has_oauth_client_secret'], 'UI receives connection status');
 foreach (['client-secret', 'access-one', 'refresh-one'] as $secret) {
-    check(!str_contains(json_encode($settings), $secret) && !str_contains(json_encode(DB::table('mail_settings')->first()), $secret), 'Microsoft credential encrypted and absent from API: '.explode('-', $secret)[0]);
+    check(! str_contains(json_encode($settings), $secret) && ! str_contains(json_encode(DB::table('mail_settings')->first()), $secret), 'Microsoft credential encrypted and absent from API: '.explode('-', $secret)[0]);
 }
-$mail->send('recipient@example.test', 'Microsoft test', 'emails.notice', ['name'=>'Test', 'heading'=>'Test', 'noticeMessage'=>'Test <script>alert(1)</script>']);
+$mail->send('recipient@example.test', 'Microsoft test', 'emails.notice', ['name' => 'Test', 'heading' => 'Test', 'noticeMessage' => 'Test <script>alert(1)</script>']);
 $transport = $manager->built->getSymfonyTransport();
 $authenticators = (new ReflectionProperty($transport, 'authenticators'))->getValue($transport);
-check(count($authenticators) === 1 && $authenticators[0] instanceof Symfony\Component\Mailer\Transport\Smtp\Auth\XOAuth2Authenticator, 'Microsoft sends credentials exclusively through XOAUTH2');
+check(count($authenticators) === 1 && $authenticators[0] instanceof XOAuth2Authenticator, 'Microsoft sends credentials exclusively through XOAUTH2');
 check($transport->getPassword() === 'access-one' && count($requests) === 1, 'valid cached Microsoft access token used without refresh');
 $oauth = app(MicrosoftSmtpOAuth::class);
-$stored = MailSetting::first(); $stored->oauth_expires_at = now()->subMinute(); $stored->save();
-$tokenResponse = ['access_token'=>'access-two', 'refresh_token'=>'refresh-two', 'expires_in'=>3600];
+$stored = MailSetting::first();
+$stored->oauth_expires_at = now()->subMinute();
+$stored->save();
+$tokenResponse = ['access_token' => 'access-two', 'refresh_token' => 'refresh-two', 'expires_in' => 3600];
 check($oauth->accessToken(MailSetting::first()) === 'access-two' && $requests[1]['grant_type'] === 'refresh_token' && $requests[1]['refresh_token'] === 'refresh-one', 'expired access token refreshed automatically');
 check(MailSetting::first()->oauth_refresh_token === 'refresh-two', 'rotated refresh token is persisted');
-$stored = MailSetting::first(); $stored->oauth_expires_at = now()->subMinute(); $stored->save();
-$tokenResponse = ['access_token'=>'access-three', 'expires_in'=>3600];
+$stored = MailSetting::first();
+$stored->oauth_expires_at = now()->subMinute();
+$stored->save();
+$tokenResponse = ['access_token' => 'access-three', 'expires_in' => 3600];
 check($oauth->accessToken(MailSetting::first()) === 'access-three' && MailSetting::first()->oauth_refresh_token === 'refresh-two', 'refresh keeps existing refresh token when no replacement returned');
-$stored = MailSetting::first(); $stored->oauth_expires_at = now()->subMinute(); $stored->save();
-$tokenStatus = 400; $tokenResponse = ['error'=>'invalid_grant', 'error_description'=>'private-provider-diagnostic'];
-try { $oauth->accessToken(MailSetting::first()); throw new LogicException('Expected rejected grant'); }
-catch (App\Services\MailConfigurationException $error) {
-    check(str_contains($error->getMessage(), 'Reconnect') && !str_contains($error->getMessage(), 'private-provider'), 'revoked Microsoft permission gives reconnect guidance without raw response');
+$stored = MailSetting::first();
+$stored->oauth_expires_at = now()->subMinute();
+$stored->save();
+$tokenStatus = 400;
+$tokenResponse = ['error' => 'invalid_grant', 'error_description' => 'private-provider-diagnostic'];
+try {
+    $oauth->accessToken(MailSetting::first());
+    throw new LogicException('Expected rejected grant');
+} catch (MailConfigurationException $error) {
+    check(str_contains($error->getMessage(), 'Reconnect') && ! str_contains($error->getMessage(), 'private-provider'), 'revoked Microsoft permission gives reconnect guidance without raw response');
 }
 $outlook['oauth_client_secret'] = '';
 check(api('PUT', 'admin/smtp', $outlook, $owner)[0] === 200 && MailSetting::first()->oauth_refresh_token === 'refresh-two', 'saving unchanged Microsoft setup keeps connection and client secret');
@@ -280,24 +369,24 @@ $query = beginMicrosoft($owner);
 $outlook['username'] = $outlook['from_address'] = 'other@outlook.com';
 check(api('PUT', 'admin/smtp', $outlook, $owner)[0] === 200 && MailSetting::first()->oauth_refresh_token === null, 'changing Microsoft mailbox invalidates saved tokens');
 $count = count($requests);
-check(api('GET', 'admin/smtp/microsoft/callback?'.http_build_query(['state'=>$query['state'], 'code'=>'stale-code']), [], $owner)[0] === 422 && count($requests) === $count, 'changed settings invalidate pending authorization');
+check(api('GET', 'admin/smtp/microsoft/callback?'.http_build_query(['state' => $query['state'], 'code' => 'stale-code']), [], $owner)[0] === 422 && count($requests) === $count, 'changed settings invalidate pending authorization');
 $outlook['oauth_client_id'] = '98765432-1234-4123-8123-123456789012';
 check(api('PUT', 'admin/smtp', $outlook, $owner)[0] === 422, 'changing Microsoft application requires its own secret');
-check(!array_key_exists('password', api('GET', 'admin/smtp', [], $owner)[1]), 'API does not include a password value');
+check(! array_key_exists('password', api('GET', 'admin/smtp', [], $owner)[1]), 'API does not include a password value');
 // Environment-only configuration uses the same Brevo checks as saved settings.
 MailSetting::query()->delete();
-config(['mail.mailers.smtp.host'=>'smtp-relay.brevo.com', 'mail.mailers.smtp.username'=>'12345@smtp-brevo.com',
-    'mail.mailers.smtp.password'=>" xsmtpsib-environment-key \n", 'mail.from.address'=>'verified@example.test']);
-$mail->send('recipient@example.test', 'Environment Brevo test', 'emails.notice', ['name'=>'Test', 'heading'=>'Test', 'noticeMessage'=>'Test']);
+config(['mail.mailers.smtp.host' => 'smtp-relay.brevo.com', 'mail.mailers.smtp.username' => '12345@smtp-brevo.com',
+    'mail.mailers.smtp.password' => " xsmtpsib-environment-key \n", 'mail.from.address' => 'verified@example.test']);
+$mail->send('recipient@example.test', 'Environment Brevo test', 'emails.notice', ['name' => 'Test', 'heading' => 'Test', 'noticeMessage' => 'Test']);
 check($manager->built->getSymfonyTransport()->getPassword() === 'xsmtpsib-environment-key' &&
     $lastMessage->getFrom()[0]->getAddress() === 'verified@example.test', 'Brevo environment fallback trims the SMTP key and uses the separate sender');
-config(['mail.from.address'=>'12345@smtp-brevo.com']);
+config(['mail.from.address' => '12345@smtp-brevo.com']);
 try {
     $mail->send('recipient@example.test', 'Invalid environment sender', 'emails.notice', []);
     throw new LogicException('Expected invalid Brevo environment sender');
-} catch (App\Services\MailConfigurationException $error) {
+} catch (MailConfigurationException $error) {
     check(str_contains($error->getMessage(), 'sender'), 'Brevo environment technical sender is rejected before transport');
 }
-Illuminate\Support\Facades\Schema::drop('mail_settings');
-check(!str_contains($mail->failureMessage(new RuntimeException('Unknown failure SECRET')), 'SECRET'), 'error reporting remains safe when the settings table is unavailable');
+Schema::drop('mail_settings');
+check(! str_contains($mail->failureMessage(new RuntimeException('Unknown failure SECRET')), 'SECRET'), 'error reporting remains safe when the settings table is unavailable');
 echo "All SMTP regression checks passed.\n";

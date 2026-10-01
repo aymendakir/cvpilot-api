@@ -13,7 +13,7 @@ class RequestIdTest extends TestCase
 
     public function test_every_response_carries_a_generated_request_id(): void
     {
-        foreach (['/up', '/api/csrf', '/api/me', '/api/does-not-exist'] as $path) {
+        foreach (['/up', '/api/v1/csrf', '/api/v1/me', '/api/does-not-exist'] as $path) {
             $id = $this->getJson($path)->headers->get('X-Request-Id');
 
             $this->assertMatchesRegularExpression(self::UUID, (string) $id, $path);
@@ -22,14 +22,14 @@ class RequestIdTest extends TestCase
 
     public function test_a_valid_inbound_request_id_is_echoed(): void
     {
-        $this->getJson('/api/csrf', ['X-Request-Id' => 'frontend-req_123.abc'])
+        $this->getJson('/api/v1/csrf', ['X-Request-Id' => 'frontend-req_123.abc'])
             ->assertHeader('X-Request-Id', 'frontend-req_123.abc');
     }
 
     public function test_invalid_inbound_request_ids_are_replaced(): void
     {
         foreach (['short', str_repeat('a', 65), 'bad id with spaces', "line\nbreak-123456", 'semi;colon-12345', ''] as $bad) {
-            $id = $this->getJson('/api/csrf', ['X-Request-Id' => $bad])->headers->get('X-Request-Id');
+            $id = $this->getJson('/api/v1/csrf', ['X-Request-Id' => $bad])->headers->get('X-Request-Id');
 
             $this->assertMatchesRegularExpression(self::UUID, (string) $id, json_encode($bad));
         }
@@ -37,15 +37,15 @@ class RequestIdTest extends TestCase
 
     public function test_each_request_gets_its_own_id(): void
     {
-        $a = $this->getJson('/api/csrf')->headers->get('X-Request-Id');
-        $b = $this->getJson('/api/csrf')->headers->get('X-Request-Id');
+        $a = $this->getJson('/api/v1/csrf')->headers->get('X-Request-Id');
+        $b = $this->getJson('/api/v1/csrf')->headers->get('X-Request-Id');
 
         $this->assertNotSame($a, $b);
     }
 
     public function test_the_request_id_is_available_to_application_code(): void
     {
-        $this->getJson('/api/csrf', ['X-Request-Id' => 'abcdef-12345']);
+        $this->getJson('/api/v1/csrf', ['X-Request-Id' => 'abcdef-12345']);
 
         $this->assertSame('abcdef-12345', request()->attributes->get('request_id'));
     }

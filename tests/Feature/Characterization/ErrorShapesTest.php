@@ -24,7 +24,7 @@ class ErrorShapesTest extends TestCase
 
     public function test_401_is_the_unauthenticated_envelope(): void
     {
-        $this->getJson('/api/applications')
+        $this->getJson('/api/v1/applications')
             ->assertStatus(401)
             ->assertJsonPath('code', 'unauthenticated')
             ->assertJsonStructure(['message', 'code', 'request_id']);
@@ -32,15 +32,15 @@ class ErrorShapesTest extends TestCase
 
     public function test_403_for_a_non_admin_on_an_admin_route_is_forbidden(): void
     {
-        $this->signIn($this->makeUser())->getJson('/api/admin/users')
+        $this->signIn($this->makeUser())->getJson('/api/v1/admin/users')
             ->assertStatus(403)
             ->assertJsonPath('code', 'forbidden');
     }
 
     public function test_403_and_401_are_both_used_for_not_signed_in_versus_not_allowed(): void
     {
-        $this->getJson('/api/admin/users')->assertStatus(401);
-        $this->signIn($this->makeUser())->getJson('/api/admin/users')->assertStatus(403);
+        $this->getJson('/api/v1/admin/users')->assertStatus(401);
+        $this->signIn($this->makeUser())->getJson('/api/v1/admin/users')->assertStatus(403);
     }
 
     public function test_unknown_api_route_is_404_without_leaking_the_route(): void
@@ -67,7 +67,7 @@ class ErrorShapesTest extends TestCase
             'user_id' => $owner->id, 'title' => 'Dev', 'company' => 'Acme', 'url' => 'https://example.test/job',
         ]);
 
-        $this->signIn($other)->deleteJson("/api/applications/{$application->id}")
+        $this->signIn($other)->deleteJson("/api/v1/applications/{$application->id}")
             ->assertStatus(404)
             ->assertJsonPath('code', 'not_found');
         $this->assertDatabaseHas('applications', ['id' => $application->id]);
@@ -75,7 +75,7 @@ class ErrorShapesTest extends TestCase
 
     public function test_a_missing_bound_model_is_404_without_the_model_class(): void
     {
-        $this->signIn($this->makeUser())->deleteJson('/api/applications/999')
+        $this->signIn($this->makeUser())->deleteJson('/api/v1/applications/999')
             ->assertStatus(404)
             ->assertJsonPath('code', 'not_found')
             ->assertJsonPath('message', 'The requested resource was not found.');
@@ -83,7 +83,7 @@ class ErrorShapesTest extends TestCase
 
     public function test_wrong_method_is_405_without_naming_the_route(): void
     {
-        $response = $this->signIn($this->makeUser())->putJson('/api/me')
+        $response = $this->signIn($this->makeUser())->putJson('/api/v1/me')
             ->assertStatus(405)
             ->assertJsonPath('code', 'method_not_allowed');
         $this->assertStringContainsString('PATCH', (string) $response->headers->get('Allow'));
@@ -91,7 +91,7 @@ class ErrorShapesTest extends TestCase
 
     public function test_validation_errors_are_422_with_message_and_field_errors(): void
     {
-        $this->signIn($this->makeUser())->postJson('/api/applications', [])
+        $this->signIn($this->makeUser())->postJson('/api/v1/applications', [])
             ->assertStatus(422)
             ->assertJsonPath('message', 'The title field is required. (and 2 more errors)')
             ->assertJsonStructure(['message', 'errors' => ['title', 'company', 'url']]);
@@ -99,7 +99,7 @@ class ErrorShapesTest extends TestCase
 
     public function test_validation_body_has_code_errors_and_request_id(): void
     {
-        $body = $this->signIn($this->makeUser())->postJson('/api/applications', [])->json();
+        $body = $this->signIn($this->makeUser())->postJson('/api/v1/applications', [])->json();
 
         $this->assertSame(['message', 'code', 'errors', 'request_id'], array_keys($body));
         $this->assertSame('validation_failed', $body['code']);
@@ -107,7 +107,7 @@ class ErrorShapesTest extends TestCase
 
     public function test_domain_errors_raised_with_abort_are_422_validation_failed_without_errors(): void
     {
-        $this->signIn($this->makeUser())->postJson('/api/password', [
+        $this->signIn($this->makeUser())->putJson('/api/v1/me/password', [
             'current_password' => 'nope',
             'password' => 'another-long-passphrase',
             'password_confirmation' => 'another-long-passphrase',
@@ -119,14 +119,14 @@ class ErrorShapesTest extends TestCase
 
     public function test_csrf_token_endpoint_returns_a_token(): void
     {
-        $this->getJson('/api/csrf')->assertOk()->assertJsonStructure(['token']);
+        $this->getJson('/api/v1/csrf')->assertOk()->assertJsonStructure(['token']);
     }
 
     public function test_missing_csrf_token_is_419_when_csrf_is_enforced(): void
     {
         $this->app['env'] = 'local'; // the CSRF middleware is skipped while the environment is "testing"
 
-        $response = $this->postJson('/api/login', ['email' => 'a@example.test', 'password' => 'whatever-123']);
+        $response = $this->postJson('/api/v1/auth/login', ['email' => 'a@example.test', 'password' => 'whatever-123']);
 
         $response->assertStatus(419);
         $this->assertSame('CSRF token mismatch.', $response->json('message'));
@@ -136,14 +136,14 @@ class ErrorShapesTest extends TestCase
     {
         $this->app['env'] = 'local';
 
-        $this->postJson('/api/analytics/events', [
+        $this->postJson('/api/v1/analytics/events', [
             'consent' => true,
             'visitor_id' => str_repeat('a', 20),
             'session_id' => str_repeat('b', 20),
             'path' => '/ats-checker',
         ])->assertStatus(201);
 
-        $this->postJson('/api/contact', [
+        $this->postJson('/api/v1/contact-messages', [
             'name' => 'Visitor', 'email' => 'v@example.test', 'topic' => 'feedback',
             'message' => 'This is a long enough feedback message.',
         ])->assertStatus(201);
@@ -153,11 +153,11 @@ class ErrorShapesTest extends TestCase
     {
         // S4 (SPEC §7 item 4): 5 per minute per email+IP (was 20).
         for ($i = 1; $i <= 5; $i++) {
-            $this->postJson('/api/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123'])
+            $this->postJson('/api/v1/auth/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123'])
                 ->assertStatus(401);
         }
 
-        $response = $this->postJson('/api/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123']);
+        $response = $this->postJson('/api/v1/auth/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123']);
 
         $response->assertStatus(429)->assertJsonPath('code', 'too_many_requests');
         $this->assertNotNull($response->headers->get('Retry-After'));
@@ -184,7 +184,7 @@ class ErrorShapesTest extends TestCase
 
     public function test_ai_with_no_enabled_provider_is_503_upstream_unavailable(): void
     {
-        $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
+        $this->signIn($this->makeUser())->postJson('/api/v1/ai/chat', ['message' => 'hello'])
             ->assertStatus(503)
             ->assertJsonPath('code', 'upstream_unavailable')
             ->assertJsonPath('message', 'The service is temporarily unavailable. Please try again later.');
@@ -198,7 +198,7 @@ class ErrorShapesTest extends TestCase
         ]);
         Http::fake(['*' => Http::response(['error' => 'boom'], 500)]);
 
-        $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
+        $this->signIn($this->makeUser())->postJson('/api/v1/ai/chat', ['message' => 'hello'])
             ->assertStatus(503)
             ->assertJsonPath('code', 'upstream_unavailable');
 
@@ -216,7 +216,7 @@ class ErrorShapesTest extends TestCase
         ));
         Log::spy();
 
-        $response = $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
+        $response = $this->signIn($this->makeUser())->postJson('/api/v1/ai/chat', ['message' => 'hello'])
             ->assertStatus(503)
             ->assertJsonPath('code', 'upstream_unavailable');
 
@@ -230,7 +230,7 @@ class ErrorShapesTest extends TestCase
 
     public function test_api_responses_carry_security_headers_and_no_store(): void
     {
-        $response = $this->getJson('/api/me');
+        $response = $this->getJson('/api/v1/me');
 
         $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
         $this->assertSame('DENY', $response->headers->get('X-Frame-Options'));
@@ -246,14 +246,14 @@ class ErrorShapesTest extends TestCase
     {
         config(['cors.allowed_origins' => ['https://app.example.test']]);
 
-        $allowed = $this->call('OPTIONS', '/api/me', [], [], [], [
+        $allowed = $this->call('OPTIONS', '/api/v1/me', [], [], [], [
             'HTTP_ORIGIN' => 'https://app.example.test',
             'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'GET',
         ]);
         $this->assertSame('https://app.example.test', $allowed->headers->get('Access-Control-Allow-Origin'));
         $this->assertSame('true', $allowed->headers->get('Access-Control-Allow-Credentials'));
 
-        $blocked = $this->call('OPTIONS', '/api/me', [], [], [], [
+        $blocked = $this->call('OPTIONS', '/api/v1/me', [], [], [], [
             'HTTP_ORIGIN' => 'https://evil.example.test',
             'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'GET',
         ]);

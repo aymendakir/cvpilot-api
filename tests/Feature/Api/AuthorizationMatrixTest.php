@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 /**
  * SPEC §6 test matrix: who gets what on one representative route per scope,
- * on the v1 path and its legacy twin. Each case runs in a fresh app (the test client keeps its session).
+ * on its v1 path. Each case runs in a fresh app (the test client keeps its session).
  */
 class AuthorizationMatrixTest extends TestCase
 {
@@ -21,11 +21,8 @@ class AuthorizationMatrixTest extends TestCase
     {
         return [
             'public v1' => ['/api/v1/site-settings', 0, null],
-            'public legacy' => ['/api/site-settings', 0, null],
             'auth v1' => ['/api/v1/me', 1, null],
-            'auth legacy' => ['/api/me', 1, null],
             'admin v1' => ['/api/v1/admin/summary', 2, null],
-            'admin legacy' => ['/api/admin/summary', 2, null],
         ];
     }
 

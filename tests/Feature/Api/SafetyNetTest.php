@@ -78,7 +78,7 @@ class SafetyNetTest extends TestCase
         ]);
         Http::fake(['*' => Http::response(['error' => 'bad key'], 401)]);
 
-        $response = $this->signIn($this->makeAdmin())->postJson("/api/admin/integrations/{$integration->id}/test")->assertStatus(502);
+        $response = $this->signIn($this->makeAdmin())->postJson("/api/v1/admin/integrations/{$integration->id}/test")->assertStatus(502);
 
         // S3 (SPEC decision 12): the provider answered with an error -> 502 with a generic body.
         $this->assertSame('upstream_invalid_response', $response->json('code'));

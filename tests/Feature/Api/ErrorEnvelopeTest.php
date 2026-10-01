@@ -54,7 +54,7 @@ class ErrorEnvelopeTest extends TestCase
 
     public function test_400_malformed_json_body(): void
     {
-        $response = $this->call('POST', '/api/login', [], [], [], ['CONTENT_TYPE' => 'application/json'], '{"email": ');
+        $response = $this->call('POST', '/api/v1/auth/login', [], [], [], ['CONTENT_TYPE' => 'application/json'], '{"email": ');
 
         $this->assertEnvelope($response, 400, 'bad_request');
     }
@@ -69,7 +69,7 @@ class ErrorEnvelopeTest extends TestCase
 
     public function test_401_unauthenticated(): void
     {
-        $body = $this->assertEnvelope($this->getJson('/api/me'), 401, 'unauthenticated');
+        $body = $this->assertEnvelope($this->getJson('/api/v1/me'), 401, 'unauthenticated');
         $this->assertSame('Authentication is required.', $body['message']);
     }
 
@@ -79,12 +79,12 @@ class ErrorEnvelopeTest extends TestCase
         $session = ['user_id' => $user->id, 'session_version' => 1];
         $user->forceFill(['session_version' => 2])->save();
 
-        $this->assertEnvelope($this->withSession($session)->getJson('/api/me'), 401, 'unauthenticated');
+        $this->assertEnvelope($this->withSession($session)->getJson('/api/v1/me'), 401, 'unauthenticated');
     }
 
     public function test_403_forbidden_for_a_non_admin(): void
     {
-        $body = $this->assertEnvelope($this->signIn($this->makeUser())->getJson('/api/admin/users'), 403, 'forbidden');
+        $body = $this->assertEnvelope($this->signIn($this->makeUser())->getJson('/api/v1/admin/users'), 403, 'forbidden');
         $this->assertSame('You do not have permission to do this.', $body['message']);
     }
 
@@ -99,7 +99,7 @@ class ErrorEnvelopeTest extends TestCase
 
     public function test_404_missing_model_does_not_leak_the_class(): void
     {
-        $response = $this->signIn($this->makeUser())->deleteJson('/api/applications/999');
+        $response = $this->signIn($this->makeUser())->deleteJson('/api/v1/applications/999');
 
         $this->assertEnvelope($response, 404, 'not_found');
         $this->assertNoLeak($response, ['App\\Models', 'Application', 'No query results']);
@@ -111,7 +111,7 @@ class ErrorEnvelopeTest extends TestCase
             'user_id' => $this->makeUser()->id, 'title' => 'T', 'company' => 'C', 'url' => 'https://example.test/j',
         ]);
 
-        $body = $this->assertEnvelope($this->signIn($this->makeUser())->deleteJson("/api/applications/{$application->id}"), 404, 'not_found');
+        $body = $this->assertEnvelope($this->signIn($this->makeUser())->deleteJson("/api/v1/applications/{$application->id}"), 404, 'not_found');
         $this->assertSame('The requested resource was not found.', $body['message']);
     }
 
@@ -125,7 +125,7 @@ class ErrorEnvelopeTest extends TestCase
 
     public function test_405_method_not_allowed_keeps_the_allow_header_and_hides_the_route(): void
     {
-        $response = $this->signIn($this->makeUser())->putJson('/api/me');
+        $response = $this->signIn($this->makeUser())->putJson('/api/v1/me');
 
         $body = $this->assertEnvelope($response, 405, 'method_not_allowed');
         $this->assertStringContainsString('GET', (string) $response->headers->get('Allow'));
@@ -150,12 +150,12 @@ class ErrorEnvelopeTest extends TestCase
     {
         $this->app['env'] = 'local'; // the CSRF middleware is skipped while the environment is "testing"
 
-        $this->assertEnvelope($this->postJson('/api/login', ['email' => 'a@example.test', 'password' => 'x']), 419, 'csrf_mismatch');
+        $this->assertEnvelope($this->postJson('/api/v1/auth/login', ['email' => 'a@example.test', 'password' => 'x']), 419, 'csrf_mismatch');
     }
 
     public function test_422_validation_has_field_errors_and_the_laravel_summary(): void
     {
-        $response = $this->signIn($this->makeUser())->postJson('/api/applications', []);
+        $response = $this->signIn($this->makeUser())->postJson('/api/v1/applications', []);
 
         $body = $this->assertEnvelope($response, 422, 'validation_failed', withErrors: true);
         $this->assertSame('The title field is required. (and 2 more errors)', $body['message']);
@@ -164,7 +164,7 @@ class ErrorEnvelopeTest extends TestCase
 
     public function test_422_domain_rules_use_the_same_code_without_errors(): void
     {
-        $body = $this->assertEnvelope($this->signIn($this->makeUser())->postJson('/api/password', [
+        $body = $this->assertEnvelope($this->signIn($this->makeUser())->putJson('/api/v1/me/password', [
             'current_password' => 'nope', 'password' => 'another-long-passphrase', 'password_confirmation' => 'another-long-passphrase',
         ]), 422, 'validation_failed');
 
@@ -174,10 +174,10 @@ class ErrorEnvelopeTest extends TestCase
     public function test_429_too_many_requests_keeps_retry_after(): void
     {
         for ($i = 0; $i < 20; $i++) {
-            $this->postJson('/api/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123']);
+            $this->postJson('/api/v1/auth/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123']);
         }
 
-        $response = $this->postJson('/api/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123']);
+        $response = $this->postJson('/api/v1/auth/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123']);
 
         $this->assertEnvelope($response, 429, 'too_many_requests');
         $this->assertNotNull($response->headers->get('Retry-After'));
@@ -257,7 +257,7 @@ class ErrorEnvelopeTest extends TestCase
         $this->assertStringNotContainsString('"code"', $response->getContent());
     }
 
-    public function test_legacy_and_future_v1_prefixes_both_use_the_envelope(): void
+    public function test_unknown_api_paths_use_the_envelope(): void
     {
         $this->assertEnvelope($this->getJson('/api/v1/anything'), 404, 'not_found');
         $this->assertEnvelope($this->getJson('/api/anything'), 404, 'not_found');

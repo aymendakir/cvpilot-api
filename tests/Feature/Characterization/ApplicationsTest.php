@@ -25,8 +25,8 @@ class ApplicationsTest extends TestCase
 
     public function test_requires_a_session(): void
     {
-        $this->getJson('/api/applications')->assertStatus(401);
-        $this->postJson('/api/applications', $this->payload())->assertStatus(401);
+        $this->getJson('/api/v1/applications')->assertStatus(401);
+        $this->postJson('/api/v1/applications', $this->payload())->assertStatus(401);
     }
 
     public function test_index_is_a_paginator_of_the_users_own_applications_newest_first(): void
@@ -37,7 +37,7 @@ class ApplicationsTest extends TestCase
         Application::create(['user_id' => $me->id] + $this->payload(['title' => 'Second', 'url' => 'https://example.test/b']));
         Application::create(['user_id' => $other->id] + $this->payload(['title' => 'Not mine']));
 
-        $response = $this->signIn($me)->getJson('/api/applications')->assertOk()
+        $response = $this->signIn($me)->getJson('/api/v1/applications')->assertOk()
             ->assertJsonStructure(['data', 'current_page', 'last_page', 'per_page', 'total'])
             ->assertJsonPath('per_page', 20)
             ->assertJsonPath('total', 2);
@@ -49,7 +49,7 @@ class ApplicationsTest extends TestCase
     {
         $me = $this->makeUser();
 
-        $this->signIn($me)->postJson('/api/applications', $this->payload())
+        $this->signIn($me)->postJson('/api/v1/applications', $this->payload())
             ->assertStatus(201)
             ->assertJsonPath('title', 'Backend Developer')
             ->assertJsonPath('user_id', $me->id);
@@ -61,9 +61,9 @@ class ApplicationsTest extends TestCase
     public function test_store_with_the_same_url_updates_and_returns_200(): void
     {
         $me = $this->makeUser();
-        $this->signIn($me)->postJson('/api/applications', $this->payload())->assertStatus(201);
+        $this->signIn($me)->postJson('/api/v1/applications', $this->payload())->assertStatus(201);
 
-        $this->signIn($me)->postJson('/api/applications', $this->payload(['title' => 'Renamed']))
+        $this->signIn($me)->postJson('/api/v1/applications', $this->payload(['title' => 'Renamed']))
             ->assertStatus(200)
             ->assertJsonPath('title', 'Renamed');
 
@@ -74,7 +74,7 @@ class ApplicationsTest extends TestCase
     {
         $me = $this->makeUser();
 
-        $this->signIn($me)->postJson('/api/applications', $this->payload(['status' => 'applied']))
+        $this->signIn($me)->postJson('/api/v1/applications', $this->payload(['status' => 'applied']))
             ->assertStatus(201)
             ->assertJsonPath('status', 'applied');
 
@@ -85,7 +85,7 @@ class ApplicationsTest extends TestCase
 
     public function test_store_validation_is_422(): void
     {
-        $this->signIn($this->makeUser())->postJson('/api/applications', $this->payload([
+        $this->signIn($this->makeUser())->postJson('/api/v1/applications', $this->payload([
             'url' => 'http://insecure.example.test',
             'status' => 'hired',
             'match_score' => 101,
@@ -97,7 +97,7 @@ class ApplicationsTest extends TestCase
         $other = $this->makeUser();
         $version = CvVersion::create(['user_id' => $other->id, 'name' => 'Theirs', 'content' => str_repeat('cv ', 20)]);
 
-        $this->signIn($this->makeUser())->postJson('/api/applications', $this->payload(['cv_version_id' => $version->id]))
+        $this->signIn($this->makeUser())->postJson('/api/v1/applications', $this->payload(['cv_version_id' => $version->id]))
             ->assertStatus(404);
     }
 
@@ -106,7 +106,7 @@ class ApplicationsTest extends TestCase
         $me = $this->makeUser();
         $application = Application::create(['user_id' => $me->id] + $this->payload());
 
-        $this->signIn($me)->patchJson("/api/applications/{$application->id}", ['status' => 'interview', 'notes' => 'Call on Monday'])
+        $this->signIn($me)->patchJson("/api/v1/applications/{$application->id}", ['status' => 'interview', 'notes' => 'Call on Monday'])
             ->assertOk()
             ->assertJsonPath('status', 'interview')
             ->assertJsonPath('notes', 'Call on Monday');
@@ -118,8 +118,8 @@ class ApplicationsTest extends TestCase
         $application = Application::create(['user_id' => $owner->id] + $this->payload());
         $intruder = $this->makeUser();
 
-        $this->signIn($intruder)->patchJson("/api/applications/{$application->id}", ['status' => 'offer'])->assertStatus(404);
-        $this->signIn($intruder)->deleteJson("/api/applications/{$application->id}")->assertStatus(404);
+        $this->signIn($intruder)->patchJson("/api/v1/applications/{$application->id}", ['status' => 'offer'])->assertStatus(404);
+        $this->signIn($intruder)->deleteJson("/api/v1/applications/{$application->id}")->assertStatus(404);
         $this->assertDatabaseHas('applications', ['id' => $application->id, 'status' => 'saved']);
     }
 
@@ -128,18 +128,18 @@ class ApplicationsTest extends TestCase
         $me = $this->makeUser();
         $application = Application::create(['user_id' => $me->id] + $this->payload());
 
-        $response = $this->signIn($me)->deleteJson("/api/applications/{$application->id}");
+        $response = $this->signIn($me)->deleteJson("/api/v1/applications/{$application->id}");
 
         $response->assertStatus(204);
         $this->assertSame('', $response->getContent());
         $this->assertDatabaseMissing('applications', ['id' => $application->id]);
     }
 
-    public function test_there_is_no_show_route(): void
+    public function test_the_owner_can_show_an_application(): void
     {
         $me = $this->makeUser();
         $application = Application::create(['user_id' => $me->id] + $this->payload());
 
-        $this->signIn($me)->getJson("/api/applications/{$application->id}")->assertStatus(405);
+        $this->signIn($me)->getJson("/api/v1/applications/{$application->id}")->assertOk()->assertJsonPath('id', $application->id);
     }
 }

@@ -23,7 +23,7 @@ class AdminAccessTest extends TestCase
 
     /** GET admin routes that work on SQLite. `admin/analytics` uses MySQL-only SQL and is covered in a later slice. */
     private const ADMIN_GETS = [
-        'admin/summary', 'admin/users', 'admin/logs', 'admin/system', 'admin/site-settings',
+        'admin/summary', 'admin/users', 'admin/audit-events', 'admin/system', 'admin/site-settings',
         'admin/contact-messages', 'admin/cv-templates', 'admin/smtp', 'admin/integrations', 'admin/applications',
     ];
 
@@ -34,13 +34,13 @@ class AdminAccessTest extends TestCase
 
         // The test client keeps the seeded session, so check roles in a fixed order.
         foreach (self::ADMIN_GETS as $path) {
-            $this->getJson("/api/{$path}")->assertStatus(401);
+            $this->getJson("/api/v1/{$path}")->assertStatus(401);
         }
         foreach (self::ADMIN_GETS as $path) {
-            $this->signIn($user)->getJson("/api/{$path}")->assertStatus(403);
+            $this->signIn($user)->getJson("/api/v1/{$path}")->assertStatus(403);
         }
         foreach (self::ADMIN_GETS as $path) {
-            $this->signIn($admin)->getJson("/api/{$path}")->assertOk();
+            $this->signIn($admin)->getJson("/api/v1/{$path}")->assertOk();
         }
     }
 
@@ -49,10 +49,10 @@ class AdminAccessTest extends TestCase
         $user = $this->makeUser();
         $target = $this->makeUser();
 
-        $this->signIn($user)->patchJson("/api/admin/users/{$target->id}", ['suspended' => true])->assertStatus(403);
-        $this->signIn($user)->putJson('/api/admin/site-settings', [])->assertStatus(403);
-        $this->signIn($user)->postJson('/api/admin/integrations', [])->assertStatus(403);
-        $this->signIn($user)->postJson('/api/admin/cache/clear')->assertStatus(403);
+        $this->signIn($user)->patchJson("/api/v1/admin/users/{$target->id}", ['suspended' => true])->assertStatus(403);
+        $this->signIn($user)->putJson('/api/v1/admin/site-settings', [])->assertStatus(403);
+        $this->signIn($user)->postJson('/api/v1/admin/integrations', [])->assertStatus(403);
+        $this->signIn($user)->deleteJson('/api/v1/admin/cache')->assertStatus(403);
         $this->assertFalse($target->refresh()->suspended);
     }
 
@@ -61,7 +61,7 @@ class AdminAccessTest extends TestCase
         $admin = $this->makeAdmin();
         $this->makeUser(['name' => 'Findable Person', 'email' => 'findme@example.test']);
 
-        $this->signIn($admin)->getJson('/api/admin/users?search=findme')->assertOk()
+        $this->signIn($admin)->getJson('/api/v1/admin/users?search=findme')->assertOk()
             ->assertJsonPath('per_page', 20)
             ->assertJsonPath('total', 1)
             ->assertJsonPath('data.0.email', 'findme@example.test');
@@ -72,7 +72,7 @@ class AdminAccessTest extends TestCase
         $admin = $this->makeAdmin();
         $target = $this->makeUser();
 
-        $this->signIn($admin)->patchJson("/api/admin/users/{$target->id}", ['suspended' => true])
+        $this->signIn($admin)->patchJson("/api/v1/admin/users/{$target->id}", ['suspended' => true])
             ->assertOk()->assertJsonPath('suspended', true);
 
         $target->refresh();
@@ -86,7 +86,7 @@ class AdminAccessTest extends TestCase
         $admin = $this->makeAdmin();
         $other = $this->makeAdmin();
 
-        $this->signIn($admin)->patchJson("/api/admin/users/{$other->id}", ['suspended' => true])
+        $this->signIn($admin)->patchJson("/api/v1/admin/users/{$other->id}", ['suspended' => true])
             ->assertStatus(422)->assertJsonPath('message', 'Admin accounts cannot be suspended here.');
     }
 
@@ -104,7 +104,7 @@ class AdminAccessTest extends TestCase
         CareerReport::create(['user_id' => $user->id, 'type' => 'skill_gap', 'input' => ['cv_text' => $cv], 'output' => 'report text']);
         AdminReview::record('cv', $version);
 
-        $response = $this->signIn($admin)->getJson("/api/admin/users/{$user->id}")->assertOk()
+        $response = $this->signIn($admin)->getJson("/api/v1/admin/users/{$user->id}")->assertOk()
             ->assertJsonStructure(['user', 'counts', 'activity', 'uploads', 'cv_versions', 'applications', 'interviews', 'reports'])
             ->assertJsonPath('uploads.0.name', 'cv.pdf')
             ->assertJsonPath('cv_versions.0.name', 'Saved CV')
@@ -117,15 +117,15 @@ class AdminAccessTest extends TestCase
         $this->assertDatabaseHas('audit_events', ['event' => "user_reviewed:{$user->id}", 'user_id' => $admin->id]);
     }
 
-    public function test_sending_a_warning_mails_the_user_and_returns_200(): void
+    public function test_sending_a_warning_mails_the_user_and_returns_201(): void
     {
         $this->fakePlatformMail();
         $admin = $this->makeAdmin();
         $user = $this->makeUser();
 
-        $this->signIn($admin)->postJson("/api/admin/users/{$user->id}/warning", [
+        $this->signIn($admin)->postJson("/api/v1/admin/users/{$user->id}/warnings", [
             'subject' => 'Policy reminder', 'message' => 'Please keep uploads professional.', 'severity' => 'notice',
-        ])->assertOk()->assertJsonPath('email_sent', true);
+        ])->assertStatus(201)->assertJsonPath('email_sent', true);
 
         $this->assertCount(1, $this->sentMail);
         $this->assertSame($user->email, $this->sentMail[0]['to']);
@@ -135,17 +135,17 @@ class AdminAccessTest extends TestCase
     {
         $admin = $this->makeAdmin();
 
-        $created = $this->signIn($admin)->postJson('/api/admin/integrations', [
+        $created = $this->signIn($admin)->postJson('/api/v1/admin/integrations', [
             'provider' => 'openai', 'type' => 'ai', 'secret' => 'sk-super-secret', 'model' => 'gpt-4o-mini', 'enabled' => true,
         ])->assertOk();
         $this->assertStringNotContainsString('sk-super-secret', $created->getContent());
 
-        $list = $this->signIn($admin)->getJson('/api/admin/integrations')->assertOk()
+        $list = $this->signIn($admin)->getJson('/api/v1/admin/integrations')->assertOk()
             ->assertJsonStructure(['items', 'catalog', 'job_providers']);
         $this->assertStringNotContainsString('sk-super-secret', $list->getContent());
 
         $id = Integration::first()->id;
-        $updated = $this->signIn($admin)->patchJson("/api/admin/integrations/{$id}", ['model' => 'gpt-4o'])->assertOk();
+        $updated = $this->signIn($admin)->patchJson("/api/v1/admin/integrations/{$id}", ['model' => 'gpt-4o'])->assertOk();
         $this->assertStringNotContainsString('sk-super-secret', $updated->getContent());
         $this->assertSame('sk-super-secret', Integration::first()->secret, 'stored value decrypts for server-side use');
         $this->assertNotSame('sk-super-secret', \DB::table('integrations')->value('secret'), 'stored encrypted at rest');
@@ -158,7 +158,7 @@ class AdminAccessTest extends TestCase
         ]);
         Http::fake(['*' => Http::response(['candidates' => [['content' => ['parts' => [['text' => 'ok']]]]]])]);
 
-        $this->signIn($this->makeAdmin())->postJson("/api/admin/integrations/{$integration->id}/test")->assertOk();
+        $this->signIn($this->makeAdmin())->postJson("/api/v1/admin/integrations/{$integration->id}/test")->assertOk();
 
         Http::assertSent(fn ($request) => ! str_contains($request->url(), 'GEMINI-KEY-123')
             && ! str_contains($request->url(), 'key=')
@@ -174,7 +174,7 @@ class AdminAccessTest extends TestCase
             'cURL error 28: Operation timed out for https://generativelanguage.googleapis.com/v1beta/models/m:generateContent?key=GEMINI-KEY-123'
         ));
 
-        $response = $this->signIn($this->makeAdmin())->postJson("/api/admin/integrations/{$integration->id}/test")->assertStatus(503);
+        $response = $this->signIn($this->makeAdmin())->postJson("/api/v1/admin/integrations/{$integration->id}/test")->assertStatus(503);
 
         // S3 (SPEC decision 12): unreachable / timed out -> 503 with a generic body; the redacted reason is stored.
         $this->assertSame('upstream_unavailable', $response->json('code'));
@@ -184,10 +184,9 @@ class AdminAccessTest extends TestCase
         $this->assertStringNotContainsString('GEMINI-KEY-123', (string) $integration->last_error);
     }
 
-    public function test_cache_clear_is_a_closure_route_returning_200(): void
+    public function test_cache_clear_is_a_delete_returning_204(): void
     {
-        $this->signIn($this->makeAdmin())->postJson('/api/admin/cache/clear')
-            ->assertOk()->assertExactJson(['message' => 'System cache cleared successfully.']);
+        $this->signIn($this->makeAdmin())->deleteJson('/api/v1/admin/cache')->assertStatus(204);
     }
 
     public function test_admin_is_identified_by_role_not_email(): void
@@ -195,6 +194,6 @@ class AdminAccessTest extends TestCase
         $admin = $this->makeAdmin();
 
         $this->assertSame('admin', User::find($admin->id)->role);
-        $this->signIn($admin)->getJson('/api/admin/summary')->assertOk();
+        $this->signIn($admin)->getJson('/api/v1/admin/summary')->assertOk();
     }
 }

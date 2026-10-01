@@ -15,7 +15,7 @@ class PublicEndpointsTest extends TestCase
 
     public function test_site_settings_are_public_and_return_the_defaults(): void
     {
-        $this->getJson('/api/site-settings')->assertOk()->assertJsonStructure([
+        $this->getJson('/api/v1/site-settings')->assertOk()->assertJsonStructure([
             'brand_name', 'site_url', 'default_title', 'default_description', 'support_email',
             'publisher_name', 'google_verification', 'adsense_publisher_id', 'indexing_enabled', 'pages',
         ]);
@@ -23,7 +23,7 @@ class PublicEndpointsTest extends TestCase
 
     public function test_contact_creates_a_message_and_returns_a_reference(): void
     {
-        $response = $this->postJson('/api/contact', [
+        $response = $this->postJson('/api/v1/contact-messages', [
             'name' => 'Visitor', 'email' => 'visitor@example.test', 'topic' => 'technical',
             'message' => 'The upload button does not respond on my phone.',
         ])->assertStatus(201)->assertJsonStructure(['message', 'reference']);
@@ -34,10 +34,10 @@ class PublicEndpointsTest extends TestCase
 
     public function test_contact_validation_and_honeypot_are_422(): void
     {
-        $this->postJson('/api/contact', ['name' => '', 'email' => 'bad', 'topic' => 'sales', 'message' => 'short'])
+        $this->postJson('/api/v1/contact-messages', ['name' => '', 'email' => 'bad', 'topic' => 'sales', 'message' => 'short'])
             ->assertStatus(422)->assertJsonStructure(['message', 'errors' => ['name', 'email', 'topic', 'message']]);
 
-        $this->postJson('/api/contact', [
+        $this->postJson('/api/v1/contact-messages', [
             'name' => 'Bot', 'email' => 'bot@example.test', 'topic' => 'feedback',
             'message' => 'Buy cheap things at my website now please.', 'website' => 'https://spam.example',
         ])->assertStatus(422);
@@ -49,9 +49,9 @@ class PublicEndpointsTest extends TestCase
         $payload = ['name' => 'V', 'email' => 'v@example.test', 'topic' => 'feedback', 'message' => 'A sufficiently long message.'];
 
         for ($i = 0; $i < 3; $i++) {
-            $this->postJson('/api/contact', $payload)->assertStatus(201);
+            $this->postJson('/api/v1/contact-messages', $payload)->assertStatus(201);
         }
-        $this->postJson('/api/contact', $payload)->assertStatus(429);
+        $this->postJson('/api/v1/contact-messages', $payload)->assertStatus(429);
     }
 
     public function test_only_published_cv_templates_are_public(): void
@@ -60,16 +60,16 @@ class PublicEndpointsTest extends TestCase
         CvTemplate::create(['name' => 'Live', 'published' => true, 'design' => $design, 'sample' => ['name' => 'A']]);
         CvTemplate::create(['name' => 'Draft', 'published' => false, 'design' => $design, 'sample' => ['name' => 'B']]);
 
-        $this->getJson('/api/cv-templates')->assertOk()->assertJsonCount(1)->assertJsonPath('0.name', 'Live');
+        $this->getJson('/api/v1/cv-templates')->assertOk()->assertJsonCount(1)->assertJsonPath('0.name', 'Live');
     }
 
     public function test_analytics_events_require_consent_and_store_hashed_ids(): void
     {
-        $this->postJson('/api/analytics/events', [
+        $this->postJson('/api/v1/analytics/events', [
             'visitor_id' => str_repeat('a', 20), 'session_id' => str_repeat('b', 20), 'path' => '/',
         ])->assertStatus(422)->assertJsonStructure(['errors' => ['consent']]);
 
-        $this->postJson('/api/analytics/events', [
+        $this->postJson('/api/v1/analytics/events', [
             'consent' => true, 'visitor_id' => str_repeat('a', 20), 'session_id' => str_repeat('b', 20),
             'path' => '/ats-checker?x=1#top', 'referrer' => 'https://example.org/page',
         ])->assertStatus(201)->assertExactJson(['recorded' => true]);
@@ -83,15 +83,15 @@ class PublicEndpointsTest extends TestCase
     public function test_the_blog_api_the_frontend_calls_exists(): void
     {
         // S5 (SPEC §8.1): flipped from a GAP. Detailed behaviour lives in BlogPublicTest and BlogAdminTest.
-        $this->getJson('/api/blog')->assertOk()->assertJsonPath('data', []);
-        $this->getJson('/api/blog/some-post')->assertStatus(404);
-        $this->signIn($this->makeAdmin())->getJson('/api/admin/blog')->assertOk();
+        $this->getJson('/api/v1/blog')->assertOk()->assertJsonPath('data', []);
+        $this->getJson('/api/v1/blog/some-post')->assertStatus(404);
+        $this->signIn($this->makeAdmin())->getJson('/api/v1/admin/blog')->assertOk();
     }
 
     public function test_admin_user_creation_the_frontend_calls_exists(): void
     {
         // S5 (SPEC §8.2): flipped from a GAP (405). Full behaviour lives in AdminCreateUserTest.
-        $this->signIn($this->makeAdmin())->postJson('/api/admin/users', ['name' => 'x'])->assertStatus(422);
+        $this->signIn($this->makeAdmin())->postJson('/api/v1/admin/users', ['name' => 'x'])->assertStatus(422);
     }
 
     public function test_the_root_serves_the_legacy_console_html(): void

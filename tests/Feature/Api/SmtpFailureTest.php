@@ -136,14 +136,6 @@ class SmtpFailureTest extends TestCase
         $this->assertNull(MailSetting::first()->last_error);
     }
 
-    public function test_the_legacy_routes_use_the_same_codes(): void
-    {
-        $this->settings();
-        $this->failingMail(new \RuntimeException('Connection could not be established'));
-
-        $this->signIn($this->makeAdmin())->postJson('/api/admin/smtp/check')->assertStatus(503)->assertJsonPath('code', 'upstream_unavailable');
-    }
-
     public function test_our_own_php_errors_are_a_generic_500_but_still_store_a_reason(): void
     {
         $this->settings();

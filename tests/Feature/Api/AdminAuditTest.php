@@ -25,7 +25,7 @@ class AdminAuditTest extends TestCase
     public function test_every_admin_route_goes_through_the_audit_middleware(): void
     {
         $checked = 0;
-        foreach (array_merge(RouteDocs::v1(), RouteDocs::legacy()) as $route) {
+        foreach (RouteDocs::v1() as $route) {
             if (! str_contains($route->uri(), 'admin/')) {
                 continue;
             }
@@ -33,7 +33,7 @@ class AdminAuditTest extends TestCase
             $checked++;
         }
 
-        $this->assertGreaterThan(50, $checked);
+        $this->assertGreaterThan(30, $checked);
     }
 
     public function test_writes_are_recorded_under_the_route_name(): void
@@ -83,16 +83,16 @@ class AdminAuditTest extends TestCase
         $this->assertContains('admin.cv-templates.store.failed', $events);
     }
 
-    public function test_legacy_aliases_are_recorded_too(): void
+    public function test_cache_clear_and_audit_log_reads_are_recorded(): void
     {
         $admin = $this->makeAdmin();
 
-        $this->signIn($admin)->postJson('/api/admin/cache/clear')->assertOk();
-        $this->signIn($admin)->getJson('/api/admin/logs')->assertOk();
+        $this->signIn($admin)->deleteJson('/api/v1/admin/cache')->assertStatus(204);
+        $this->signIn($admin)->getJson('/api/v1/admin/audit-events')->assertOk();
 
         $events = $this->events($admin);
-        $this->assertContains('admin.legacy.post.admin.cache.clear', $events);
-        $this->assertContains('admin.legacy.get.admin.logs', $events);
+        $this->assertContains('admin.cache.destroy', $events);
+        $this->assertContains('admin.audit-events.index', $events);
     }
 
     public function test_requests_that_are_not_admin_leave_no_admin_event(): void

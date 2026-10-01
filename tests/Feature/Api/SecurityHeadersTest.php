@@ -35,7 +35,7 @@ class SecurityHeadersTest extends TestCase
     public function test_api_responses_carry_the_csp_and_corp_headers(): void
     {
         $this->assertApiHeaders($this->getJson('/api/v1/site-settings')->assertOk());
-        $this->assertApiHeaders($this->getJson('/api/site-settings')->assertOk());
+        $this->assertApiHeaders($this->getJson('/api/v1/site-settings')->assertOk());
     }
 
     public function test_error_responses_carry_them_too(): void

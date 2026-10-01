@@ -91,13 +91,13 @@ class UploadPrivacyTest extends TestCase
         $this->noStoredFiles();
     }
 
-    public function test_the_legacy_upload_path_behaves_the_same(): void
+    public function test_uploading_a_document_stores_no_file(): void
     {
         Storage::fake('local');
         $file = $this->cv();
         $path = $file->getPathname();
 
-        $this->signIn($this->makeUser())->post('/api/cv', ['file' => $file], ['Accept' => 'application/json'])->assertStatus(201);
+        $this->signIn($this->makeUser())->post('/api/v1/cv-documents', ['file' => $file], ['Accept' => 'application/json'])->assertStatus(201);
 
         $this->assertNull(CvDocument::first()->disk_path);
         $this->assertFileDoesNotExist($path);

@@ -7,14 +7,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Tests\Concerns\ComparesRoutes;
 use Tests\Concerns\CreatesUsers;
 use Tests\TestCase;
 
 /** SPEC §8.2: an admin creates an account (the "Create a user" form in the admin panel). */
 class AdminCreateUserTest extends TestCase
 {
-    use ComparesRoutes;
     use CreatesUsers;
     use RefreshDatabase;
 
@@ -174,13 +172,5 @@ class AdminCreateUserTest extends TestCase
         $response = $this->signIn($admin)->postJson('/api/v1/admin/users', $this->payload(['email' => 'p11@example.test']))->assertStatus(429);
         $this->assertNotNull($response->headers->get('Retry-After'));
         $this->assertDatabaseMissing('users', ['email' => 'p11@example.test']);
-    }
-
-    public function test_the_legacy_path_the_frontend_calls_works_and_is_deprecated(): void
-    {
-        $response = $this->signIn($this->makeAdmin())->postJson('/api/admin/users', $this->payload())->assertStatus(201);
-
-        $this->assertDeprecated($response, '/api/v1/admin/users');
-        $this->assertDatabaseHas('users', ['email' => 'new.person@example.test']);
     }
 }

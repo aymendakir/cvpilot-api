@@ -29,7 +29,7 @@ class UpstreamErrorsTest extends TestCase
 
     public function test_no_enabled_provider_is_503_with_retry_after_and_no_admin_hint(): void
     {
-        $response = $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
+        $response = $this->signIn($this->makeUser())->postJson('/api/v1/ai/chat', ['message' => 'hello'])
             ->assertStatus(503)
             ->assertJsonPath('code', 'upstream_unavailable')
             ->assertHeader('Retry-After', '30');
@@ -43,7 +43,7 @@ class UpstreamErrorsTest extends TestCase
         $this->enableOpenAi();
         Http::fake(['*' => Http::response(['error' => 'boom'], 500)]);
 
-        $response = $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
+        $response = $this->signIn($this->makeUser())->postJson('/api/v1/ai/chat', ['message' => 'hello'])
             ->assertStatus(503)
             ->assertJsonPath('code', 'upstream_unavailable');
 
@@ -56,7 +56,7 @@ class UpstreamErrorsTest extends TestCase
         $this->enableOpenAi();
         Http::fake(fn () => throw new ConnectionException('cURL error 28: timed out'));
 
-        $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
+        $this->signIn($this->makeUser())->postJson('/api/v1/ai/chat', ['message' => 'hello'])
             ->assertStatus(503)
             ->assertJsonPath('code', 'upstream_unavailable');
     }
@@ -66,7 +66,7 @@ class UpstreamErrorsTest extends TestCase
         $this->enableOpenAi();
         Http::fake(['*' => Http::response($this->chatCompletion('Sorry, I cannot return JSON today.'))]);
 
-        $response = $this->signIn($this->makeUser())->postJson('/api/ai/ats-analysis', [
+        $response = $this->signIn($this->makeUser())->postJson('/api/v1/ai/ats-analysis', [
             'cv_text' => str_repeat('Developer with experience in building web applications. ', 3),
             'report_format' => 'structured',
         ])->assertStatus(502)
@@ -85,7 +85,7 @@ class UpstreamErrorsTest extends TestCase
         ]);
         Http::fake(['*' => Http::response($this->chatCompletion($english))]);
 
-        $this->signIn($this->makeUser())->postJson('/api/ai/ats-analysis', [
+        $this->signIn($this->makeUser())->postJson('/api/v1/ai/ats-analysis', [
             'cv_text' => "Expérience professionnelle\nDéveloppeur chez Acme depuis 2020 avec des projets pour les clients.\nCompétences\nFormation\nDiplôme d'ingénieur, études supérieures.",
             'report_format' => 'structured',
         ])->assertStatus(502)->assertJsonPath('code', 'upstream_invalid_response');
@@ -102,7 +102,7 @@ class UpstreamErrorsTest extends TestCase
         ]);
         Http::fake(['*' => Http::response($this->chatCompletion($review))]);
 
-        $this->signIn($this->makeUser())->postJson('/api/ai/ats-analysis', [
+        $this->signIn($this->makeUser())->postJson('/api/v1/ai/ats-analysis', [
             'cv_text' => str_repeat('Developer with experience in building web applications. ', 3),
             'report_format' => 'structured',
         ])->assertOk()->assertJsonPath('review.summary', 'A clear CV for a web developer.');

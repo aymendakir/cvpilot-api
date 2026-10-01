@@ -60,7 +60,7 @@ class ErrorLoggingTest extends TestCase
 
     public function test_client_errors_are_not_logged_as_server_errors(): void
     {
-        $this->getJson('/api/me')->assertStatus(401);
+        $this->getJson('/api/v1/me')->assertStatus(401);
         $this->getJson('/api/nope')->assertStatus(404);
 
         $this->assertSame('', $this->logContents());
