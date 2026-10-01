@@ -69,7 +69,10 @@ class DeprecationTest extends TestCase
     {
         $names = [];
         foreach (Route::getRoutes() as $route) {
-            if (str_starts_with($route->uri(), 'api/') && $route->getName() !== 'smtp.microsoft.callback') {
+            $isV1 = str_starts_with($route->uri(), 'api/v1/');
+            if ($isV1) {
+                $this->assertStringStartsWith('v1.', (string) $route->getName(), $route->uri());
+            } elseif (str_starts_with($route->uri(), 'api/') && $route->getName() !== 'smtp.microsoft.callback') {
                 $this->assertNotNull($route->getName(), $route->uri());
                 $this->assertStringStartsWith('legacy.', $route->getName());
                 $names[] = $route->getName();

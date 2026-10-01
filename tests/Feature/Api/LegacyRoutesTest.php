@@ -22,6 +22,7 @@ class LegacyRoutesTest extends TestCase
     /** Legacy shims whose action differs from the shared v1 action: "METHOD uri" => "Controller@method". */
     private const SHIMS = [
         'POST api/admin/cache/clear' => 'CacheController@clear',
+        'POST api/logout' => 'AuthController@logoutLegacy',
     ];
 
     /** Middleware that legacy routes gain (never removed or reordered): `deprecated`, optionally with a successor path. */
