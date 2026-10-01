@@ -23,7 +23,7 @@ class SupportController
         $data = $request->validated();
 
         return SupportMessage::when($data['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->latest()->paginate(20);
+            ->latest()->paginate($request->perPage(20));
     }
 
     public function update(UpdateContactMessageRequest $request, SupportMessage $message)

@@ -28,6 +28,6 @@ class LibraryController
             $q->where('type', 'cover_letter');
         }
 
-        return ['counts' => $counts, 'items' => $q->latest()->paginate(12)];
+        return ['counts' => $counts, 'items' => $q->latest()->paginate($r->perPage(12))];
     }
 }

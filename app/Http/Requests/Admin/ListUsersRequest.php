@@ -9,6 +9,6 @@ class ListUsersRequest extends ApiFormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        return ['search' => 'nullable|string|max:120', 'page' => 'nullable|integer|min:1'];
+        return ['search' => 'nullable|string|max:120', ...$this->paginationRules()];
     }
 }

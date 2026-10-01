@@ -9,6 +9,6 @@ class ListContactMessagesRequest extends ApiFormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        return ['status' => 'nullable|in:new,read,closed', 'page' => 'nullable|integer|min:1'];
+        return ['status' => 'nullable|in:new,read,closed', ...$this->paginationRules()];
     }
 }

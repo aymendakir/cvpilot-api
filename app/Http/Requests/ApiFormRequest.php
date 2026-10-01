@@ -16,6 +16,18 @@ abstract class ApiFormRequest extends FormRequest
         return true;
     }
 
+    /** Shared `page` / `per_page` rules for list endpoints (SPEC §5.2). */
+    protected function paginationRules(): array
+    {
+        return ['page' => 'nullable|integer|min:1', 'per_page' => 'nullable|integer|between:1,50'];
+    }
+
+    /** Requested page size, or the endpoint's own default. */
+    public function perPage(int $default): int
+    {
+        return (int) ($this->validated()['per_page'] ?? $default);
+    }
+
     /** Trim the given string inputs (non-strings are left for the rules to reject). */
     protected function trimInputs(string ...$keys): void
     {

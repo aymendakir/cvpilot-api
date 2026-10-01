@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Applications;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Models\Application;
 use Illuminate\Support\Facades\Gate;
 
 class UpdateApplicationRequest extends ApiFormRequest
@@ -18,6 +19,6 @@ class UpdateApplicationRequest extends ApiFormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        return ['cv_version_id' => 'nullable|integer', 'status' => 'sometimes|in:saved,prepared,applied,interview,rejected,offer', 'salary' => 'nullable|string|max:120', 'application_date' => 'nullable|date', 'reminder_at' => 'nullable|date', 'follow_up_at' => 'nullable|date', 'notes' => 'nullable|string|max:5000'];
+        return ['cv_version_id' => 'nullable|integer', 'status' => 'sometimes|in:'.implode(',', Application::STATUSES).'', 'salary' => 'nullable|string|max:120', 'application_date' => 'nullable|date', 'reminder_at' => 'nullable|date', 'follow_up_at' => 'nullable|date', 'notes' => 'nullable|string|max:5000'];
     }
 }

@@ -9,6 +9,6 @@ class ListAuditEventsRequest extends ApiFormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        return ['event' => 'nullable|string|max:100', 'page' => 'nullable|integer|min:1'];
+        return ['event' => 'nullable|string|max:100', ...$this->paginationRules()];
     }
 }

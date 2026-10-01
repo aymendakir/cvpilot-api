@@ -9,6 +9,6 @@ class LibraryRequest extends ApiFormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
-        return ['page' => 'nullable|integer|min:1', 'kind' => 'nullable|in:cv,interview,workspace,report,application,upload,cover_letter'];
+        return [...$this->paginationRules(), 'kind' => 'nullable|in:cv,interview,workspace,report,application,upload,cover_letter'];
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Admin;
 
 use App\Http\Requests\ApiFormRequest;
+use App\Models\SiteSetting;
+use Illuminate\Validation\Rule;
 
 class SaveSiteSettingsRequest extends ApiFormRequest
 {

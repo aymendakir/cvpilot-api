@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\Applications\ListApplicationsRequest;
 use App\Http\Requests\Applications\StoreApplicationRequest;
 use App\Http\Requests\Applications\UpdateApplicationRequest;
 use App\Models\Application;
@@ -12,9 +13,9 @@ use Illuminate\Support\Facades\Gate;
 
 class ApplicationController
 {
-    public function index(Request $r)
+    public function index(ListApplicationsRequest $r)
     {
-        return Application::where('user_id', $r->user()->id)->latest()->paginate(20);
+        return Application::where('user_id', $r->user()->id)->latest()->paginate($r->perPage(20));
     }
 
     public function store(StoreApplicationRequest $r)
