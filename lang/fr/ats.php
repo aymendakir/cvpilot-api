@@ -90,12 +90,12 @@ return [
         ],
         'file_supported' => [
             'title' => 'Type et taille du fichier',
-            'suggestion' => 'Utilisez un fichier PDF ou DOCX de moins de 5 Mo',
+            'suggestion' => 'Utilisez un fichier PDF ou DOCX de moins de 5 Mo',
             'why' => 'La plupart des ATS acceptent le PDF et le DOCX, et refusent souvent les fichiers très lourds.',
-            'fix' => 'utiliser un fichier PDF ou DOCX de moins de 5 Mo',
+            'fix' => 'utiliser un fichier PDF ou DOCX de moins de 5 Mo',
             'findings' => [
-                'ok' => 'Fichier :type, :megabytes Mo.',
-                'too_large' => 'Le fichier fait :megabytes Mo (5 Mo au maximum).',
+                'ok' => 'Fichier :type, :megabytes Mo.',
+                'too_large' => 'Le fichier fait :megabytes Mo (5 Mo au maximum).',
             ],
             'actions' => [
                 'too_large' => 'Compressez ou supprimez les images, puis exportez à nouveau le CV.',

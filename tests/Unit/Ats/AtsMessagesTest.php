@@ -2,7 +2,14 @@
 
 namespace Tests\Unit\Ats;
 
+use App\Services\Ats\Checks\CheckContext;
+use App\Services\Ats\Checks\CheckResult;
+use App\Services\Ats\Checks\Format\FileSupported;
+use App\Services\Ats\Parsing\Detection;
+use App\Services\Ats\Parsing\ParsedDocument;
+use App\Services\Ats\Parsing\Structure;
 use App\Services\Ats\Scoring\MessageCatalog;
+use App\Services\Ats\Sections\SectionDetector;
 use Tests\Feature\Ats\ScoringFixturesTest;
 use Tests\TestCase;
 
@@ -127,7 +134,7 @@ class AtsMessagesTest extends TestCase
         $fr = new MessageCatalog('fr');
         $this->assertSame("3,5\u{00A0}% des caractères sont illisibles.", $fr->finding('readable_text', 'garbled', ['percent' => 3.5]));
         $this->assertSame('Vos périodes utilisent des formats différents (mars 2022, 03/2022).', $fr->finding('dates', 'mixed_styles', ['count' => 3, 'styles' => 'month, numeric']));
-        $this->assertSame('Fichier PDF, 0,1 Mo.', $fr->finding('file_supported', 'ok', ['type' => 'pdf', 'megabytes' => 0.1]));
+        $this->assertSame("Fichier PDF, 0,10\u{00A0}Mo.", $fr->finding('file_supported', 'ok', ['type' => 'pdf', 'megabytes' => 0.1]));
         $this->assertSame('Une seule période trouvée dans votre expérience.', $fr->finding('dates', 'too_few', ['count' => 1]));
         $this->assertSame('Not checked: pasted text has no layout. Upload the file to check it.', (new MessageCatalog('en'))->finding('images', 'not_inspected', ['type' => 'text']));
     }
@@ -136,7 +143,32 @@ class AtsMessagesTest extends TestCase
     public function test_french_typography_uses_non_breaking_spaces(): void
     {
         foreach ($this->flat('fr') as $key => $text) {
-            $this->assertDoesNotMatchRegularExpression('/ [;%»]| :(?=\s|$)|« /u', $text, $key);
+            $this->assertDoesNotMatchRegularExpression('/ [;%»]| :(?=\s|$)|« |(?:\d|:megabytes) Mo\b/u', $text, $key);
         }
+    }
+
+    /** File sizes: two decimals, at least 0.01 for a non-empty file; "0.01 MB" in English, "0,01 Mo" in French (S4 T1). */
+    public function test_file_sizes_are_formatted_per_locale(): void
+    {
+        $cases = [
+            3 * 1024 => ['DOCX file, 0.01 MB.', "Fichier DOCX, 0,01\u{00A0}Mo."],
+            9204 => ['DOCX file, 0.01 MB.', "Fichier DOCX, 0,01\u{00A0}Mo."],
+            (int) (4.8 * 1048576) => ['DOCX file, 4.80 MB.', "Fichier DOCX, 4,80\u{00A0}Mo."],
+        ];
+        foreach ($cases as $bytes => [$en, $fr]) {
+            $result = $this->fileCheck($bytes);
+            $this->assertSame($en, (new MessageCatalog('en'))->finding('file_supported', $result->findingKey, $result->params), "{$bytes} bytes");
+            $this->assertSame($fr, (new MessageCatalog('fr'))->finding('file_supported', $result->findingKey, $result->params), "{$bytes} bytes");
+        }
+        $large = $this->fileCheck((int) (12.35 * 1048576));
+        $this->assertSame('The file is 12.35 MB (5 MB at most).', (new MessageCatalog('en'))->finding('file_supported', $large->findingKey, $large->params));
+        $this->assertSame("Le fichier fait 12,35\u{00A0}Mo (5\u{00A0}Mo au maximum).", (new MessageCatalog('fr'))->finding('file_supported', $large->findingKey, $large->params));
+    }
+
+    private function fileCheck(int $bytes): CheckResult
+    {
+        $document = new ParsedDocument('docx', 'text', [], null, 1, true, Structure::notInspected(Detection::absent()), $bytes);
+
+        return (new FileSupported)->run(new CheckContext($document, (new SectionDetector)->detect([]), 'en'));
     }
 }
