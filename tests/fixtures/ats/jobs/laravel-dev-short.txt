@@ -1,0 +1,17 @@
+Laravel Developer
+
+Our agency builds online shops for retailers across North Africa and needs one more person on its backend team.
+
+Requirements:
+PHP
+Laravel
+MySQL
+Docker
+CI/CD
+Redis
+
+Nice to have:
+Vue.js
+Git
+Kubernetes
+Terraform

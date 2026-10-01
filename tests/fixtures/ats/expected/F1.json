@@ -1,0 +1,120 @@
+{
+  "case": "F1",
+  "spec": "§8.1",
+  "cv": "cvs/clean-en.docx",
+  "job": null,
+  "mode": "document",
+  "source": "file",
+  "score_status": "scored",
+  "score": 100,
+  "raw_score": 100,
+  "grade": "strong",
+  "checks": {
+    "readable_text": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "single_column": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "layout_tables": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "images": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "text_boxes_headers": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "file_supported": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "clean_characters": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    },
+    "email": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "phone": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "experience_section": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "education_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "skills_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "dates": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "action_verbs": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "quantified_results": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "length": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "no_duplicates": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    }
+  },
+  "checks_complete": true,
+  "caps": [],
+  "keywords": null,
+  "top_suggestions": []
+}

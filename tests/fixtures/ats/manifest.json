@@ -1,0 +1,119 @@
+{
+  "model": "ats-2.0",
+  "spec": "SPEC-ats.md §8",
+  "cases": [
+    {
+      "case": "F1",
+      "cv": "cvs/clean-en.docx",
+      "job": null,
+      "mode": "document",
+      "expected": "expected/F1.json"
+    },
+    {
+      "case": "F2",
+      "cv": "cvs/clean-en.pdf",
+      "job": null,
+      "mode": "document",
+      "expected": "expected/F2.json"
+    },
+    {
+      "case": "F3",
+      "cv": "cvs/clean-en.docx",
+      "job": "jobs/laravel-dev.txt",
+      "mode": "job_match",
+      "expected": "expected/F3.json"
+    },
+    {
+      "case": "F4",
+      "cv": "cvs/two-column.pdf",
+      "job": null,
+      "mode": "document",
+      "expected": "expected/F4.json"
+    },
+    {
+      "case": "F4b",
+      "cv": "cvs/two-column.pdf",
+      "job": "jobs/laravel-dev-short.txt",
+      "mode": "job_match",
+      "expected": "expected/F4b.json"
+    },
+    {
+      "case": "F5",
+      "cv": "cvs/table-layout.docx",
+      "job": null,
+      "mode": "document",
+      "expected": "expected/F5.json"
+    },
+    {
+      "case": "F6",
+      "cv": "cvs/scanned.pdf",
+      "job": null,
+      "mode": "document",
+      "expected": "expected/F6.json"
+    },
+    {
+      "case": "F7",
+      "cv": "cvs/photo-icons.docx",
+      "job": null,
+      "mode": "document",
+      "expected": "expected/F7.json"
+    },
+    {
+      "case": "F7-fixed",
+      "cv": "cvs/photo-icons-fixed.docx",
+      "job": null,
+      "mode": "document",
+      "expected": "expected/F7-fixed.json"
+    },
+    {
+      "case": "F8",
+      "cv": "cvs/missing-sections.docx",
+      "job": null,
+      "mode": "document",
+      "expected": "expected/F8.json"
+    },
+    {
+      "case": "F8-fixed",
+      "cv": "cvs/missing-sections-plus-education.docx",
+      "job": null,
+      "mode": "document",
+      "expected": "expected/F8-fixed.json"
+    },
+    {
+      "case": "F9",
+      "cv": "cvs/no-email-no-exp.txt",
+      "job": null,
+      "mode": "document",
+      "expected": "expected/F9.json"
+    },
+    {
+      "case": "F11",
+      "cv": "cvs/clean-fr.docx",
+      "job": "jobs/dev-symfony-fr.txt",
+      "mode": "job_match",
+      "expected": "expected/F11.json"
+    },
+    {
+      "case": "F12",
+      "cv": "cvs/too-long.docx",
+      "job": null,
+      "mode": "document",
+      "expected": "expected/F12.json"
+    },
+    {
+      "case": "F13",
+      "cv": "cvs/clean-en.docx",
+      "job": "jobs/unrelated-marketing.txt",
+      "mode": "job_match",
+      "expected": "expected/F13.json"
+    }
+  ],
+  "other": {
+    "cvs/stuffing.docx": "§8.4: same report as clean-en.docx plus keywords.stuffing and one info suggestion; score unchanged",
+    "cvs/table-layout.pdf": "R1 spike only (PDF tables)",
+    "invalid/encrypted.pdf": "S4: 422 errors.file (password-protected; user password \"secret\")",
+    "invalid/corrupt.pdf": "S4: 422 errors.file",
+    "invalid/legacy.doc": "S4: 422 errors.file (.doc not supported)",
+    "invalid/renamed-exe.pdf": "S4: 422 errors.file (content is not a PDF)"
+  }
+}

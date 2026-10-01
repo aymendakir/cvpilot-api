@@ -1,0 +1,21 @@
+Backend Developer (PHP)
+
+We are a growing logistics company in Casablanca and we are hiring a backend developer to build and maintain the services behind our delivery platform.
+
+Requirements:
+PHP
+Laravel
+MySQL
+REST APIs
+Docker
+Git
+PHPUnit
+CI/CD
+Redis
+AWS
+
+Nice to have:
+Vue.js
+Kubernetes
+GraphQL
+Terraform

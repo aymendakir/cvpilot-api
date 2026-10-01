@@ -1,0 +1,144 @@
+{
+  "case": "F9",
+  "spec": "§8.1",
+  "cv": "cvs/no-email-no-exp.txt",
+  "job": null,
+  "mode": "document",
+  "source": "text",
+  "score_status": "scored",
+  "score": 44,
+  "raw_score": 44,
+  "grade": "poor",
+  "checks": {
+    "readable_text": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "single_column": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 6,
+      "applicable": false
+    },
+    "layout_tables": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 5,
+      "applicable": false
+    },
+    "images": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 5,
+      "applicable": false
+    },
+    "text_boxes_headers": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 3,
+      "applicable": false
+    },
+    "file_supported": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 3,
+      "applicable": false
+    },
+    "clean_characters": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    },
+    "email": {
+      "status": "fail",
+      "earned": 0,
+      "max": 5,
+      "applicable": true
+    },
+    "phone": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "experience_section": {
+      "status": "fail",
+      "earned": 0,
+      "max": 6,
+      "applicable": true
+    },
+    "education_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "skills_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "dates": {
+      "status": "fail",
+      "earned": 0,
+      "max": 3,
+      "applicable": true
+    },
+    "action_verbs": {
+      "status": "fail",
+      "earned": 0,
+      "max": 5,
+      "applicable": true
+    },
+    "quantified_results": {
+      "status": "fail",
+      "earned": 0,
+      "max": 5,
+      "applicable": true
+    },
+    "length": {
+      "status": "fail",
+      "earned": 0,
+      "max": 3,
+      "applicable": true
+    },
+    "no_duplicates": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    }
+  },
+  "checks_complete": true,
+  "caps": [
+    {
+      "id": "no_email",
+      "limit": 79,
+      "applied": false
+    },
+    {
+      "id": "no_experience",
+      "limit": 74,
+      "applied": false
+    }
+  ],
+  "keywords": null,
+  "top_suggestions": [
+    {
+      "id": "experience_section",
+      "impact_points": 12
+    },
+    {
+      "id": "email",
+      "impact_points": 10
+    },
+    {
+      "id": "action_verbs",
+      "impact_points": 10
+    }
+  ]
+}

@@ -1,19 +1,19 @@
-# Task list — Phase 2, slice S7 (alias sunset)
+# Task list — Phase 3, slice S0 (PDF spike and fixtures)
 
-Branch `refactor/api-s7`. Detail: `tasks/plan.md`. Spec: `SPEC.md` §9 (S7), §18 items 5 and 7.
-Status: **T1–T5 built; S7 PR opened.** Pre-condition: Phase 2b (`cv-ai#16`) deployed and its smoke checklist passed.
+Branch `feature/ats-s0`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §4.1, §8, §12 R1, §16, §17.
+Status: **T1–T5 built; S0 PR opened.** Checkpoint A approved (fixtures, FR text, five spec-gap recommendations). Decisions: real PDFs arrive before T4 (local only, deleted after the spike); throwaway spike script; hand-written encrypted PDF.
 
-- [x] T1 Port the tests and `tests/legacy` scripts to v1; add `LegacyPathsGoneTest`
-- [x] T2 Remove `routes/legacy.php`, the `Deprecated` middleware and legacy config/CSRF/audit/header entries
-- [x] T3 Delete legacy-only controller code (`logoutLegacy`, `CacheController::clear`, `improveCv`, `analyze`) and parity tests
+- [x] T1 `setasign/fpdf` (dev), BASE-EN/BASE-FR content, `build.php`, clean fixtures
+- [x] T2 Problem variants, corrected variants, error-case files
+- [x] T3 Jobs, `expected/*.json`, `manifest.json`, `FixturesTest`
 
 ### Checkpoint A
 
-- [x] Review with maintainer (route table diff empty, ported vs deleted tests, decisions 1–3)
+- [x] Review with maintainer (fixtures, FR text, expected values)
 
-- [x] T4 Docs: ROUTES.md, README, `.env.example`, DEPLOYMENT, SPEC
-- [x] T5 Fresh-clone checks, open the PR, **STOP**
+- [x] T4 Spike probe on generated (and real) PDFs
+- [x] T5 `docs/ats-spike-s0.md`, open the PR, **STOP**
 
 ### Checkpoint B (final)
 
-- [x] PR opened; maintainer merges S7, then Phase 3 (`SPEC-ats.md`)
+- [x] PR opened; maintainer decides smalot vs poppler; S1 planned after merge

@@ -1,0 +1,128 @@
+{
+  "case": "F6",
+  "spec": "§8.1, §6 R4",
+  "cv": "cvs/scanned.pdf",
+  "job": null,
+  "mode": "document",
+  "source": "file",
+  "score_status": "unreadable",
+  "score": null,
+  "raw_score": null,
+  "grade": null,
+  "checks": {
+    "readable_text": {
+      "status": "fail",
+      "earned": 0,
+      "max": 6,
+      "applicable": true
+    },
+    "single_column": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 6,
+      "applicable": false
+    },
+    "layout_tables": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 5,
+      "applicable": false
+    },
+    "images": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 5,
+      "applicable": false
+    },
+    "text_boxes_headers": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 3,
+      "applicable": false
+    },
+    "file_supported": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 3,
+      "applicable": false
+    },
+    "clean_characters": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 2,
+      "applicable": false
+    },
+    "email": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 5,
+      "applicable": false
+    },
+    "phone": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 3,
+      "applicable": false
+    },
+    "experience_section": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 6,
+      "applicable": false
+    },
+    "education_section": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 4,
+      "applicable": false
+    },
+    "skills_section": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 4,
+      "applicable": false
+    },
+    "dates": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 3,
+      "applicable": false
+    },
+    "action_verbs": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 5,
+      "applicable": false
+    },
+    "quantified_results": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 5,
+      "applicable": false
+    },
+    "length": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 3,
+      "applicable": false
+    },
+    "no_duplicates": {
+      "status": "unverified",
+      "earned": 0,
+      "max": 2,
+      "applicable": false
+    }
+  },
+  "checks_complete": true,
+  "caps": [],
+  "keywords": null,
+  "top_suggestions": [
+    {
+      "id": "readable_text",
+      "impact_points": null
+    }
+  ],
+  "notes": [
+    "R4 (S0 Checkpoint A): every check other than readable_text is unverified and impact_points is null when the score is null."
+  ]
+}
