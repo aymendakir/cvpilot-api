@@ -22,6 +22,9 @@ final class Taxonomy
     /** @var list<array{key: string, group: int}> */
     private array $scannable = [];
 
+    /** @var list<array{key: string, group: int}> */
+    private array $all = [];
+
     public function __construct(?string $directory = null)
     {
         $directory ??= resource_path('ats');
@@ -76,6 +79,9 @@ final class Taxonomy
                     $this->groups[$id]['phrases'][] = $phrase;
                     $this->groups[$id]['keys'][] = $key;
                 }
+                if (! isset($this->groupOf[$key])) {
+                    $this->all[] = ['key' => $key, 'group' => $id];
+                }
                 $this->groupOf[$key] = $id;
                 if ($group['skill'] !== null && $group['anywhere'] && ! $this->guarded($key)) {
                     $this->scannable[] = ['key' => $key, 'group' => $id];
@@ -87,7 +93,9 @@ final class Taxonomy
             }
         }
         // Longest phrases first, so "google cloud platform" is found before "google cloud".
-        usort($this->scannable, fn ($a, $b) => substr_count($b['key'], ' ') <=> substr_count($a['key'], ' ') ?: strcmp($a['key'], $b['key']));
+        $longestFirst = fn ($a, $b) => substr_count($b['key'], ' ') <=> substr_count($a['key'], ' ') ?: strcmp($a['key'], $b['key']);
+        usort($this->scannable, $longestFirst);
+        usort($this->all, $longestFirst);
     }
 
     public function groupOf(string $phrase): ?int
@@ -123,5 +131,11 @@ final class Taxonomy
     public function scannable(): array
     {
         return $this->scannable;
+    }
+
+    /** Every phrase of every group (skills and synonym groups), longest first. @return list<array{key: string, group: int}> */
+    public function all(): array
+    {
+        return $this->all;
     }
 }

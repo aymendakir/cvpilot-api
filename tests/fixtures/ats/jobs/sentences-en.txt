@@ -1,0 +1,26 @@
+Senior Full-Stack Engineer (Remote, EMEA)
+
+About us
+We build the scheduling and payments platform used by more than 2,000 independent clinics. Our product team is small, our customers are loyal, and we ship to production several times a day.
+
+What you'll do
+- Own features end to end, from the first conversation with a clinic owner to monitoring them in production.
+- Design and build REST APIs in Laravel and the React screens that use them.
+- Improve the reliability of our PostgreSQL database and our background jobs on Redis.
+- Review code from teammates and help us keep the test suite fast and meaningful.
+- Work with our designer in Figma to turn rough ideas into simple flows.
+
+Requirements
+- 5+ years of experience building web applications with PHP, ideally with Laravel.
+- Strong experience with TypeScript and React in a production codebase.
+- You are comfortable with SQL and can read a query plan.
+- Experience with Docker and a CI/CD pipeline such as GitHub Actions.
+- Clear written communication in English; our team works across four time zones.
+
+Nice to have
+- Experience with AWS or another cloud provider.
+- You have used Stripe or another payments API before.
+- Kubernetes, Terraform
+
+What we offer
+A fully remote team, a yearly learning budget, and a four-day work week in August.
