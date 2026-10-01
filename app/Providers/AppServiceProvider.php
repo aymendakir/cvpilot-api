@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\SessionSecurity;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -12,6 +13,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        SessionSecurity::assertSafe($this->app->environment(), config('session.secure'), config('session.same_site'));
+
         // Responses keep their documented top-level shape (no `data` wrapper around a single resource).
         JsonResource::withoutWrapping();
 
