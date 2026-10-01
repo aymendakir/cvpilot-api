@@ -139,8 +139,15 @@ class V1AdminParityTest extends TestCase
         $admin = $this->makeAdmin();
 
         $this->assertDeprecated($this->signIn($admin)->getJson('/api/admin/logs'), '/api/v1/admin/audit-events');
-        $this->assertDeprecated($this->signIn($admin)->getJson('/api/admin/uploads/5'), '/api/v1/admin/cv-documents/5/file');
         $this->assertDeprecated($this->signIn($admin)->postJson('/api/admin/users/3/warning', []), '/api/v1/admin/users/3/warnings');
         $this->assertNotDeprecated($this->signIn($admin)->getJson('/api/v1/admin/summary'));
+    }
+
+    public function test_the_admin_cv_file_download_no_longer_exists(): void
+    {
+        $admin = $this->makeAdmin();
+
+        $this->signIn($admin)->getJson('/api/admin/uploads/5')->assertStatus(404)->assertJsonPath('code', 'not_found');
+        $this->signIn($admin)->getJson('/api/v1/admin/cv-documents/5/file')->assertStatus(404)->assertJsonPath('code', 'not_found');
     }
 }

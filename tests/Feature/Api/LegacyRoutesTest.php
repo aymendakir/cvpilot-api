@@ -25,6 +25,9 @@ class LegacyRoutesTest extends TestCase
         'POST api/logout' => 'AuthController@logoutLegacy',
     ];
 
+    /** Endpoints removed on purpose (S3, admins no longer read user CV text): "METHOD uri". */
+    private const REMOVED = ['GET api/admin/uploads/{cv}'];
+
     /** CareerController was split: old action => new action (one-to-one, behaviour untouched). */
     private const MOVED_ACTIONS = [
         'CareerController@dashboard' => 'InsightsController@dashboard',
@@ -86,6 +89,14 @@ class LegacyRoutesTest extends TestCase
 
         foreach ($baseline as $row) {
             $key = $row['method'].' '.$row['uri'];
+
+            if (in_array($key, self::REMOVED, true)) {
+                if (isset($current[$key])) {
+                    $problems[] = "removed route is back: {$key}";
+                }
+
+                continue;
+            }
 
             if (! isset($current[$key])) {
                 $problems[] = "missing: {$key}";

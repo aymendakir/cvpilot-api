@@ -2,17 +2,56 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Exceptions\ApiException;
+use App\Exceptions\ErrorCode;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Requests\Admin\SaveSmtpSettingsRequest;
+use App\Http\Resources\MailSettingResource;
 use App\Models\MailSetting;
 use App\Services\BrevoSmtp;
 use App\Services\MailConfigurationException;
 use App\Services\MicrosoftSmtpOAuth;
 use App\Services\PlatformMail;
+use App\Support\Redactor;
+use App\Support\UpstreamFailure;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\ViewException;
 
 class MailSettingsController
 {
+    /**
+     * Stores the redacted reason as last_error, logs the full diagnostic (with the request id) and
+     * returns the 502/503 to throw. The response body stays generic.
+     */
+    private function failed(PlatformMail $mail, \Throwable $error, string $operation): ApiException
+    {
+        $diagnostic = $mail->failureResponse($error, $operation); // logs the SMTP diagnostic with a reference
+        $stored = MailSetting::first();
+        $secrets = $stored ? [$stored->password, $stored->oauth_client_secret, $stored->oauth_refresh_token, $stored->oauth_access_token] : [];
+        $reason = mb_substr(Redactor::scrub($mail->failureMessage($error), $secrets), 0, 500);
+        $stored?->update(['last_error' => $reason]);
+        Log::warning('SMTP operation failed', [
+            'operation' => $operation, 'reason' => $reason, 'reference' => $diagnostic['diagnostic']['reference'] ?? null,
+            'request_id' => Context::get('request_id'),
+        ]);
+
+        // Our own failures (PHP error, broken template, unreadable settings) are not the mail provider's fault.
+        if ($error instanceof \Error || $error instanceof ViewException || $error instanceof QueryException) {
+            return new ApiException(ErrorCode::ServerError, $reason, previous: $error);
+        }
+
+        return UpstreamFailure::exception($error, $reason);
+    }
+
+    private function clearLastError(): void
+    {
+        MailSetting::whereNotNull('last_error')->update(['last_error' => null]);
+    }
+
     private function settings(): MailSetting
     {
         return MailSetting::first() ?? new MailSetting([
@@ -35,32 +74,12 @@ class MailSettingsController
             $redirect = '';
         }
 
-        return $settings->only(['host', 'port', 'username', 'encryption', 'from_address', 'from_name', 'auth_mode', 'oauth_tenant', 'oauth_client_id']) + [
-            'has_password' => ! empty($settings->getRawOriginal('password')) || ! empty($settings->getAttributes()['password']),
-            'has_oauth_client_secret' => ! empty($settings->getAttributes()['oauth_client_secret']),
-            'oauth_connected' => ! empty($settings->getAttributes()['oauth_refresh_token']),
-            'oauth_redirect_uri' => $redirect,
-        ];
+        return MailSettingResource::make($settings, $redirect);
     }
 
-    public function save(Request $request)
+    public function save(SaveSmtpSettingsRequest $request)
     {
-        foreach (['host', 'username', 'from_address', 'oauth_client_id', 'oauth_tenant'] as $field) {
-            if (is_string($request->input($field))) {
-                $request->merge([$field => trim($request->input($field))]);
-            }
-        }
-        if (is_string($request->input('host'))) {
-            $request->merge(['host' => strtolower($request->input('host'))]);
-        }
-        $data = $request->validate([
-            'host' => 'required|string|max:253|regex:/^[a-zA-Z0-9.-]+$/', 'port' => 'required|integer|between:1,65535',
-            'encryption' => 'required|in:tls,ssl', 'username' => 'nullable|string|max:254', 'password' => 'nullable|string|max:2000',
-            'from_address' => 'required|email|max:254', 'from_name' => 'required|string|max:120',
-            'auth_mode' => 'sometimes|required|in:password,microsoft',
-            'oauth_tenant' => 'nullable|string|max:253|regex:/^[a-zA-Z0-9.-]+$/',
-            'oauth_client_id' => 'nullable|uuid', 'oauth_client_secret' => 'nullable|string|max:2000',
-        ]);
+        $data = $request->validated();
         $settings = $this->settings();
         $data['auth_mode'] = $data['auth_mode'] ?? $settings->auth_mode ?? 'password';
         $data['oauth_tenant'] = $data['oauth_tenant'] ?? $settings->oauth_tenant ?? 'common';
@@ -131,8 +150,9 @@ class MailSettingsController
         try {
             $mail->checkConnection();
         } catch (\Throwable $error) {
-            return response()->json($mail->failureResponse($error, 'connection'), 422);
+            throw $this->failed($mail, $error, 'connection');
         }
+        $this->clearLastError();
 
         return ['message' => 'SMTP connection, TLS and configured authentication succeeded. No email was sent. Send a test email next to check sender acceptance and delivery.'];
     }
@@ -145,8 +165,9 @@ class MailSettingsController
                 'noticeMessage' => 'This test confirms CVPilot can send email with your saved SMTP settings.',
             ]);
         } catch (\Throwable $error) {
-            return response()->json($mail->failureResponse($error, 'send'), 422);
+            throw $this->failed($mail, $error, 'send');
         }
+        $this->clearLastError();
 
         return ['message' => 'The SMTP server accepted the test email for '.$request->user()->email.'. Check the inbox and spam folder.'];
     }
@@ -168,7 +189,7 @@ class MailSettingsController
 
             return ['url' => $url];
         } catch (\Throwable $error) {
-            return response()->json(['message' => $mail->failureMessage($error)], 422);
+            throw $this->failed($mail, $error, 'connect');
         }
     }
 

@@ -5,6 +5,13 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exceptions\ApiException;
 use App\Exceptions\ErrorCode;
 use App\Exceptions\UpstreamUnavailableException;
+use App\Http\Requests\Auth\ChangePasswordRequest;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\RequestOtpRequest;
+use App\Http\Requests\Auth\UpdateProfileRequest;
+use App\Http\Requests\Auth\VerifyOtpRequest;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\PlatformMail;
 use App\Support\Redactor;
@@ -21,10 +28,9 @@ class AuthController
         DB::table('audit_events')->insert(['user_id' => $id, 'event' => $event, 'ip' => $r->ip(), 'user_agent' => substr($r->userAgent() ?? '', 0, 512), 'created_at' => now()]);
     }
 
-    public function register(Request $r)
+    public function register(RegisterRequest $r)
     {
-        $r->merge(['email' => strtolower(trim((string) $r->input('email')))]);
-        $d = $r->validate(['name' => 'required|string|max:120', 'email' => 'required|email|max:254|unique:users', 'password' => 'required|string|min:12|max:128|confirmed']);
+        $d = $r->validated();
         $u = new User;
         $u->name = $d['name'];
         $u->email = strtolower(trim($d['email']));
@@ -35,9 +41,9 @@ class AuthController
         return response()->json(['message' => 'Account created. Request your verification code.'], 201);
     }
 
-    public function login(Request $r)
+    public function login(LoginRequest $r)
     {
-        $d = $r->validate(['email' => 'required|email', 'password' => 'required|string']);
+        $d = $r->validated();
         $u = User::where('email', strtolower(trim($d['email'])))->first();
         if (! $u || ! Hash::check($d['password'], $u->password)) {
             self::audit($r, 'login_failed');
@@ -57,12 +63,12 @@ class AuthController
         $r->session()->put('session_version', $u->session_version);
         self::audit($r, 'login', $u->id);
 
-        return $u;
+        return UserResource::make($u);
     }
 
-    public function code(Request $r)
+    public function code(RequestOtpRequest $r)
     {
-        $d = $r->validate(['email' => 'required|email', 'purpose' => 'required|in:verify,reset']);
+        $d = $r->validated();
         $u = User::where('email', strtolower(trim($d['email'])))->first();
         if ($u) {
             $code = (string) random_int(100000, 999999);
@@ -81,9 +87,9 @@ class AuthController
         return ['message' => 'If this account exists, a code has been sent.'];
     }
 
-    public function verify(Request $r)
+    public function verify(VerifyOtpRequest $r)
     {
-        $d = $r->validate(['email' => 'required|email', 'purpose' => 'required|in:verify,reset', 'code' => 'required|digits:6', 'password' => 'required_if:purpose,reset|nullable|string|min:12|max:128|confirmed']);
+        $d = $r->validated();
         $u = User::where('email', strtolower(trim($d['email'])))->first();
         abort_unless($u, 422, 'Invalid or expired code.');
         $key = 'otp:'.$d['purpose'].':'.$u->id;
@@ -130,18 +136,18 @@ class AuthController
         $r->session()->regenerateToken();
     }
 
-    public function profile(Request $r)
+    public function profile(UpdateProfileRequest $r)
     {
         $u = $r->user();
-        $u->fill($r->validate(['name' => 'sometimes|required|string|max:120', 'phone' => 'nullable|string|max:40', 'country' => 'nullable|string|size:2', 'city' => 'nullable|string|max:120', 'language' => 'sometimes|in:en,fr,es,ar', 'target_role' => 'nullable|string|max:120', 'experience_level' => 'nullable|string|max:80', 'preferred_countries' => 'nullable|array|max:20', 'preferred_countries.*' => 'string|max:80', 'work_modes' => 'nullable|array|max:5', 'work_modes.*' => 'string|max:30', 'preferences' => 'nullable|array']));
+        $u->fill($r->validated());
         $u->save();
 
-        return $u;
+        return UserResource::make($u);
     }
 
-    public function password(Request $r)
+    public function password(ChangePasswordRequest $r)
     {
-        $d = $r->validate(['current_password' => 'required', 'password' => 'required|string|min:12|max:128|confirmed']);
+        $d = $r->validated();
         abort_unless(Hash::check($d['current_password'], $r->user()->password), 422, 'Current password is incorrect.');
         $u = $r->user();
         $u->password = Hash::make($d['password']);

@@ -2,32 +2,35 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\Career\StoreJobWorkspaceRequest;
+use App\Http\Resources\JobWorkspaceResource;
 use App\Models\JobWorkspace;
 use App\Services\AdminReview;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class JobWorkspaceController
 {
     public function index(Request $r)
     {
-        return JobWorkspace::where('user_id', $r->user()->id)->latest()->limit(100)->get();
+        return JobWorkspaceResource::collection(JobWorkspace::where('user_id', $r->user()->id)->latest()->limit(100)->get());
     }
 
-    public function store(Request $r)
+    public function store(StoreJobWorkspaceRequest $r)
     {
-        $d = $r->validate(['title' => 'required|string|max:180', 'company' => 'nullable|string|max:180', 'job_url' => 'nullable|url:https|max:2000', 'job_description' => 'required|string|min:60|max:30000', 'cv_text' => 'required|string|min:30|max:30000']);
+        $d = $r->validated();
         $d['user_id'] = $r->user()->id;
         $item = JobWorkspace::create($d);
         AdminReview::record('workspace', $item);
         AuthController::audit($r, 'workspace_saved', $r->user()->id);
 
-        return response()->json($item, 201);
+        return JobWorkspaceResource::make($item)->response()->setStatusCode(201);
     }
 
     public function show(Request $r, JobWorkspace $workspace)
     {
-        abort_unless($workspace->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('view', $workspace);
 
-        return $workspace;
+        return JobWorkspaceResource::make($workspace);
     }
 }

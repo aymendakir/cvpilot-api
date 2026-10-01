@@ -108,6 +108,7 @@ class ApiExceptionRenderer
                 str_starts_with($e->getMessage(), 'The route ')
                 || $e->getPrevious() instanceof ModelNotFoundException
             ))
+            || $e->getPrevious() instanceof AuthorizationException // a Policy answered 404 (denyAsNotFound)
             || $code === ErrorCode::TooManyRequests
             || $code === ErrorCode::PayloadTooLarge;
 

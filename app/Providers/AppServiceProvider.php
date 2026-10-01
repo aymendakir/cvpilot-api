@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -11,6 +12,9 @@ class AppServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        // Responses keep their documented top-level shape (no `data` wrapper around a single resource).
+        JsonResource::withoutWrapping();
+
         // Separate buckets prevent an OTP request from exhausting sign-in attempts.
         RateLimiter::for('api', fn (Request $r) => Limit::perMinute(300)->by('api:'.($r->session()->get('user_id') ?: $r->ip())));
         RateLimiter::for('login', fn (Request $r) => [

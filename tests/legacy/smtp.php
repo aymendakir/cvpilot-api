@@ -193,21 +193,24 @@ check($result[0] === 200 && str_contains($result[1]['message'], 'No email was se
 $probe->calls = [];
 $probe->failure = new Symfony\Component\Mailer\Exception\TransportException('Connection closed unexpectedly secret-value', 0);
 $result = api('POST', 'admin/smtp/check', [], $owner);
-check($result[0] === 422 && str_contains($result[1]['message'], 'Cannot connect to Brevo') && $probe->calls === ['start', 'stop'], 'failed connection check disconnects and returns an actionable error');
-check($result[1]['diagnostic']['operation'] === 'connection' &&
-    $result[1]['diagnostic']['reference'] === $logger->records[array_key_last($logger->records)]['context']['reference'], 'connection failure includes a reference matching safe backend logs');
+// S3 (SPEC decision 12): 503 with a generic body; the actionable reason is stored in last_error and logged.
+check($result[0] === 503 && $result[1]['code'] === 'upstream_unavailable' && !str_contains(json_encode($result[1]), 'Brevo') && $probe->calls === ['start', 'stop'], 'failed connection check disconnects and answers a generic 503');
+$lastFailure = array_values(array_filter($logger->records, fn ($r) => $r['message'] === 'SMTP operation failed'))[0] ?? ['message' => '', 'context' => []];
+check(str_contains((string) MailSetting::first()?->last_error, 'Cannot connect to Brevo') && !str_contains((string) MailSetting::first()?->last_error, 'secret-value'), 'connection failure stores the actionable reason without secrets');
+check($lastFailure['message'] === 'SMTP operation failed' && $lastFailure['context']['operation'] === 'connection' && !empty($lastFailure['context']['reference']) && ($lastFailure['context']['request_id'] ?? null) === $result[1]['request_id'], 'connection failure logs a reference and the request id');
 $manager->probeTransport = null;
 app()->instance(PlatformMail::class, new class extends PlatformMail {
     public function send(string $to, string $subject, string $view, array $data): void { throw new Error('Sensitive runtime failure secret-value'); }
 });
 $result = api('POST', 'admin/smtp/test', [], $owner);
-check($result[0] === 422 && str_contains($result[1]['message'], 'PHP runtime error') &&
-    $result[1]['diagnostic']['type'] === 'Error' && $result[1]['diagnostic']['operation'] === 'send', 'test email distinguishes runtime failures from SMTP login failures');
+// S3: a local PHP error is our fault (500, generic body); the actionable reason is stored for the admin.
+check($result[0] === 500 && $result[1]['code'] === 'server_error' && !str_contains(json_encode($result[1]), 'runtime error') &&
+    str_contains((string) MailSetting::first()?->last_error, 'PHP runtime error'), 'test email distinguishes runtime failures from SMTP login failures');
 app()->forgetInstance(PlatformMail::class);
 $wrapped = new Illuminate\View\ViewException('Email view failed secret-value', 0, E_ERROR, __FILE__, __LINE__, new Error('Missing extension secret-value'));
 $details = $mail->failureResponse($wrapped, 'send');
 check(str_contains($details['message'], 'email template') && $details['diagnostic']['type'] === 'Error', 'view failure identifies email rendering and the root exception');
-check(!str_contains(json_encode([$result[1], $details, $logger->records]), 'secret-value'), 'responses and diagnostic logs exclude raw exceptions and credentials');
+check(!str_contains(json_encode([$result[1], $details, $logger->records]), 'secret-value') && !str_contains((string) MailSetting::first()?->last_error, 'secret-value'), 'responses, stored reasons and diagnostic logs exclude raw exceptions and credentials');
 Illuminate\Support\Facades\Log::swap($originalLogger);
 $stored = MailSetting::first(); $stored->from_address = $stored->username; $stored->save();
 try {
@@ -226,7 +229,7 @@ check(api('PUT', 'admin/smtp', $outlook, $owner)[0] === 200, 'Microsoft applicat
 check(MailSetting::first()->password === null, 'switching to OAuth discards SMTP password');
 check(api('PUT', 'admin/smtp', array_replace($outlook, ['host'=>'smtp.untrusted.test']), $owner)[0] === 422, 'OAuth tokens cannot be configured for another SMTP host');
 $beforeConnect = api('POST', 'admin/smtp/test', [], $owner);
-check($beforeConnect[0] === 422 && str_contains($beforeConnect[1]['message'], 'Connect your Microsoft account'), 'sending without Microsoft authorization gives a clear error');
+check($beforeConnect[0] === 503 && $beforeConnect[1]['code'] === 'upstream_unavailable' && str_contains((string) MailSetting::first()?->last_error, 'Connect your Microsoft account'), 'sending without Microsoft authorization stores a clear reason and answers 503');
 function beginMicrosoft(array &$owner): array {
     $response = api('POST', 'admin/smtp/microsoft/connect', [], $owner);
     check($response[0] === 200, 'Microsoft authorization starts');

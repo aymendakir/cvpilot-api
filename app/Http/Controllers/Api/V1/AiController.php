@@ -3,37 +3,40 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Exceptions\UpstreamInvalidResponseException;
+use App\Http\Requests\Ai\AtsAnalysisRequest;
+use App\Http\Requests\Ai\ChatRequest;
+use App\Http\Requests\Ai\CoverLetterRequest;
+use App\Http\Requests\Ai\ImproveCvRequest;
 use App\Models\CareerReport;
 use App\Models\CvDocument;
 use App\Services\AdminReview;
 use App\Services\AiGateway;
 use App\Services\ResumeAudit;
 use App\Services\ResumeLanguage;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class AiController
 {
-    public function chat(Request $r, AiGateway $ai)
+    public function chat(ChatRequest $r, AiGateway $ai)
     {
-        $d = $r->validate(['message' => 'required|string|max:6000', 'provider' => 'nullable|string|max:30', 'context' => 'nullable|string|max:12000']);
+        $d = $r->validated();
         $prompt = "User question:\n{$d['message']}".(! empty($d['context']) ? "\n\nContext:\n{$d['context']}" : '');
 
         return $ai->chat($prompt, 'assistant', $r->user()->id, $d['provider'] ?? null);
     }
 
-    public function improveCv(Request $r, AiGateway $ai)
+    public function improveCv(ImproveCvRequest $r, AiGateway $ai)
     {
-        $d = $r->validate(['cv_document_id' => 'required|integer', 'job_description' => 'required|string|min:60|max:30000']);
+        $d = $r->validated();
         $cv = CvDocument::where('user_id', $r->user()->id)->findOrFail($d['cv_document_id']);
         $prompt = "Analyze this CV against the job. Return concise JSON with score, missing_keywords, strengths, and line_suggestions. Never invent experience.\n\nCV:\n{$cv->extracted_text}\n\nJOB:\n{$d['job_description']}";
 
         return $ai->chat($prompt, 'ats', $r->user()->id);
     }
 
-    public function atsAnalysis(Request $r, AiGateway $ai)
+    public function atsAnalysis(AtsAnalysisRequest $r, AiGateway $ai)
     {
-        $d = $r->validate(['cv_text' => 'required|string|min:30|max:30000', 'job_description' => 'nullable|string|max:30000', 'report_format' => 'nullable|in:structured']);
+        $d = $r->validated();
         $job = trim($d['job_description'] ?? '');
         $language = ResumeLanguage::detect($d['cv_text']);
         $prompt = <<<'PROMPT'
@@ -90,9 +93,9 @@ PROMPT;
         return ['review' => $review];
     }
 
-    public function coverLetter(Request $r, AiGateway $ai)
+    public function coverLetter(CoverLetterRequest $r, AiGateway $ai)
     {
-        $d = $r->validate(['cv_text' => 'required|string|min:30|max:30000', 'job_description' => 'required|string|min:60|max:30000', 'name' => 'nullable|string|max:120', 'company' => 'nullable|string|max:160', 'position' => 'nullable|string|max:160', 'interest' => 'nullable|string|max:2000', 'language' => 'nullable|in:English,French,Spanish,Arabic', 'tone' => 'nullable|in:Professional,Confident,Warm']);
+        $d = $r->validated();
         $name = trim($d['name'] ?? '') ?: '[Your name]';
         $company = trim($d['company'] ?? '') ?: 'the company';
         $position = trim($d['position'] ?? '') ?: 'the advertised position';

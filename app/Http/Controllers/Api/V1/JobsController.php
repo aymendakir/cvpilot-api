@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\Jobs\JobLinksRequest;
+use App\Http\Requests\Jobs\SaveJobSearchRequest;
+use App\Http\Requests\Jobs\SearchJobsRequest;
+use App\Http\Resources\JobSearchResource;
 use App\Models\CvDocument;
 use App\Models\JobSearch;
 use App\Services\AtsScorer;
@@ -10,28 +14,13 @@ use App\Services\JobSearchService;
 use App\Support\Redactor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class JobsController
 {
-    public function search(Request $r, JobSearchService $jobs, AtsScorer $ats)
+    public function search(SearchJobsRequest $r, JobSearchService $jobs, AtsScorer $ats)
     {
-        $d = $r->validate([
-            'q' => 'required|string|max:120',
-            'country' => 'required|string|max:10',
-            'country_name' => 'nullable|string|max:120',
-            'city' => 'nullable|string|max:120',
-            'date' => 'nullable|in:today,3days,week,month,all',
-            'provider' => 'nullable|in:jsearch,adzuna,jooble,arbeitnow,remotive,jobicy',
-            'pages' => 'nullable|integer|min:1|max:5',
-            'limit' => 'nullable|integer|min:1|max:100',
-            'work_mode' => 'nullable|in:any,remote,hybrid,onsite',
-            'contract' => 'nullable|in:any,full_time,part_time,contract,internship,freelance',
-            'salary_min' => 'nullable|numeric|min:0',
-            'language' => 'nullable|string|max:40',
-            'visa_only' => 'nullable|boolean',
-            'cv_document_id' => 'nullable|integer',
-            'cv_text' => 'nullable|string|min:30|max:30000',
-        ]);
+        $d = $r->validated();
 
         $started = microtime(true);
 
@@ -86,14 +75,9 @@ class JobsController
         }
     }
 
-    public function links(Request $r)
+    public function links(JobLinksRequest $r)
     {
-        $d = $r->validate([
-            'q' => 'required|string|max:120',
-            'location' => 'nullable|string|max:180',
-            'city' => 'nullable|string|max:120',
-            'country' => 'nullable|string|max:10',
-        ]);
+        $d = $r->validated();
 
         $q = urlencode($d['q']);
         $location = trim($d['city'] ?? $d['location'] ?? '');
@@ -133,31 +117,20 @@ class JobsController
 
     public function saved(Request $r)
     {
-        return JobSearch::where('user_id', $r->user()->id)->latest()->limit(30)->get();
+        return JobSearchResource::collection(JobSearch::where('user_id', $r->user()->id)->latest()->limit(30)->get());
     }
 
-    public function save(Request $r)
+    public function save(SaveJobSearchRequest $r)
     {
-        $d = $r->validate([
-            'name' => 'required|string|max:120',
-            'query' => 'required|string|max:120',
-            'country' => 'required|string|max:10',
-            'country_name' => 'nullable|string|max:120',
-            'city' => 'nullable|string|max:120',
-            'experience' => 'nullable|string|max:30',
-            'work_mode' => 'nullable|in:any,remote,hybrid,onsite',
-            'filters' => 'nullable|array',
-            'alerts_enabled' => 'nullable|boolean',
-            'alert_frequency' => 'nullable|in:daily,weekly',
-        ]);
+        $d = $r->validated();
         $d['user_id'] = $r->user()->id;
 
-        return response()->json(JobSearch::create($d), 201);
+        return JobSearchResource::make(JobSearch::create($d))->response()->setStatusCode(201);
     }
 
     public function destroySaved(Request $r, JobSearch $search)
     {
-        abort_unless($search->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('delete', $search);
         $search->delete();
 
         return response()->noContent();

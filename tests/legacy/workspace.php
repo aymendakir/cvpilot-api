@@ -70,10 +70,10 @@ try {
  check(count(api('GET','cv-templates',[],$guest)[1])===1,'published template available to builder');
  $path='cv/'.$user->id.'/test.txt';Illuminate\Support\Facades\Storage::disk('local')->put($path,$content);
  $doc=App\Models\CvDocument::create(['user_id'=>$user->id,'name'=>'test.txt','disk_path'=>$path,'mime'=>'text/plain','size'=>strlen($content),'extracted_text'=>$content,'expires_at'=>now()->addHours(48)]);
- check(api('GET','admin/users/'.$user->id,[],$owner)[1]['uploads'][0]['id']===$doc->id,'admin sees unexpired uploaded CV');
+ check(api('GET','admin/users/'.$user->id,[],$owner)[1]['uploads'][0]['id']===$doc->id&&!isset(api('GET','admin/users/'.$user->id,[],$owner)[1]['uploads'][0]['extracted_text']),'admin sees the upload metadata but not its CV text');
  Illuminate\Support\Carbon::setTestNow(now()->addHours(49));
  check(api('GET','admin/applications',[],$owner)[1]['total']===0,'expired admin copies are inaccessible before cleanup');
- check(api('GET','admin/uploads/'.$doc->id,[],$owner)[0]===404,'expired original file cannot be downloaded');
+ check(api('GET','admin/uploads/'.$doc->id,[],$owner)[0]===404,'admin CV file download no longer exists');
  app(App\Services\TemporaryDataCleanup::class)();
  check(!Illuminate\Support\Facades\Storage::disk('local')->exists($path)&&!App\Models\CvDocument::find($doc->id),'cleanup deletes expired file and extracted text');
  check(App\Models\AdminReviewItem::count()===0,'cleanup removes temporary admin copies');

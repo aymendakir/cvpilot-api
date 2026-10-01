@@ -72,7 +72,6 @@ All paths are relative to the API origin. Errors use the envelope in [ERRORS.md]
 | admin | DELETE | `/api/v1/admin/cache` | shared `api` limiter | `v1.admin.cache.destroy` |
 | admin | GET | `/api/v1/admin/contact-messages` | shared `api` limiter | `v1.admin.contact-messages.index` |
 | admin | PATCH | `/api/v1/admin/contact-messages/{message}` | shared `api` limiter | `v1.admin.contact-messages.update` |
-| admin | GET | `/api/v1/admin/cv-documents/{cv}/file` | shared `api` limiter | `v1.admin.cv-documents.file` |
 | admin | GET | `/api/v1/admin/cv-templates` | shared `api` limiter | `v1.admin.cv-templates.index` |
 | admin | POST | `/api/v1/admin/cv-templates` | shared `api` limiter | `v1.admin.cv-templates.store` |
 | admin | DELETE | `/api/v1/admin/cv-templates/{template}` | shared `api` limiter | `v1.admin.cv-templates.destroy` |
@@ -128,7 +127,6 @@ Every alias answers with `Deprecation: true`, a `Link: <successor>; rel="success
 | POST | `/api/admin/smtp/test` | `/api/v1/admin/smtp/test` |
 | GET | `/api/admin/summary` | `/api/v1/admin/summary` |
 | GET | `/api/admin/system` | `/api/v1/admin/system` |
-| GET | `/api/admin/uploads/{cv}` | `/api/v1/admin/cv-documents/{cv}/file` |
 | GET | `/api/admin/users` | `/api/v1/admin/users` |
 | GET | `/api/admin/users/{user}` | `/api/v1/admin/users/{user}` |
 | PATCH | `/api/admin/users/{user}` | `/api/v1/admin/users/{user}` |

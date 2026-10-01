@@ -115,7 +115,6 @@ Route::middleware(['throttle:api', 'member'])->group(function () {
         Route::get('users/{user}', [AdminController::class, 'detail'])->middleware('deprecated:/api/v1/admin/users/{user}');
         Route::post('users/{user}/warning', [AdminController::class, 'warning'])->middleware('throttle:10,1,warning:')->middleware('deprecated:/api/v1/admin/users/{user}/warnings');
         Route::get('applications', [AdminController::class, 'applications'])->middleware('deprecated:/api/v1/admin/applications');
-        Route::get('uploads/{cv}', [AdminController::class, 'download'])->middleware('deprecated:/api/v1/admin/cv-documents/{cv}/file');
         Route::patch('users/{user}', [AdminController::class, 'suspend'])->middleware('deprecated:/api/v1/admin/users/{user}');
         Route::get('logs', [AdminController::class, 'logs'])->middleware('deprecated:/api/v1/admin/audit-events');
         Route::get('analytics', [AnalyticsController::class, 'report'])->middleware('deprecated:/api/v1/admin/analytics');

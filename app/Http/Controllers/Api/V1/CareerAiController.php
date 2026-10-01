@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\Career\DocumentsRequest;
+use App\Http\Requests\Career\DocumentsWithIdentityRequest;
+use App\Http\Requests\Career\FollowUpRequest;
+use App\Http\Requests\Career\PortfolioReviewRequest;
 use App\Models\Application;
 use App\Services\AiGateway;
 use Illuminate\Http\Request;
@@ -11,40 +15,40 @@ class CareerAiController
 {
     use Concerns\GeneratesReports;
 
-    public function recruiterView(Request $r, AiGateway $ai)
+    public function recruiterView(DocumentsRequest $r, AiGateway $ai)
     {
-        $d = $this->documents($r);
+        $d = $r->validated();
 
         return $this->report($r, $ai, 'recruiter_view', "Review this CV as a recruiter spending only 10-20 seconds. Never invent facts. Return: FIRST IMPRESSION, WHAT STANDS OUT, HARD-TO-FIND INFORMATION, RED FLAGS OR CONFUSION, and 5 FAST FIXES.\n\nCV:\n{$d['cv_text']}\n\nTARGET JOB:\n{$d['job_description']}", $d);
     }
 
-    public function tailorCv(Request $r, AiGateway $ai)
+    public function tailorCv(DocumentsWithIdentityRequest $r, AiGateway $ai)
     {
-        $d = $this->documents($r, true);
+        $d = $r->validated();
         $prompt = "Rewrite this CV for {$d['title']} at ".(($d['company'] ?? '') ?: 'the company').". Preserve all facts and never invent experience, skills, dates, metrics, employers or education. Improve ordering, summary, bullets and truthful job keywords. Keep an ATS-friendly plain-text structure. Return only the complete tailored CV, ready to edit, with no commentary.\n\nORIGINAL CV:\n{$d['cv_text']}\n\nJOB:\n{$d['job_description']}";
 
         return $this->report($r, $ai, 'tailor_cv', $prompt, $d);
     }
 
-    public function applicationPack(Request $r, AiGateway $ai)
+    public function applicationPack(DocumentsWithIdentityRequest $r, AiGateway $ai)
     {
-        $d = $this->documents($r, true);
+        $d = $r->validated();
         $prompt = "Create a complete truthful application pack for {$d['title']} at ".(($d['company'] ?? '') ?: 'the company').". Never invent experience, skills, metrics, employers or education. Use only the CV and job text. Return exactly these sections: TAILORED CV, COVER LETTER, RECRUITER MESSAGE, INTERVIEW QUESTIONS, KEY JOB NOTES. Keep every section practical and ready to edit.\n\nCV:\n{$d['cv_text']}\n\nJOB:\n{$d['job_description']}";
 
         return $this->report($r, $ai, 'application_pack', $prompt, $d);
     }
 
-    public function skillGap(Request $r, AiGateway $ai)
+    public function skillGap(DocumentsRequest $r, AiGateway $ai)
     {
-        $d = $this->documents($r);
+        $d = $r->validated();
         $prompt = "Build a realistic skill-gap roadmap from this CV and job. Separate ALREADY HAVE, MISSING OR WEAK, PRIORITY ORDER, WHY EACH SKILL MATTERS, 30-DAY PLAN, and MINI-PROJECT IDEAS. Do not claim a skill is missing if the CV proves it. Do not promise hiring outcomes.\n\nCV:\n{$d['cv_text']}\n\nJOB:\n{$d['job_description']}";
 
         return $this->report($r, $ai, 'skill_gap', $prompt, $d);
     }
 
-    public function portfolio(Request $r, AiGateway $ai)
+    public function portfolio(PortfolioReviewRequest $r, AiGateway $ai)
     {
-        $d = $r->validate(['cv_text' => 'required|string|min:30|max:30000', 'job_description' => 'required|string|min:60|max:30000', 'github_url' => 'nullable|url:https|max:2000', 'portfolio_url' => 'nullable|url:https|max:2000', 'projects' => 'nullable|string|max:15000']);
+        $d = $r->validated();
         $repos = [];
         $github = $d['github_url'] ?? '';
         $parts = $github ? parse_url($github) : [];
@@ -65,9 +69,9 @@ class CareerAiController
         return $this->report($r, $ai, 'portfolio_analysis', $prompt, $d);
     }
 
-    public function followUp(Request $r, AiGateway $ai)
+    public function followUp(FollowUpRequest $r, AiGateway $ai)
     {
-        $d = $r->validate(['type' => 'required|in:follow_up,thank_you,recruiter_message', 'name' => 'nullable|string|max:120', 'title' => 'required|string|max:180', 'company' => 'required|string|max:180', 'context' => 'nullable|string|max:5000', 'tone' => 'nullable|in:professional,warm,confident']);
+        $d = $r->validated();
         $prompt = "Write a concise {$d['type']} message with a ".($d['tone'] ?? 'professional')." tone for {$d['title']} at {$d['company']}. Use only supplied context, no invented claims. Return a subject line when appropriate, then the message only. Sender: ".($d['name'] ?? '[Your name]')."\nContext:\n".($d['context'] ?? '');
 
         return $this->report($r, $ai, 'follow_up', $prompt, $d);

@@ -2,18 +2,15 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\Admin\TrafficReportRequest;
+use App\Http\Requests\Analytics\TrackEventRequest;
 use Illuminate\Support\Facades\DB;
 
 class AnalyticsController
 {
-    public function store(Request $r)
+    public function store(TrackEventRequest $r)
     {
-        $d = $r->validate([
-            'consent' => 'required|accepted', 'visitor_id' => 'required|string|min:16|max:100', 'session_id' => 'required|string|min:16|max:100',
-            'path' => 'required|string|max:500', 'referrer' => 'nullable|url|max:1000', 'utm_source' => 'nullable|string|max:255',
-            'utm_medium' => 'nullable|string|max:255', 'utm_campaign' => 'nullable|string|max:255',
-        ]);
+        $d = $r->validated();
         $key = (string) config('app.key');
         $agent = substr($r->userAgent() ?? '', 0, 512);
         [$device,$browser,$os] = $this->parseAgent($agent);
@@ -35,12 +32,10 @@ class AnalyticsController
         return response()->json(['recorded' => true], 201);
     }
 
-    public function report(Request $r)
+    public function report(TrafficReportRequest $r)
     {
-        $days = (int) $r->input('days', 30);
-        if (! in_array($days, [7, 30, 90], true)) {
-            $days = 30;
-        }$since = now()->subDays($days - 1)->startOfDay();
+        $days = (int) ($r->validated()['days'] ?? 30);
+        $since = now()->subDays($days - 1)->startOfDay();
         $base = DB::table('traffic_events')->where('occurred_at', '>=', $since);
         $sessions = (clone $base)->distinct()->count('session_id');
         $singlePage = DB::query()->fromSub((clone $base)->select('session_id')->groupBy('session_id')->havingRaw('COUNT(*) = 1'), 'single_sessions')->count();

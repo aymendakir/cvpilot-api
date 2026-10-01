@@ -3,10 +3,16 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Requests\Admin\ReorderIntegrationsRequest;
+use App\Http\Requests\Admin\StoreIntegrationRequest;
+use App\Http\Requests\Admin\UpdateIntegrationRequest;
+use App\Http\Resources\IntegrationResource;
+use App\Http\Resources\IntegrationSummaryResource;
 use App\Models\Integration;
 use App\Services\AiGateway;
 use App\Services\JobSearchService;
 use App\Support\Redactor;
+use App\Support\UpstreamFailure;
 use Illuminate\Http\Request;
 
 class IntegrationController
@@ -14,26 +20,18 @@ class IntegrationController
     public function index(AiGateway $ai)
     {
         return [
-            'items' => Integration::orderBy('type')
+            'items' => IntegrationResource::collection(Integration::orderBy('type')
                 ->orderBy('priority')
                 ->orderBy('id')
-                ->get(['id', 'provider', 'type', 'model', 'settings', 'enabled', 'priority', 'tested_at', 'last_error', 'updated_at']),
+                ->get()),
             'catalog' => $ai->providers(),
             'job_providers' => ['jsearch', 'adzuna', 'jooble', 'arbeitnow'],
         ];
     }
 
-    public function store(Request $r)
+    public function store(StoreIntegrationRequest $r)
     {
-        $d = $r->validate([
-            'provider' => 'required|in:openai,anthropic,gemini,groq,mistral,openrouter,bazaarlink,jsearch,adzuna,jooble,arbeitnow',
-            'type' => 'required|in:ai,jobs',
-            'secret' => 'nullable|string|max:1000',
-            'model' => 'nullable|string|max:120',
-            'settings' => 'nullable|array',
-            'enabled' => 'required|boolean',
-            'priority' => 'nullable|integer|min:1|max:999',
-        ]);
+        $d = $r->validated();
 
         $item = Integration::firstOrNew(['provider' => $d['provider']]);
         if (! $item->exists && empty($d['secret']) && $d['provider'] !== 'arbeitnow') {
@@ -62,19 +60,13 @@ class IntegrationController
 
         return [
             'message' => 'Integration saved with encrypted credentials.',
-            'item' => $item->only(['id', 'provider', 'type', 'model', 'enabled', 'priority', 'updated_at']),
+            'item' => IntegrationSummaryResource::make($item),
         ];
     }
 
-    public function update(Request $r, Integration $integration)
+    public function update(UpdateIntegrationRequest $r, Integration $integration)
     {
-        $d = $r->validate([
-            'secret' => 'nullable|string|max:1000',
-            'model' => 'nullable|string|max:120',
-            'settings' => 'nullable|array',
-            'enabled' => 'nullable|boolean',
-            'priority' => 'nullable|integer|min:1|max:999',
-        ]);
+        $d = $r->validated();
 
         if (empty($d['secret'])) {
             unset($d['secret']);
@@ -90,16 +82,12 @@ class IntegrationController
         $integration->save();
         AuthController::audit($r, 'integration_updated:'.$integration->provider, $r->user()->id);
 
-        return ['item' => $integration];
+        return ['item' => IntegrationResource::make($integration)];
     }
 
-    public function reorder(Request $r)
+    public function reorder(ReorderIntegrationsRequest $r)
     {
-        $d = $r->validate([
-            'items' => 'required|array',
-            'items.*.id' => 'required|integer|exists:integrations,id',
-            'items.*.priority' => 'required|integer|min:1|max:999',
-        ]);
+        $d = $r->validated();
 
         foreach ($d['items'] as $entry) {
             Integration::where('id', $entry['id'])->update(['priority' => $entry['priority']]);
@@ -133,10 +121,8 @@ class IntegrationController
             $err = mb_substr(Redactor::scrub($e->getMessage(), [$integration->secret]), 0, 500);
             $integration->update(['last_error' => $err]);
 
-            return response()->json([
-                'ok' => false,
-                'message' => 'Connection failed: '.$err,
-            ], 422);
+            // The reason is stored (last_error) and logged with the request id; the response stays generic.
+            throw UpstreamFailure::exception($e, 'Connection failed: '.$err);
         }
     }
 
