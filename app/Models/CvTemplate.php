@@ -1,6 +1,12 @@
 <?php
+
 namespace App\Models;
-class CvTemplate extends \Illuminate\Database\Eloquent\Model {
+
+use Illuminate\Database\Eloquent\Model;
+
+class CvTemplate extends Model
+{
     protected $guarded = [];
-    protected $casts = ['design'=>'array','sample'=>'array','published'=>'boolean'];
+
+    protected $casts = ['design' => 'array', 'sample' => 'array', 'published' => 'boolean'];
 }

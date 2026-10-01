@@ -1,8 +1,8 @@
 <?php
 // Run: php tests/cv-extract.php  (uses an in-memory SQLite database; never touches MySQL)
-require __DIR__.'/../vendor/autoload.php';
+require __DIR__.'/../../vendor/autoload.php';
 putenv('APP_KEY=base64:'.base64_encode(str_repeat('k',32)));$_ENV['APP_KEY']=$_SERVER['APP_KEY']=getenv('APP_KEY');
-$app=require __DIR__.'/../bootstrap/app.php';
+$app=require __DIR__.'/../../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 config(['database.connections.sqlite'=>['driver'=>'sqlite','database'=>':memory:','prefix'=>'','foreign_key_constraints'=>true],'database.default'=>'sqlite','session.driver'=>'array','session.secure'=>false,'cache.default'=>'array','app.debug'=>false]);
 Illuminate\Support\Facades\DB::purge();

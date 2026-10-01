@@ -1,6 +1,6 @@
 <?php
-require __DIR__.'/../app/Services/ResumeReview.php';
-require __DIR__.'/../app/Services/ResumeAudit.php';
+require __DIR__.'/../../app/Services/ResumeReview.php';
+require __DIR__.'/../../app/Services/ResumeAudit.php';
 use App\Services\ResumeAudit;
 function expectAudit($ok) { if (!$ok) throw new RuntimeException('Audit validation failed'); }
 $cv="Experience\nBuilt 3 applications.\n".str_repeat('Maintained useful client portal features with the development team. ',12);

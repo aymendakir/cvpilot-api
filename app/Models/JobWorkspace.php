@@ -1,3 +1,10 @@
 <?php
+
 namespace App\Models;
-class JobWorkspace extends \Illuminate\Database\Eloquent\Model{protected $guarded=[];}
+
+use Illuminate\Database\Eloquent\Model;
+
+class JobWorkspace extends Model
+{
+    protected $guarded = [];
+}

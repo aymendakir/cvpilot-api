@@ -1,10 +1,15 @@
 .env
 vendor/
-bootstrap/cache/*.php
+bootstrap/cache/*
+!bootstrap/cache/.gitkeep
 storage/logs/*
+!storage/logs/.gitkeep
 storage/framework/cache/*
+!storage/framework/cache/.gitkeep
 storage/framework/sessions/*
+!storage/framework/sessions/.gitkeep
 storage/framework/views/*
+!storage/framework/views/.gitkeep
 
 # uploaded documents and other runtime files
 storage/app/*
@@ -12,3 +17,5 @@ storage/app/*
 !storage/app/private/
 storage/app/private/*
 !storage/app/private/.gitkeep
+.phpunit.cache/
+.phpunit.result.cache

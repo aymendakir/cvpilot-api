@@ -1,12 +1,17 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Integration;
 use App\Services\AiGateway;
+use App\Services\JobSearchService;
+use App\Support\Redactor;
 use Illuminate\Http\Request;
 
-class IntegrationController {
-    public function index(AiGateway $ai) {
+class IntegrationController
+{
+    public function index(AiGateway $ai)
+    {
         return [
             'items' => Integration::orderBy('type')
                 ->orderBy('priority')
@@ -17,7 +22,8 @@ class IntegrationController {
         ];
     }
 
-    public function store(Request $r) {
+    public function store(Request $r)
+    {
         $d = $r->validate([
             'provider' => 'required|in:openai,anthropic,gemini,groq,mistral,openrouter,bazaarlink,jsearch,adzuna,jooble,arbeitnow',
             'type' => 'required|in:ai,jobs',
@@ -29,7 +35,7 @@ class IntegrationController {
         ]);
 
         $item = Integration::firstOrNew(['provider' => $d['provider']]);
-        if (!$item->exists && empty($d['secret']) && $d['provider'] !== 'arbeitnow') {
+        if (! $item->exists && empty($d['secret']) && $d['provider'] !== 'arbeitnow') {
             abort(422, 'API key is required.');
         }
 
@@ -44,14 +50,14 @@ class IntegrationController {
             'priority' => $priority,
         ]);
 
-        if (!empty($d['secret'])) {
+        if (! empty($d['secret'])) {
             $item->secret = $d['secret'];
-        } elseif ($d['provider'] === 'arbeitnow' && !$item->secret) {
+        } elseif ($d['provider'] === 'arbeitnow' && ! $item->secret) {
             $item->secret = 'public';
         }
 
         $item->save();
-        AuthController::audit($r, 'integration_saved:' . $item->provider, $r->user()->id);
+        AuthController::audit($r, 'integration_saved:'.$item->provider, $r->user()->id);
 
         return [
             'message' => 'Integration saved with encrypted credentials.',
@@ -59,7 +65,8 @@ class IntegrationController {
         ];
     }
 
-    public function update(Request $r, Integration $integration) {
+    public function update(Request $r, Integration $integration)
+    {
         $d = $r->validate([
             'secret' => 'nullable|string|max:1000',
             'model' => 'nullable|string|max:120',
@@ -80,12 +87,13 @@ class IntegrationController {
         }
 
         $integration->save();
-        AuthController::audit($r, 'integration_updated:' . $integration->provider, $r->user()->id);
+        AuthController::audit($r, 'integration_updated:'.$integration->provider, $r->user()->id);
 
         return ['item' => $integration];
     }
 
-    public function reorder(Request $r) {
+    public function reorder(Request $r)
+    {
         $d = $r->validate([
             'items' => 'required|array',
             'items.*.id' => 'required|integer|exists:integrations,id',
@@ -97,37 +105,42 @@ class IntegrationController {
         }
 
         AuthController::audit($r, 'integrations_reordered', $r->user()->id);
+
         return ['ok' => true, 'message' => 'Priority order updated successfully.'];
     }
 
-    public function test(Request $r, Integration $integration, AiGateway $ai) {
+    public function test(Request $r, Integration $integration, AiGateway $ai)
+    {
         try {
             if ($integration->type === 'ai') {
                 $result = $ai->test($integration);
             } else {
-                $result = app(\App\Services\JobSearchService::class)->search([
+                $result = app(JobSearchService::class)->search([
                     'provider' => $integration->provider,
                     'q' => 'software developer',
                     'country' => 'DE',
                     'country_name' => 'Germany',
                     'page' => 1,
                 ]);
-                $result = ['ok' => true, 'message' => 'Connected. ' . count($result['data']) . ' sample jobs returned.'];
+                $result = ['ok' => true, 'message' => 'Connected. '.count($result['data']).' sample jobs returned.'];
             }
 
             $integration->update(['tested_at' => now(), 'last_error' => null]);
+
             return $result;
         } catch (\Throwable $e) {
-            $err = mb_substr($e->getMessage(), 0, 500);
+            $err = mb_substr(Redactor::scrub($e->getMessage(), [$integration->secret]), 0, 500);
             $integration->update(['last_error' => $err]);
+
             return response()->json([
                 'ok' => false,
-                'message' => 'Connection failed: ' . $err,
+                'message' => 'Connection failed: '.$err,
             ], 422);
         }
     }
 
-    public function destroy(Request $r, Integration $integration) {
+    public function destroy(Request $r, Integration $integration)
+    {
         $provider = $integration->provider;
         $type = $integration->type;
         $integration->delete();
@@ -138,7 +151,8 @@ class IntegrationController {
             $rem->update(['priority' => $idx + 1]);
         }
 
-        AuthController::audit($r, 'integration_deleted:' . $provider, $r->user()->id);
+        AuthController::audit($r, 'integration_deleted:'.$provider, $r->user()->id);
+
         return response()->noContent();
     }
 }

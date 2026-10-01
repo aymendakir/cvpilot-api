@@ -1,6 +1,6 @@
 <?php
-require __DIR__.'/../app/Services/ResumeLanguage.php';
-require __DIR__.'/../app/Services/AtsDocumentReview.php';
+require __DIR__.'/../../app/Services/ResumeLanguage.php';
+require __DIR__.'/../../app/Services/AtsDocumentReview.php';
 use App\Services\AtsDocumentReview;
 function assertDocument($condition, $message): void {if (!$condition) throw new RuntimeException($message);}
 $engine=new AtsDocumentReview();

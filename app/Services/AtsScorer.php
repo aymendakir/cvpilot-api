@@ -2,15 +2,16 @@
 
 namespace App\Services;
 
-class AtsScorer {
+class AtsScorer
+{
     private array $stop = [
-        'with','that','this','your','from','have','will','work','team','and','the','our','are','experience',
-        'years','skills','role','position','candidate','company','dans','pour','avec','vous','nous','une','des',
-        'les','sur','aux','de','la','le','un','et','en','to','of','in','on','for','is','be','as','at','or','it',
-        'we','you','job','required','requirement','requirements','preferred','benefit','benefits','salary',
-        'opportunity','join','apply','please','including','plus','ideal','looking','seeking','about','us','who',
-        'responsibilities','duties','qualifications','essential','desirable','strong','excellent','ability',
-        'knowledge','environment','ensure','across','into','well','high','must','other','than'
+        'with', 'that', 'this', 'your', 'from', 'have', 'will', 'work', 'team', 'and', 'the', 'our', 'are', 'experience',
+        'years', 'skills', 'role', 'position', 'candidate', 'company', 'dans', 'pour', 'avec', 'vous', 'nous', 'une', 'des',
+        'les', 'sur', 'aux', 'de', 'la', 'le', 'un', 'et', 'en', 'to', 'of', 'in', 'on', 'for', 'is', 'be', 'as', 'at', 'or', 'it',
+        'we', 'you', 'job', 'required', 'requirement', 'requirements', 'preferred', 'benefit', 'benefits', 'salary',
+        'opportunity', 'join', 'apply', 'please', 'including', 'plus', 'ideal', 'looking', 'seeking', 'about', 'us', 'who',
+        'responsibilities', 'duties', 'qualifications', 'essential', 'desirable', 'strong', 'excellent', 'ability',
+        'knowledge', 'environment', 'ensure', 'across', 'into', 'well', 'high', 'must', 'other', 'than',
     ];
 
     // Every professional field is checked on equal footing so the score isn't biased toward dev roles.
@@ -51,7 +52,7 @@ class AtsScorer {
             'Unit Testing' => ['unit test', 'unit testing', 'jest', 'phpunit', 'pytest', 'cypress'],
             'Microservices' => ['microservices', 'microservice'],
             'Linux' => ['linux', 'ubuntu'],
-            'Machine Learning' => ['machine learning', 'ml', 'ai', 'artificial intelligence']
+            'Machine Learning' => ['machine learning', 'ml', 'ai', 'artificial intelligence'],
         ],
         'Data & Analytics' => [
             'Microsoft Excel' => ['microsoft excel', 'excel spreadsheets', 'pivot table', 'pivot tables', 'vlookup', 'tableur'],
@@ -60,7 +61,7 @@ class AtsScorer {
             'Data Analysis' => ['data analysis', 'data analytics', 'analyse de données'],
             'A/B Testing' => ['a/b testing', 'ab testing', 'split testing'],
             'Statistics' => ['statistics', 'statistical analysis', 'statistiques'],
-            'Data Visualization' => ['data visualization', 'dashboards', 'dataviz']
+            'Data Visualization' => ['data visualization', 'dashboards', 'dataviz'],
         ],
         'Marketing' => [
             'SEO' => ['seo', 'search engine optimization', 'référencement'],
@@ -72,7 +73,7 @@ class AtsScorer {
             'Copywriting' => ['copywriting', 'copywriter', 'rédaction publicitaire'],
             'Brand Strategy' => ['brand strategy', 'branding', 'image de marque'],
             'Marketing Automation' => ['marketing automation', 'hubspot'],
-            'Growth Marketing' => ['growth marketing', 'growth hacking']
+            'Growth Marketing' => ['growth marketing', 'growth hacking'],
         ],
         'Sales' => [
             'CRM Software' => ['crm', 'salesforce'],
@@ -83,7 +84,7 @@ class AtsScorer {
             'Pipeline Management' => ['sales pipeline', 'pipeline management'],
             'B2B / B2C Sales' => ['b2b', 'b2c'],
             'Quota Attainment' => ['quota', 'sales targets', 'objectifs de vente'],
-            'Upselling & Cross-selling' => ['upselling', 'cross-selling', 'cross selling', 'vente incitative']
+            'Upselling & Cross-selling' => ['upselling', 'cross-selling', 'cross selling', 'vente incitative'],
         ],
         'Design & Creative' => [
             'Figma' => ['figma'],
@@ -93,7 +94,7 @@ class AtsScorer {
             'Wireframing & Prototyping' => ['wireframing', 'wireframes', 'prototyping', 'prototypage'],
             'Typography' => ['typography', 'typographie'],
             'Motion Design' => ['motion design', 'after effects'],
-            'Design Systems' => ['design system', 'design systems']
+            'Design Systems' => ['design system', 'design systems'],
         ],
         'Finance & Accounting' => [
             'Financial Modeling' => ['financial modeling', 'financial models'],
@@ -104,7 +105,7 @@ class AtsScorer {
             'SAP' => ['sap'],
             'QuickBooks' => ['quickbooks'],
             'Auditing' => ['auditing', 'audit'],
-            'Taxation' => ['taxation', 'tax compliance', 'fiscalité']
+            'Taxation' => ['taxation', 'tax compliance', 'fiscalité'],
         ],
         'HR & Recruiting' => [
             'Talent Acquisition' => ['talent acquisition', 'recruiting', 'recrutement'],
@@ -113,7 +114,7 @@ class AtsScorer {
             'Performance Management' => ['performance management', 'performance reviews', 'évaluation de performance'],
             'Payroll' => ['payroll', 'paie'],
             'Compensation & Benefits' => ['compensation', 'benefits administration', 'rémunération'],
-            'Applicant Tracking Systems' => ['applicant tracking system', 'ats']
+            'Applicant Tracking Systems' => ['applicant tracking system', 'ats'],
         ],
         'Customer Support & Success' => [
             'Zendesk' => ['zendesk'],
@@ -122,7 +123,7 @@ class AtsScorer {
             'SLA Management' => ['sla', 'service level agreement'],
             'CSAT / NPS' => ['csat', 'nps', 'customer satisfaction', 'satisfaction client'],
             'Customer Retention' => ['customer retention', 'churn reduction', 'fidélisation'],
-            'Live Chat Support' => ['live chat']
+            'Live Chat Support' => ['live chat'],
         ],
         'Operations & Supply Chain' => [
             'Supply Chain Management' => ['supply chain', 'chaîne d\'approvisionnement'],
@@ -131,14 +132,14 @@ class AtsScorer {
             'Logistics' => ['logistics', 'logistique'],
             'ERP Systems' => ['erp'],
             'Lean / Six Sigma' => ['lean six sigma', 'lean manufacturing', 'six sigma'],
-            'Vendor Management' => ['vendor management', 'supplier management']
+            'Vendor Management' => ['vendor management', 'supplier management'],
         ],
         'Project Management' => [
             'PMP Certification' => ['pmp', 'project management professional'],
             'PM Tools' => ['jira', 'trello', 'asana', 'monday.com'],
             'Gantt Charts' => ['gantt'],
             'Risk Management' => ['risk management', 'gestion des risques'],
-            'Stakeholder Management' => ['stakeholder management', 'parties prenantes']
+            'Stakeholder Management' => ['stakeholder management', 'parties prenantes'],
         ],
         'Legal' => [
             'Litigation' => ['litigation', 'contentieux'],
@@ -146,7 +147,7 @@ class AtsScorer {
             'Legal Research' => ['legal research', 'recherche juridique'],
             'Compliance' => ['compliance', 'regulatory compliance', 'conformité'],
             'Due Diligence' => ['due diligence'],
-            'Paralegal' => ['paralegal']
+            'Paralegal' => ['paralegal'],
         ],
         'Healthcare' => [
             'Patient Care' => ['patient care', 'soins aux patients'],
@@ -154,15 +155,15 @@ class AtsScorer {
             'HIPAA Compliance' => ['hipaa'],
             'Clinical Experience' => ['clinical experience', 'clinical skills'],
             'Medical Terminology' => ['medical terminology', 'terminologie médicale'],
-            'Nursing' => ['nursing', 'registered nurse', 'infirmier', 'infirmière']
+            'Nursing' => ['nursing', 'registered nurse', 'infirmier', 'infirmière'],
         ],
         'Education' => [
             'Curriculum Development' => ['curriculum development', 'curriculum design', 'conception de programmes'],
             'Lesson Planning' => ['lesson planning', 'lesson plans', 'préparation de cours'],
             'Classroom Management' => ['classroom management', 'gestion de classe'],
             'Student Assessment' => ['student assessment', 'évaluation des élèves'],
-            'EdTech' => ['edtech', 'educational technology']
-        ]
+            'EdTech' => ['edtech', 'educational technology'],
+        ],
     ];
 
     private array $softLexicon = [
@@ -178,18 +179,21 @@ class AtsScorer {
         'Adaptability' => ['adaptability', 'adaptable', 'adaptabilité'],
         'Multitasking' => ['multitasking', 'multi-tasking'],
         'Client Relations' => ['client relations', 'relation client'],
-        'Strategic Thinking' => ['strategic planning', 'strategic thinking', 'pensée stratégique']
+        'Strategic Thinking' => ['strategic planning', 'strategic thinking', 'pensée stratégique'],
     ];
 
     // Word-boundary aware "contains" check: short aliases (ts, ai, rest, sla...) only count when
     // they appear as a standalone token, not embedded inside unrelated words like "results" or
     // "interested". Multi-word aliases are unaffected since they were never at risk of this.
-    private function hasAlias(string $text, string $alias): bool {
-        $pattern = '/(?<![\p{L}\p{N}])' . preg_quote($alias, '/') . '(?![\p{L}\p{N}])/ui';
+    private function hasAlias(string $text, string $alias): bool
+    {
+        $pattern = '/(?<![\p{L}\p{N}])'.preg_quote($alias, '/').'(?![\p{L}\p{N}])/ui';
+
         return (bool) preg_match($pattern, $text);
     }
 
-    public function score(string $cv, string $job): array {
+    public function score(string $cv, string $job): array
+    {
         $cvLower = mb_strtolower($cv);
         $jobLower = mb_strtolower($job);
 
@@ -202,19 +206,30 @@ class AtsScorer {
             foreach ($skills as $name => $aliases) {
                 $inJob = false;
                 foreach ($aliases as $alias) {
-                    if ($this->hasAlias($jobLower, $alias)) { $inJob = true; break; }
+                    if ($this->hasAlias($jobLower, $alias)) {
+                        $inJob = true;
+                        break;
+                    }
                 }
-                if (!$inJob) continue;
+                if (! $inJob) {
+                    continue;
+                }
 
                 $domainHits[$domain] = ($domainHits[$domain] ?? 0) + 1;
 
                 $inCv = false;
                 foreach ($aliases as $alias) {
-                    if ($this->hasAlias($cvLower, $alias)) { $inCv = true; break; }
+                    if ($this->hasAlias($cvLower, $alias)) {
+                        $inCv = true;
+                        break;
+                    }
                 }
 
-                if ($inCv) { $matchedHard[] = $name; }
-                else { $missingHard[] = $name; }
+                if ($inCv) {
+                    $matchedHard[] = $name;
+                } else {
+                    $missingHard[] = $name;
+                }
             }
         }
 
@@ -226,23 +241,34 @@ class AtsScorer {
         foreach ($this->softLexicon as $name => $aliases) {
             $inJob = false;
             foreach ($aliases as $alias) {
-                if ($this->hasAlias($jobLower, $alias)) { $inJob = true; break; }
+                if ($this->hasAlias($jobLower, $alias)) {
+                    $inJob = true;
+                    break;
+                }
             }
-            if (!$inJob) continue;
+            if (! $inJob) {
+                continue;
+            }
 
             $inCv = false;
             foreach ($aliases as $alias) {
-                if ($this->hasAlias($cvLower, $alias)) { $inCv = true; break; }
+                if ($this->hasAlias($cvLower, $alias)) {
+                    $inCv = true;
+                    break;
+                }
             }
 
-            if ($inCv) { $matchedSoft[] = $name; }
-            else { $missingSoft[] = $name; }
+            if ($inCv) {
+                $matchedSoft[] = $name;
+            } else {
+                $missingSoft[] = $name;
+            }
         }
 
         // 2. Generic domain keyword overlap — fallback for any field with no curated lexicon above.
-        $tokens = fn($v) => array_values(array_unique(array_filter(
+        $tokens = fn ($v) => array_values(array_unique(array_filter(
             preg_split('/[^\pL\pN+#.\/-]+/u', mb_strtolower($v)),
-            fn($x) => mb_strlen($x) >= 3 && !in_array($x, $this->stop, true) && !is_numeric($x)
+            fn ($x) => mb_strlen($x) >= 3 && ! in_array($x, $this->stop, true) && ! is_numeric($x)
         )));
 
         $jobTokens = array_slice($tokens($job), 0, 30);
@@ -251,8 +277,11 @@ class AtsScorer {
         $matchedDomain = [];
         $missingDomain = [];
         foreach ($jobTokens as $t) {
-            if (isset($cvTokens[$t])) { $matchedDomain[] = ucfirst($t); }
-            else { $missingDomain[] = ucfirst($t); }
+            if (isset($cvTokens[$t])) {
+                $matchedDomain[] = ucfirst($t);
+            } else {
+                $missingDomain[] = ucfirst($t);
+            }
         }
 
         $matchedAll = array_values(array_unique(array_merge($matchedHard, $matchedSoft, $matchedDomain)));
@@ -262,29 +291,29 @@ class AtsScorer {
         $totalHard = count($matchedHard) + count($missingHard);
         $hardScore = $totalHard > 0 ? (count($matchedHard) / $totalHard) * 35 : (count($matchedDomain) / max(1, count($jobTokens))) * 35;
         $domainScore = (count($matchedDomain) / max(1, count($jobTokens))) * 10;
-        $keyword = (int)round(min(45, $hardScore + $domainScore));
+        $keyword = (int) round(min(45, $hardScore + $domainScore));
 
         $softTotal = count($matchedSoft) + count($missingSoft);
-        $soft = $softTotal > 0 ? (int)round((count($matchedSoft) / $softTotal) * 15) : 10;
+        $soft = $softTotal > 0 ? (int) round((count($matchedSoft) / $softTotal) * 15) : 10;
 
         $sections = 0;
         foreach ([
             '/experience|employment|work history|expérience/i',
             '/skills|competencies|compétences|technologies/i',
             '/education|formation|diplôme|degree/i',
-            '/[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:\+?\d[\s.-]?){8,}/i'
+            '/[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:\+?\d[\s.-]?){8,}/i',
         ] as $p) {
             $sections += preg_match($p, $cv) ? 1 : 0;
         }
 
         $lines = array_filter(array_map('trim', preg_split('/\R/', $cv)));
-        $long = count(array_filter($lines, fn($l) => mb_strlen($l) > 175));
+        $long = count(array_filter($lines, fn ($l) => mb_strlen($l) > 175));
         $words = str_word_count(strip_tags($cv));
         $readability = max(4, min(20, 20 - $long * 3 - ($words < 200 ? 5 : 0) - ($words > 1100 ? 4 : 0)));
 
         preg_match_all('/\b(built|created|developed|designed|implemented|launched|improved|increased|reduced|optimized|automated|managed|led|delivered|integrated|deployed|architected|engineered|scaled|spearheaded|achieved|exceeded|negotiated|coordinated|trained|mentored|resolved|streamlined|generated|presented|forecasted|budgeted|onboarded|facilitated|conducted|analyzed|researched|authored|drafted|advised|supervised|audited|reconciled|recruited|hired|closed|grew|drove|saved|développé|créé|conçu|amélioré|optimisé|géré|réalisé|négocié|coordonné|formé|encadré|résolu|généré|présenté|planifié|dirigé|analysé|rédigé|conseillé|supervisé|recruté|embauché|économisé)\b/iu', $cv, $verbs);
         preg_match_all('/\b\d+(?:[.,]\d+)?\s*(?:%|k|m|million|hours?|days?|users?|clients?|projects?|leads?|deals?|accounts?|patients?|students?|cases?|campaigns?|sales|revenue|ans?|mois)?\b/iu', $cv, $numbers);
-        $impact = min(20, (int)round(min(count($verbs[0]), 8) * 1.5 + min(count($numbers[0]), 6)));
+        $impact = min(20, (int) round(min(count($verbs[0]), 8) * 1.5 + min(count($numbers[0]), 6)));
 
         $totalScore = max(15, min(99, $keyword + $soft + ($sections * 5) + $impact));
 
@@ -295,7 +324,9 @@ class AtsScorer {
             } elseif (mb_strlen($line) > 175) {
                 $suggestions[] = ['line' => $i + 1, 'reason' => 'Split this long bullet point into shorter, readable achievements.', 'original' => $line];
             }
-            if (count($suggestions) >= 8) break;
+            if (count($suggestions) >= 8) {
+                break;
+            }
         }
 
         return [
@@ -305,14 +336,14 @@ class AtsScorer {
                 'soft_skills' => $soft,
                 'sections' => $sections * 5,
                 'readability' => $readability,
-                'impact' => $impact
+                'impact' => $impact,
             ],
             'matched_keywords' => array_slice($matchedAll, 0, 24),
             'missing_keywords' => array_slice($missingAll, 0, 24),
             'technical' => ['matched' => $matchedHard, 'missing' => $missingHard],
             'soft' => ['matched' => $matchedSoft, 'missing' => $missingSoft],
             'detected_domain' => $detectedDomain,
-            'suggestions' => $suggestions
+            'suggestions' => $suggestions,
         ];
     }
 }

@@ -1,13 +1,20 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\{CvDocument, JobSearch};
-use App\Services\{JobSearchService, JobLocation, AtsScorer};
+use App\Models\CvDocument;
+use App\Models\JobSearch;
+use App\Services\AtsScorer;
+use App\Services\JobLocation;
+use App\Services\JobSearchService;
+use App\Support\Redactor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class JobsController {
-    public function search(Request $r, JobSearchService $jobs, AtsScorer $ats) {
+class JobsController
+{
+    public function search(Request $r, JobSearchService $jobs, AtsScorer $ats)
+    {
         $d = $r->validate([
             'q' => 'required|string|max:120',
             'country' => 'required|string|max:10',
@@ -31,13 +38,13 @@ class JobsController {
         try {
             $result = $jobs->search($d);
             $cv = $d['cv_text'] ?? null;
-            if (!$cv && !empty($d['cv_document_id'])) {
+            if (! $cv && ! empty($d['cv_document_id'])) {
                 $cv = CvDocument::where('user_id', $r->user()->id)->findOrFail($d['cv_document_id'])->extracted_text;
             }
 
-            $country = strtoupper(trim((string)($d['country'] ?? '')));
+            $country = strtoupper(trim((string) ($d['country'] ?? '')));
 
-            $items = collect($result['data'])->filter(function ($job) use ($d, $country) {
+            $items = collect($result['data'])->filter(function ($job) use ($d) {
                 $mode = $d['work_mode'] ?? 'any';
                 if ($mode !== 'any' && ($job['work_mode'] ?? ($job['remote'] ? 'remote' : 'onsite')) !== $mode) {
                     return false;
@@ -45,21 +52,24 @@ class JobsController {
                 if (($d['contract'] ?? 'any') !== 'any' && ($job['contract_type'] ?? null) !== $d['contract']) {
                     return false;
                 }
-                if (!empty($d['salary_min']) && (!isset($job['salary_min']) || (float)$job['salary_min'] < (float)$d['salary_min'])) {
+                if (! empty($d['salary_min']) && (! isset($job['salary_min']) || (float) $job['salary_min'] < (float) $d['salary_min'])) {
                     return false;
                 }
-                if (!empty($d['visa_only']) && empty($job['visa_sponsorship'])) {
+                if (! empty($d['visa_only']) && empty($job['visa_sponsorship'])) {
                     return false;
                 }
-                if (!empty($d['language']) && !str_contains(strtolower(($job['title'] ?? '') . ' ' . ($job['description'] ?? '')), strtolower($d['language']))) {
+                if (! empty($d['language']) && ! str_contains(strtolower(($job['title'] ?? '').' '.($job['description'] ?? '')), strtolower($d['language']))) {
                     return false;
                 }
 
-                if (!JobLocation::matches($job, $d)) return false;
+                if (! JobLocation::matches($job, $d)) {
+                    return false;
+                }
 
                 return true;
             })->take($d['limit'] ?? 100)->map(function ($job) use ($cv, $ats) {
-                $job['match'] = $cv ? $ats->score($cv, $job['title'] . ' ' . $job['description']) : null;
+                $job['match'] = $cv ? $ats->score($cv, $job['title'].' '.$job['description']) : null;
+
                 return $job;
             })->values();
 
@@ -67,15 +77,17 @@ class JobsController {
             $result['count'] = $items->count();
             $result['limit'] = $d['limit'] ?? 100;
 
-            $this->logSearch($r, $d, $result, (int)((microtime(true) - $started) * 1000), true);
+            $this->logSearch($r, $d, $result, (int) ((microtime(true) - $started) * 1000), true);
+
             return $result;
         } catch (\Throwable $e) {
-            $this->logSearch($r, $d, ['provider' => $d['provider'] ?? null, 'data' => []], (int)((microtime(true) - $started) * 1000), false, $e->getMessage());
+            $this->logSearch($r, $d, ['provider' => $d['provider'] ?? null, 'data' => []], (int) ((microtime(true) - $started) * 1000), false, Redactor::scrub($e->getMessage()));
             throw $e;
         }
     }
 
-    public function links(Request $r) {
+    public function links(Request $r)
+    {
         $d = $r->validate([
             'q' => 'required|string|max:120',
             'location' => 'nullable|string|max:180',
@@ -87,10 +99,12 @@ class JobsController {
         $location = trim($d['city'] ?? $d['location'] ?? '');
         if (strtoupper($d['country'] ?? '') === 'MA') {
             $location = $location === '' ? 'Morocco' : $location;
-            if (!preg_match('/\b(morocco|maroc)\b/i', $location)) $location .= ', Morocco';
+            if (! preg_match('/\b(morocco|maroc)\b/i', $location)) {
+                $location .= ', Morocco';
+            }
         }
         $l = urlencode($location);
-        $country = strtoupper(trim((string)($d['country'] ?? '')));
+        $country = strtoupper(trim((string) ($d['country'] ?? '')));
 
         $links = [
             'linkedin' => "https://www.linkedin.com/jobs/search/?keywords=$q&location=$l",
@@ -101,7 +115,9 @@ class JobsController {
 
         // Add local top career portals based on target country
         if ($country === 'MA') {
-            if (empty($d['city']) && empty($d['location'])) $links['linkedin'] .= '&geoId=102787409';
+            if (empty($d['city']) && empty($d['location'])) {
+                $links['linkedin'] .= '&geoId=102787409';
+            }
             $links['rekrute'] = "https://www.rekrute.com/offres-emploi-maroc.html?keyword=$q";
             $links['bayt'] = "https://www.bayt.com/en/morocco/jobs/?q=$q";
         } elseif ($country === 'FR') {
@@ -115,11 +131,13 @@ class JobsController {
         return $links;
     }
 
-    public function saved(Request $r) {
+    public function saved(Request $r)
+    {
         return JobSearch::where('user_id', $r->user()->id)->latest()->limit(30)->get();
     }
 
-    public function save(Request $r) {
+    public function save(Request $r)
+    {
         $d = $r->validate([
             'name' => 'required|string|max:120',
             'query' => 'required|string|max:120',
@@ -133,16 +151,20 @@ class JobsController {
             'alert_frequency' => 'nullable|in:daily,weekly',
         ]);
         $d['user_id'] = $r->user()->id;
+
         return response()->json(JobSearch::create($d), 201);
     }
 
-    public function destroySaved(Request $r, JobSearch $search) {
+    public function destroySaved(Request $r, JobSearch $search)
+    {
         abort_unless($search->user_id === $r->user()->id, 404);
         $search->delete();
+
         return response()->noContent();
     }
 
-    private function logSearch(Request $r, array $d, array $result, int $latency, bool $success, ?string $error = null): void {
+    private function logSearch(Request $r, array $d, array $result, int $latency, bool $success, ?string $error = null): void
+    {
         try {
             DB::table('job_search_events')->insert([
                 'user_id' => $r->user()->id,
@@ -156,6 +178,7 @@ class JobsController {
                 'error' => $error ? mb_substr($error, 0, 500) : null,
                 'created_at' => now(),
             ]);
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
     }
 }
