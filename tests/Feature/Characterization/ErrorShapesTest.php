@@ -236,7 +236,9 @@ class ErrorShapesTest extends TestCase
         $this->assertSame('DENY', $response->headers->get('X-Frame-Options'));
         $this->assertSame('strict-origin-when-cross-origin', $response->headers->get('Referrer-Policy'));
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
-        $this->assertFalse($response->headers->has('Content-Security-Policy'));
+        // S4 (SPEC §7 item 5): the API sends a restrictive CSP and CORP (was missing).
+        $this->assertSame("default-src 'none'; frame-ancestors 'none'", $response->headers->get('Content-Security-Policy'));
+        $this->assertSame('same-site', $response->headers->get('Cross-Origin-Resource-Policy'));
         $this->assertTrue($response->headers->has('X-Request-Id'));
     }
 
