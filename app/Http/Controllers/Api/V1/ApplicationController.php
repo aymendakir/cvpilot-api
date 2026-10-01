@@ -30,6 +30,13 @@ class ApplicationController
         return response()->json($item, $item->wasRecentlyCreated ? 201 : 200);
     }
 
+    public function show(Request $r, Application $application)
+    {
+        abort_unless($application->user_id === $r->user()->id, 404);
+
+        return $application;
+    }
+
     public function update(Request $r, Application $application)
     {
         abort_unless($application->user_id === $r->user()->id, 404);

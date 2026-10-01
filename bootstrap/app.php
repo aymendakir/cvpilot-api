@@ -13,6 +13,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -42,6 +43,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append([EnsureErrorEnvelope::class, SecurityHeaders::class]);
         // Deprecation headers must also decorate responses produced by middleware that runs later (401/403/429).
         $middleware->prependToPriorityList(before: EncryptCookies::class, prepend: Deprecated::class);
+        // Authenticate (member, admin) before route-model binding, so an anonymous request for a
+        // missing id gets 401 instead of a 404 that reveals which ids exist.
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: Admin::class);
+        $middleware->prependToPriorityList(before: Admin::class, prepend: Member::class);
         $middleware->alias([
             'member' => Member::class,
             'auth.session' => Member::class,
