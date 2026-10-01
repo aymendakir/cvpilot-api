@@ -2,6 +2,7 @@
 
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\Admin;
+use App\Http\Middleware\EnsureErrorEnvelope;
 use App\Http\Middleware\ForceJsonResponses;
 use App\Http\Middleware\Member;
 use App\Http\Middleware\RejectMalformedJson;
@@ -16,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->prepend([RequestId::class, ForceJsonResponses::class, RejectMalformedJson::class]);
         $middleware->validateCsrfTokens(except: ['api/analytics/events', 'api/contact']);
-        $middleware->append(SecurityHeaders::class);
+        $middleware->append([EnsureErrorEnvelope::class, SecurityHeaders::class]);
         $middleware->alias(['member' => Member::class, 'admin' => Admin::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
