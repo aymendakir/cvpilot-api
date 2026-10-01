@@ -1,7 +1,7 @@
 # Task list — Phase 3, slice S2 (`ats-checks` + `ats-keywords`)
 
 Branch `feature/ats-s2`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §6, §6.1, §6.2, §8.
-Status: **T0–T2 built; at Checkpoint A.** Decisions 1–5 approved as recommended.
+Status: **T0–T6 built; PR opened (Checkpoint B).** Decisions 1–5 approved as recommended; Checkpoint A approved (French vocabulary reviewed in S5).
 
 - [x] T0 CI fix on `main` (temp-dir scan), first commit of this branch
 - [x] T1 Section detection and ported vocabulary (headings, action verbs/nouns)
@@ -9,13 +9,14 @@ Status: **T0–T2 built; at Checkpoint A.** Decisions 1–5 approved as recommen
 
 ### Checkpoint A
 
-- [ ] Review with maintainer (rules table, fixture statuses, vocabulary)
+- [x] Review with maintainer (rules table, fixture statuses, vocabulary)
 
-- [ ] T3 Taxonomy (skills, synonyms, blocklists) with validation
-- [ ] T4 Keyword extraction (rule b′), fixture terms and kinds reproduced
-- [ ] T5 Matching, evidence, stuffing; §8.3 and fixture match types reproduced
-- [ ] T6 Spec, open the PR, **STOP**
+- [x] T3 Taxonomy (skills, synonyms, blocklists) with validation
+- [x] T4 Keyword extraction (rule b′), fixture terms and kinds reproduced
+- [x] T5 Matching, evidence, stuffing; §8.3 and fixture match types reproduced
+- [x] T6 Spec, open the PR, **STOP**
 
 ### Checkpoint B (final)
 
-- [ ] PR opened; S3 planned after merge
+- [x] PR opened
+- [ ] S3 planned after merge
