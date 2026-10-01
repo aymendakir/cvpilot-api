@@ -22,18 +22,19 @@ class ErrorShapesTest extends TestCase
     use CreatesUsers;
     use RefreshDatabase;
 
-    public function test_401_has_an_empty_message_and_no_code(): void
+    public function test_401_is_the_unauthenticated_envelope(): void
     {
         $this->getJson('/api/applications')
             ->assertStatus(401)
-            ->assertExactJson(['message' => '']); // WART: empty message, no code
+            ->assertJsonPath('code', 'unauthenticated')
+            ->assertJsonStructure(['message', 'code', 'request_id']);
     }
 
-    public function test_403_for_a_non_admin_on_an_admin_route_has_an_empty_message(): void
+    public function test_403_for_a_non_admin_on_an_admin_route_is_forbidden(): void
     {
         $this->signIn($this->makeUser())->getJson('/api/admin/users')
             ->assertStatus(403)
-            ->assertExactJson(['message' => '']); // WART
+            ->assertJsonPath('code', 'forbidden');
     }
 
     public function test_403_and_401_are_both_used_for_not_signed_in_versus_not_allowed(): void
@@ -42,22 +43,23 @@ class ErrorShapesTest extends TestCase
         $this->signIn($this->makeUser())->getJson('/api/admin/users')->assertStatus(403);
     }
 
-    public function test_unknown_api_route_is_404_and_exposes_the_route_in_the_message(): void
+    public function test_unknown_api_route_is_404_without_leaking_the_route(): void
     {
         $this->getJson('/api/does-not-exist')
             ->assertStatus(404)
-            ->assertJsonPath('message', 'The route api/does-not-exist could not be found.'); // WART
+            ->assertJsonPath('code', 'not_found')
+            ->assertJsonPath('message', 'The requested resource was not found.');
     }
 
-    public function test_unknown_api_route_without_an_accept_header_is_not_json(): void
+    public function test_unknown_api_route_without_an_accept_header_is_json(): void
     {
         $response = $this->get('/api/does-not-exist');
 
         $response->assertStatus(404);
-        $this->assertStringNotContainsString('application/json', (string) $response->headers->get('Content-Type')); // WART
+        $this->assertStringContainsString('application/json', (string) $response->headers->get('Content-Type'));
     }
 
-    public function test_another_users_record_is_404_with_an_empty_message(): void
+    public function test_another_users_record_is_404_not_found(): void
     {
         $owner = $this->makeUser();
         $other = $this->makeUser();
@@ -67,22 +69,24 @@ class ErrorShapesTest extends TestCase
 
         $this->signIn($other)->deleteJson("/api/applications/{$application->id}")
             ->assertStatus(404)
-            ->assertExactJson(['message' => '']);
+            ->assertJsonPath('code', 'not_found');
         $this->assertDatabaseHas('applications', ['id' => $application->id]);
     }
 
-    public function test_a_missing_bound_model_is_404_and_leaks_the_model_class(): void
+    public function test_a_missing_bound_model_is_404_without_the_model_class(): void
     {
         $this->signIn($this->makeUser())->deleteJson('/api/applications/999')
             ->assertStatus(404)
-            ->assertJsonPath('message', 'No query results for model [App\\Models\\Application] 999'); // WART
+            ->assertJsonPath('code', 'not_found')
+            ->assertJsonPath('message', 'The requested resource was not found.');
     }
 
-    public function test_wrong_method_is_405_and_lists_supported_methods(): void
+    public function test_wrong_method_is_405_without_naming_the_route(): void
     {
-        $this->signIn($this->makeUser())->putJson('/api/me')
+        $response = $this->signIn($this->makeUser())->putJson('/api/me')
             ->assertStatus(405)
-            ->assertJsonPath('message', 'The PUT method is not supported for route api/me. Supported methods: GET, HEAD, PATCH, DELETE.');
+            ->assertJsonPath('code', 'method_not_allowed');
+        $this->assertStringContainsString('PATCH', (string) $response->headers->get('Allow'));
     }
 
     public function test_validation_errors_are_422_with_message_and_field_errors(): void
@@ -93,21 +97,24 @@ class ErrorShapesTest extends TestCase
             ->assertJsonStructure(['message', 'errors' => ['title', 'company', 'url']]);
     }
 
-    public function test_validation_body_has_no_code_or_request_id(): void
+    public function test_validation_body_has_code_errors_and_request_id(): void
     {
         $body = $this->signIn($this->makeUser())->postJson('/api/applications', [])->json();
 
-        $this->assertSame(['message', 'errors'], array_keys($body)); // WART: no code/request_id
+        $this->assertSame(['message', 'code', 'errors', 'request_id'], array_keys($body));
+        $this->assertSame('validation_failed', $body['code']);
     }
 
-    public function test_domain_errors_raised_with_abort_use_the_same_422_shape_without_errors(): void
+    public function test_domain_errors_raised_with_abort_are_422_validation_failed_without_errors(): void
     {
         $this->signIn($this->makeUser())->postJson('/api/password', [
             'current_password' => 'nope',
             'password' => 'another-long-passphrase',
             'password_confirmation' => 'another-long-passphrase',
         ])->assertStatus(422)
-            ->assertExactJson(['message' => 'Current password is incorrect.']); // WART: differs from validation shape
+            ->assertJsonPath('code', 'validation_failed')
+            ->assertJsonPath('message', 'Current password is incorrect.')
+            ->assertJsonMissingPath('errors');
     }
 
     public function test_csrf_token_endpoint_returns_a_token(): void
@@ -151,8 +158,7 @@ class ErrorShapesTest extends TestCase
 
         $response = $this->postJson('/api/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123']);
 
-        $response->assertStatus(429);
-        $this->assertSame('Too Many Attempts.', $response->json('message'));
+        $response->assertStatus(429)->assertJsonPath('code', 'too_many_requests');
         $this->assertNotNull($response->headers->get('Retry-After'));
     }
 
@@ -162,26 +168,28 @@ class ErrorShapesTest extends TestCase
 
         $this->getJson('/api/_test/boom')
             ->assertStatus(500)
-            ->assertExactJson(['message' => 'Service temporarily unavailable.']);
+            ->assertJsonPath('code', 'server_error')
+            ->assertJsonPath('message', 'Service temporarily unavailable.');
     }
 
-    public function test_an_explicit_abort_503_is_rewritten_to_a_500(): void
+    public function test_an_explicit_abort_503_stays_503(): void
     {
         Route::middleware('web')->get('/api/_test/unavailable', fn () => abort(503, 'Upstream is down'));
 
         $this->getJson('/api/_test/unavailable')
-            ->assertStatus(500) // WART: should stay 503
-            ->assertExactJson(['message' => 'Service temporarily unavailable.']);
+            ->assertStatus(503)
+            ->assertJsonPath('code', 'upstream_unavailable');
     }
 
-    public function test_ai_with_no_enabled_provider_is_a_generic_500(): void
+    public function test_ai_with_no_enabled_provider_is_503_upstream_unavailable(): void
     {
         $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
-            ->assertStatus(500) // WART: abort(503, 'No enabled AI provider...') is rewritten to 500
-            ->assertExactJson(['message' => 'Service temporarily unavailable.']);
+            ->assertStatus(503)
+            ->assertJsonPath('code', 'upstream_unavailable')
+            ->assertJsonPath('message', 'The service is temporarily unavailable. Please try again later.');
     }
 
-    public function test_ai_when_every_provider_fails_is_a_generic_500(): void
+    public function test_ai_when_every_provider_fails_is_503_upstream_unavailable(): void
     {
         Integration::create([
             'provider' => 'openai', 'type' => 'ai', 'secret' => 'sk-test-secret', 'model' => 'gpt-4o-mini',
@@ -190,8 +198,8 @@ class ErrorShapesTest extends TestCase
         Http::fake(['*' => Http::response(['error' => 'boom'], 500)]);
 
         $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
-            ->assertStatus(500) // WART: should be 503 upstream_unavailable
-            ->assertExactJson(['message' => 'Service temporarily unavailable.']);
+            ->assertStatus(503)
+            ->assertJsonPath('code', 'upstream_unavailable');
 
         $this->assertDatabaseHas('ai_usage', ['provider' => 'openai', 'success' => false]);
     }
@@ -208,8 +216,8 @@ class ErrorShapesTest extends TestCase
         Log::spy();
 
         $response = $this->signIn($this->makeUser())->postJson('/api/ai/chat', ['message' => 'hello'])
-            ->assertStatus(500)
-            ->assertExactJson(['message' => 'Service temporarily unavailable.']);
+            ->assertStatus(503)
+            ->assertJsonPath('code', 'upstream_unavailable');
 
         $this->assertStringNotContainsString('GEMINI-KEY-123', $response->getContent());
         $usage = \DB::table('ai_usage')->first();
@@ -228,7 +236,7 @@ class ErrorShapesTest extends TestCase
         $this->assertSame('strict-origin-when-cross-origin', $response->headers->get('Referrer-Policy'));
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
         $this->assertFalse($response->headers->has('Content-Security-Policy'));
-        $this->assertFalse($response->headers->has('X-Request-Id')); // WART: no request id
+        $this->assertTrue($response->headers->has('X-Request-Id'));
     }
 
     public function test_cors_never_echoes_a_foreign_origin_and_allows_credentials(): void

@@ -214,7 +214,7 @@ Build order; each slice is its own branch and PR (small atomic commits, tests, b
 
 - `lib/backend-api.ts`: prefix `/api` → `/api/v1` (single place), surface `code` and `errors` on `BackendApiError`, fill `retryAfter` from the header, `isAuthError` = `401` only (today `403` also counts, which would send a suspended or non-admin user to the login page).
 - Update call sites for the renames in §3.2 (`login/register/logout/otp/password`, `cv → cv-documents`, `career/* → cv-versions, job-workspaces, interviews, reports, library, me/*, ai/*`, admin renames) plus the raw fetches in `lib/seo.ts` and `features/blog/blog.ts`.
-- Remove the stale `safeMessage` status strings in favor of the API's `message`/`code`.
+- **Localization (decided):** the frontend maps the error `code` (and, for `validation_failed`, the field names in `errors`) to localized FR/EN text and **does not display the API `message` directly**. `message` is for logs and developers. Replace the status-based `safeMessage` strings in `lib/backend-api.ts` with a `code → i18n key` table, with a generic per-status fallback for unknown codes. `request_id` is shown in a "support reference" detail on server errors.
 - Typed response interfaces per endpoint (Resources in §5 are the source).
 
 ## 11. Intentional behavior changes (everything else stays the same)
@@ -228,6 +228,8 @@ Build order; each slice is its own branch and PR (small atomic commits, tests, b
 7. New endpoints: blog (public + admin), `POST admin/users`.
 8. `ai/improve-cv` and `cv/{id}/analyze` are not exposed under v1.
 9. Gemini key sent in a header; provider errors redacted.
+10. A JSON request body that is not valid JSON returns `400 bad_request` (previously it was read as empty input and usually ended as a `422`). _(S1)_
+11. Every response carries `X-Request-Id`; 5xx responses always use a generic message (the cause is logged with the request id); `abort(503)` stays `503` instead of being rewritten to `500`; API routes answer JSON regardless of `Accept`. _(S1)_
 
 ## 12. Commands
 
@@ -366,3 +368,5 @@ final class ApplicationController
 9. **`contact` → `contact-messages`:** OK.
 10. **Blog extras:** none for now (no image, tags or categories).
 11. **Delivery:** one branch and PR per slice S0–S7; the maintainer merges each before the next starts.
+12. **Provider connection failures (S3 decision, recorded in S1):** `IntegrationController::test` and `MailSettingsController` keep `422` in S1 (the S1 safety net tags them `validation_failed`). In S3 they use only existing codes: provider answered with an error → `502 upstream_invalid_response`; provider unreachable or timed out → `503 upstream_unavailable`. No new codes.
+13. **Phase 2b localization:** see §10 (map `code` to FR/EN text; never show `message`).

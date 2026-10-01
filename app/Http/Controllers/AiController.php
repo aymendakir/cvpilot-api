@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\UpstreamInvalidResponseException;
 use App\Models\CareerReport;
 use App\Models\CvDocument;
 use App\Services\AdminReview;
@@ -66,10 +67,10 @@ PROMPT;
             }
         }
         if ($review && $language === 'French' && ResumeLanguage::clearlyEnglish($reviewText($review))) {
-            return response()->json(['message' => 'The review could not be completed in the CV language. Please retry.'], 502);
+            throw new UpstreamInvalidResponseException('The review could not be completed in the CV language.');
         }
         if (! $review) {
-            return response()->json(['message' => 'The review could not be completed. Please retry.'], 502);
+            throw new UpstreamInvalidResponseException('The AI review could not be parsed.');
         }
         if (($d['report_format'] ?? '') !== 'structured') {
             $answer = $review['summary'];
