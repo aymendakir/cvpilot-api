@@ -1,20 +1,20 @@
-# Task list — Phase 3, slice S3 (`ats-scoring`)
+# Task list — Phase 3, slice S4 (`ats-api`)
 
-Branch `feature/ats-s3`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §5.2, §6, §8.
-Status: **T1–T5 built; PR opened (Checkpoint B).** Decisions 22–27 and Checkpoint A (with copy changes) approved.
+Branch `feature/ats-s4`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §5, §8.4.
+Status: **planned; waiting for approval of decisions 28–30.**
 
-- [x] T1 Points, categories, caps, grade, status; golden scores reproduced
-- [x] T2 What-if and suggestions; golden top-3 ids and impacts reproduced
-- [x] T3 EN/FR message catalog with parity test
+- [ ] T1 File size format per locale (requested fix after S3)
+- [ ] T2 Route, request, controller, Resource
+- [ ] T3 Error cases (422 errors.file / cv_text / job_description / locale)
 
 ### Checkpoint A
 
-- [x] Maintainer reviews the French and English copy and the scoring rules table
+- [ ] Maintainer reviews request rules, error reasons and the schema approach
 
-- [x] T4 Report assembly and `AtsAnalyzer` (full §5.2 shape, determinism, time budget)
-- [x] T5 Spec, docs, open the PR, **STOP**
+- [ ] T4 JSON Schema and contract test
+- [ ] T5 Determinism, privacy, performance
+- [ ] T6 Spec, docs, open the PR, **STOP**
 
 ### Checkpoint B (final)
 
-- [x] PR opened
-- [ ] S4 planned after merge
+- [ ] PR opened; Phase 4 (frontend) spec after merge
