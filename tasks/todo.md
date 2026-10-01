@@ -1,19 +1,21 @@
-# Task list — Phase 3, slice S0 (PDF spike and fixtures)
+# Task list — Phase 3, slice S1 (`ats-language` + `ats-parsing`)
 
-Branch `feature/ats-s0`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §4.1, §8, §12 R1, §16, §17.
-Status: **T1–T5 built; S0 PR opened.** Checkpoint A approved (fixtures, FR text, five spec-gap recommendations). Decisions: real PDFs arrive before T4 (local only, deleted after the spike); throwaway spike script; hand-written encrypted PDF.
+Branch `feature/ats-s1`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §2–§4, §7, §8.3, §17; input `docs/ats-spike-s0.md`.
+Status: **planned; waiting for maintainer approval** (decisions 1–3 in the plan).
 
-- [x] T1 `setasign/fpdf` (dev), BASE-EN/BASE-FR content, `build.php`, clean fixtures
-- [x] T2 Problem variants, corrected variants, error-case files
-- [x] T3 Jobs, `expected/*.json`, `manifest.json`, `FixturesTest`
+- [ ] T1 Tooling: poppler-utils + intl in Docker/CI, `wamania/php-stemmer`, `config/ats.php`, failing-if-missing test, DEPLOYMENT/README
+- [ ] T2 `ats-language`: normalizer, tokenizer, stop words, stemmer, language detector; §8.3 stem facts
+- [ ] T3 Parsing core, `TextParser`, `DocxParser`
 
 ### Checkpoint A
 
-- [x] Review with maintainer (fixtures, FR text, expected values)
+- [ ] Review with maintainer (DTOs, DOCX signals, stem facts)
 
-- [x] T4 Spike probe on generated (and real) PDFs
-- [x] T5 `docs/ats-spike-s0.md`, open the PR, **STOP**
+- [ ] T4 Poppler wrapper and `PdfParser`
+- [ ] T5 Fixture-wide parsing tests, time budget, temp-file check
+- [ ] T6 Drop smalot (decision 1), delete the spike probe
+- [ ] T7 Spec/docs, open the PR, **STOP**
 
 ### Checkpoint B (final)
 
-- [x] PR opened; maintainer decides smalot vs poppler; S1 planned after merge
+- [ ] PR opened; S2 planned after merge
