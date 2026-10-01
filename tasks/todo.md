@@ -1,20 +1,22 @@
-# Task list — Phase 2, slice S5 (blog and `POST admin/users`)
+# Task list — Phase 2, slice S6 (ops: scheduler, deployment guide)
 
-Branch `refactor/api-s5-blog`. Detail: `tasks/plan.md`. Spec: `SPEC.md` §8.
-Status: **T1–T6 built; S5 PR opened.**
+Branch `refactor/api-s6-ops`. Detail: `tasks/plan.md`. Spec: `SPEC.md` §7 item 6, §18 items 2 and 8.
+Status: **plan updated for the no-persistent-disk finding; T1–T8 built; S6 PR opened.** Open: decisions 2, 3 (built as recommended, easy to drop), 5 (R2 or no file storage) and 6 (database cache).
 
-- [x] T1 Migration, `BlogPost` model, `BlogPostResource`
-- [x] T2 Public `GET blog` and `GET blog/{slug}` (cacheable, cookie-free)
-- [x] T3 Admin blog CRUD
+- [x] T1 Retention proven through the scheduler (files removed, fresh data kept, heartbeat)
+- [x] T2 Entrypoint roles, compose `scheduler` service, `api` healthcheck, CI checks
+- [x] T3 `TRUSTED_PROXIES` and the `admin/system` retention heartbeat
 
 ### Checkpoint A
 
 - [x] Review with maintainer
 
-- [x] T4 `POST admin/users`
-- [x] T5 Contract bookkeeping and docs
-- [x] T6 Fresh-clone checks, open the PR, **STOP**
+- [x] T4 Database sessions and cache in production
+- [x] T5 Logs to stderr in production
+- [x] T6 Stop storing uploaded originals (no R2); `disk_path` nullable + cleanup migration
+- [x] T7 `docs/DEPLOYMENT.md`, README, `.env.example`, guide-vs-config test
+- [x] T8 SPEC note, fresh-clone checks, open the PR, **STOP**
 
 ### Checkpoint B (final)
 
-- [x] PR opened; maintainer merges S5 before S6 is planned
+- [x] PR opened; maintainer merges S6 before the cutover, S7 and Phase 2b are planned

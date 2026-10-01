@@ -1,78 +1,111 @@
-# Implementation Plan: Phase 2, slice S5 — blog and `POST admin/users`
+# Implementation Plan: Phase 2, slice S6 — ops (scheduler, deployment guide)
 
-Spec: `SPEC.md` §8.1 (blog), §8.2 (`POST admin/users`), §18 items 3 and 10. S0–S4 are merged and deployed. This plan covers **S5 only**; S6 (scheduler, `docs/DEPLOYMENT.md`) and S7 (alias sunset) are planned afterwards, one at a time.
+Spec: `SPEC.md` §7 item 6, §18 items 2 and 8, and the S6 scope note (including the `SESSION_SAME_SITE` switch added after S4). S0–S5 are merged and deployed. This plan covers **S6 only**; S7 (alias sunset) and Phase 2b (frontend on `/api/v1`) come after.
 
-Branch: `refactor/api-s5-blog` (from `main` after S4). One PR. Stop after opening it.
+Branch: `refactor/api-s6-ops` (from `main` after S5). One PR. Stop after opening it.
 
 ## Overview
 
-The deployed frontend already calls three endpoints that the API does not have yet, so blog pages, the admin blog editor, the sitemap's article list and the admin "Create a user" form all fail today. S5 adds them:
+Two promises in the product are not true in production today:
 
-- `GET blog`, `GET blog/{slug}` (public, published posts only);
-- `GET/POST admin/blog`, `GET/PUT/DELETE admin/blog/{id}` (admin);
-- `POST admin/users` (admin creates an account).
+1. **Retention (48 h).** Uploaded CVs, admin copies and old support messages are deleted by `cvpilot:prune-temporary`, which is scheduled hourly in `routes/console.php`, but **nothing runs the scheduler**: no cron entry, no `schedule:work` process. Expired uploads stay on disk.
+2. **Same-site cookies.** S4 made `lax` the default, and production runs with an explicit `SESSION_SAME_SITE=none` until the API and frontend share a registrable domain. Nobody has written down how to get there.
 
-One additive migration (`blog_posts`) is the only schema change; it is pre-approved in the spec.
+S6 makes the scheduler run (and proves it), adds one small piece of proxy configuration the TLS setup needs, and writes `docs/DEPLOYMENT.md`, including the runbook for the switch to `lax`.
+
+## New finding (maintainer, after the first plan): Sevalla has no persistent disk
+
+Everything under `storage/` is **lost on every deploy and restart**: uploaded CV files, file sessions, the file cache and the log file. That changes S6 from "run the scheduler" to "make the app stateless". New tasks T4–T7 below (they come after T3 / Checkpoint A).
+
+What breaks today after a redeploy (verified in the code):
+
+| What lives in `storage/` | Effect of a redeploy |
+| --- | --- |
+| **Sessions** (`SESSION_DRIVER=file`) | **Every signed-in user and admin is signed out at every deploy.** |
+| **Cache** (`file`): OTP codes (10 min), login/register/API rate-limit counters, the register notice cooldown, the Microsoft token lock, the 5-minute job-search cache | Pending OTP codes stop working (the user requests a new one); rate-limit counters reset. No data loss. |
+| **Uploaded CV files** (`storage/app/private/cv/{user}/…`) | The files vanish; the `cv_documents` rows (name, size, `extracted_text`, `expires_at`) stay and point to a missing file. Nothing reads these files any more: the only readers were the admin download and the user download, removed in S3 and the frontend cleanup. Deleting a record and the prune command both tolerate a missing file (checked `exists()` first, `throw => false`), and the rows disappear on their own 48 hours after upload, once the scheduler runs. The CV list and ATS flows use the `extracted_text` column, so they keep working. |
+| **Log file** (`storage/logs/laravel.log`) | Logs vanish on redeploy, so errors cannot be investigated afterwards. |
+| **Compiled views** | Rebuilt on demand; no effect. |
+
+**Important consequence for T6 (R2):** since nothing reads the uploaded originals, moving them to Cloudflare R2 adds a paid service and a dependency to keep files nobody can open. The cheaper and more private alternative is to stop storing the original file at all (keep only `extracted_text` and metadata). T6 is written for R2 as you decided; I recommend you choose between the two at Checkpoint A (decision 5 below).
 
 ## Current state (read, not changed)
 
-- No blog table, model or routes. `PublicEndpointsTest` pins today's `404` for `/api/blog`, `/api/blog/some-post` and `/api/admin/blog` as a GAP that S5 flips.
-- The frontend (`cv-ai` @ main) calls the **legacy** paths: `GET /api/blog?page=`, `GET /api/blog/{slug}` (server-side, `no-store`, 5 s timeout, also from `sitemap.ts` which pages through `last_page` up to 100 times), `GET/POST /api/admin/blog`, `PUT/DELETE /api/admin/blog/{id}` and `POST /api/admin/users`. Phase 2b moves it to `/api/v1`.
-- The admin blog form limits: title ≤ 180, slug ≤ 180 matching `[a-z0-9]+(-[a-z0-9]+)*`, excerpt required ≤ 320, author ≤ 120, body 100–100 000 characters, status `draft` or `published`. The create-user form sends `name, email, password, password_confirmation, role, verified` and `confirm_admin` (only for admins), expects no email to be sent.
-- S3/S4 give us the building blocks: FormRequests, Resources, the `admin` limiter (60/min) and the `admin.audit` middleware (every admin write is audited as `admin.<route name>` automatically), `ApiFormRequest::paginationRules()`/`perPage()`.
-- `SecurityHeaders` sets `Cache-Control: no-store, private` on every `api/*` response, and the API runs inside the `web` middleware group, so every response starts a session and may carry a `Set-Cookie`.
+- `routes/console.php`: `Schedule::command('cvpilot:prune-temporary')->hourly()`. The command calls `TemporaryDataCleanup` (expired `cv_documents` + their files, support messages older than 90 days, expired `admin_review_items`). It is only tested by a legacy script (`tests/legacy/workspace.php`), not by PHPUnit, and never through the scheduler.
+- `compose.yaml`: services `api` (Apache, `./storage` on the `documents` volume) and `db`. No scheduler. No healthcheck on `api`.
+- `docker-entrypoint.sh` always runs `php artisan optimize:clear` and `php artisan migrate --force` (retrying up to 12 times) before starting whatever the command is. A second container from the same image would run the migrations again, concurrently.
+- `bootstrap/app.php` does not configure trusted proxies. Behind a TLS-terminating proxy (Sevalla, Cloudflare, Caddy) `$request->isSecure()` is false unless the proxy headers are trusted, so `SecurityHeaders` never sends HSTS and URL generation can fall back to `http`.
+- `GET admin/system` reports PHP/Laravel versions, database and SMTP state, nothing about the scheduler.
+- `.env.example` has `SESSION_*` for local use; the README explains local Docker only. `docs/` holds `ERRORS.md` and `ROUTES.md`.
+- The Microsoft OAuth redirect URI is built from `APP_URL` (`/api/admin/smtp/microsoft/callback`) and is registered with Microsoft, so changing `APP_URL` to `api.<domain>` **breaks SMTP sign-in until the new URI is registered**.
 
-## Decisions (recommendations; tell me if any is wrong)
+## Decisions I need from you (before /build)
 
-1. **Legacy aliases for the new routes.** Because the deployed frontend calls the legacy paths, S5 registers legacy aliases next to the v1 routes (`GET api/blog`, `GET api/blog/{slug}`, `GET|POST api/admin/blog`, `GET|PUT|DELETE api/admin/blog/{post}`, `POST api/admin/users`), each with the usual `Deprecation`/`Link` headers. They are deleted in S7 with the others. Without them the live site stays broken until Phase 2b.
-2. **`POST admin/users` returns `AdminUserResource`** (the spec says `UserResource`): it is a superset that also carries `suspended`, `last_seen_at` and `created_at`, which the admin list shows. The password and hashes never appear in either.
-3. **Un-publishing keeps `published_at`.** It is set the first time a post is published and never reset, so a post that goes back to draft and is re-published keeps its original date. Public lists order by `published_at` descending.
-4. **Public blog responses are cacheable and cookie-free** (`Cache-Control: public, max-age=60`, spec §8.1). That needs the two public routes to skip the session middleware, otherwise every response would carry a `Set-Cookie` and no cache could store it. They get their own per-IP limiter (60/min). All other API routes stay `no-store`.
-5. **Body limits copy the form:** body 100–100 000 characters, excerpt ≤ 500 (column size; the form allows 320), title ≤ 180, slug ≤ 191 by the column but the rule uses the same regex as the spec.
+1. **Sevalla (answered): no persistent disk.** A scheduler on the web container is therefore fine, because the prune command will act on the database and on the configured object store, never on local paths. The opt-in `RUN_SCHEDULER=true` (one `schedule:work` beside Apache in the single web container) is the production design; the compose file keeps the separate `scheduler` service for local Docker. The heartbeat (decision 3) must live in the **database**, not the file cache, because the cache is wiped on deploy.
+2. **`TRUSTED_PROXIES` (small change outside the scheduler).** Add `trustProxies(at: env TRUSTED_PROXIES)` to `bootstrap/app.php` (unset = none, `*` for managed platforms) so HSTS and `isSecure()` work behind the proxy. Your spec marks "CI/Docker/compose beyond the scheduler service" as ask-first, and this is application config, so I am asking. Without it the HSTS header from S4/earlier never reaches browsers in production.
+3. **Scheduler heartbeat in `admin/system`.** The prune command stores `last_run_at`; `admin/system` returns `retention.last_run_at` and `retention.healthy` (ran within the last 3 hours). It is the only way an admin can see that the scheduler is alive. It adds two fields to an admin-only response; the frontend ignores unknown fields. OK?
+4. **Domain.** I will write the guide with `<domain>` placeholders (frontend `app.<domain>`, API `api.<domain>`). Tell me the real domain if you want it filled in.
+5. **Uploaded originals (decided: do not store them).** _Earlier draft: R2_ through Laravel's S3 driver (`league/flysystem-aws-s3-v3`, approved; R2 is a paid service, so this is the one cost item, the free tier is 10 GB). My recommendation after the finding above: nobody reads the originals, so consider dropping file storage and keeping only `extracted_text`; it removes the cost, the dependency and the stale-file problem. T6 is built for R2 unless you say otherwise at Checkpoint A.
+6. **Production cache (decided: database).** With a wiped file cache, OTP codes and rate limits reset on every deploy. I plan `CACHE_STORE=database` in production beside the sessions (same database, no new service, `cache` and `cache_locks` tables, locks keep working). Say if you prefer to keep the file cache.
 
 ## Architecture
 
-- **Migration** `blog_posts`: `id, title(180), slug(191, unique), excerpt(500), body(text), author_name(120), status(20, default draft), published_at(nullable), timestamps`, index on `(status, published_at)`. Model `BlogPost` with `STATUSES = ['draft', 'published']` (single-sourced for the rules) and a `published()` scope.
-- **Routes:** public (`v1.blog.index`, `v1.blog.show`, `whereNumber`-style slug constraint `[a-z0-9]+(?:-[a-z0-9]+)*`; an invalid slug is a plain `404`). Admin group: `v1.admin.blog.{index,store,show,update,destroy}` with `whereNumber('post')`. `POST v1/admin/users` as `v1.admin.users.store`, extra limiter `throttle:10,1,admin-create-user:`.
-- **FormRequests** (`app/Http/Requests/Blog`, `Admin`): `ListPublishedPostsRequest` (`page`), `ListPostsRequest` (admin: `page`, `per_page`, optional `status`), `SavePostRequest` (shared by store and update; slug unique, ignoring the post being updated; status enum; all fields required because the form always sends them), `CreateUserRequest` (`name`, normalized `email` unique, `password` min 12 max 128 confirmed, `role` in user/admin, `verified` boolean, `confirm_admin` `accepted_if:role,admin`).
-- **Resources:** `BlogPostResource` with exactly `{ id, title, slug, excerpt, body, author_name, status, published_at, updated_at }`; users via `AdminUserResource`. Public lists use `ModelResource::paginate()` so the paginator keys (`data`, `current_page`, `last_page`, …) match what `BlogPage` expects.
-- **Controllers:** `BlogController` (public), `Admin\BlogPostController`, and `AdminController::storeUser`.
-- **`POST admin/users` rules of engagement:** hashed password, `verified_at` only when `verified` is true, `role` set explicitly (never mass-assigned from the request), no email sent, audited by the middleware plus a specific `user_created:<id>` event (and `admin_account_created:<id>` when the role is admin). The new account signs in like any other (unverified accounts must verify first).
-- **Contract bookkeeping:** `routes-v1.json`, `docs/ROUTES.md`, the contract test's `LATER_SLICES` list, and the pinned GAP test in `PublicEndpointsTest` are updated in the same commits as the routes.
+- **Entrypoint modes.** `docker-entrypoint.sh` runs migrations only for the web role (command `apache2-foreground`, or `RUN_MIGRATIONS=true`); other roles (the scheduler) skip them, so two containers never migrate at once. `RUN_SCHEDULER=true` starts `php artisan schedule:work` in the background of the web container (killed with it on stop).
+- **Compose.** New `scheduler` service: same image, `.env`, and `documents` volume; `command: php artisan schedule:work`; `restart: unless-stopped`; waits for a healthy `api` (new healthcheck on `/up`). `RUN_MIGRATIONS=false`.
+- **Schedule.** `cvpilot:prune-temporary` stays hourly, gains `->withoutOverlapping()` and `->onFailure()` logging; the command records a heartbeat in the cache (shared `storage` volume).
+- **Trusted proxies.** `TRUSTED_PROXIES` env (comma list or `*`); tests send `X-Forwarded-Proto: https` from a trusted and an untrusted peer.
+- **Docs.** `docs/DEPLOYMENT.md` (sections below) and a README pointer; `.env.example` gains the new variables with comments. A test keeps the guide honest: every environment variable named in its tables exists in `.env.example` or `config/`.
+
+## `docs/DEPLOYMENT.md` outline
+
+1. Topology: `app.<domain>` (frontend), `api.<domain>` (API), why same-site (Safari/ITP), what stays private (MySQL).
+2. DNS and TLS for both hostnames; proxy settings (`TRUSTED_PROXIES`, forwarded headers).
+3. Environment: a table per service (API and frontend) with every variable, its production value, and what breaks if wrong (`APP_URL`, `FRONTEND_URL`, CORS, `SESSION_DOMAIN=.<domain>`, `SESSION_SAME_SITE`, `SESSION_SECURE_COOKIE`, `NEXT_PUBLIC_BACKEND_URL`, `BACKEND_INTERNAL_URL`).
+4. Scheduler: compose service, the single-container option, how to check it (`admin/system`, `php artisan schedule:list`).
+5. Migrations and release order (the entrypoint migrates on start; additive migrations first, code after; the `blog_posts`, `last_error` and purge migrations already shipped).
+6. **Runbook: the switch from `SESSION_SAME_SITE=none` to `lax`** (preconditions, ordered steps, verification with a real login and the cookie flags, what users see: everyone is signed out once because the cookie domain changes).
+7. **Microsoft OAuth**: re-register the redirect URI `https://api.<domain>/api/admin/smtp/microsoft/callback` before changing `APP_URL`.
+8. Rollback for each step; known limits (file sessions and file cache mean one API instance and one shared `storage` disk; do not scale horizontally without moving sessions and cache to a shared store).
 
 ## Task list
 
-Rules for every task: write the test first, flip a characterization test only in the commit that changes the behaviour, `composer lint` + `composer test` + `composer test:scripts` before each commit.
+Rules for every task: write the test first, `composer lint` + `composer test` + `composer test:scripts` before each commit.
 
-- **T1** Migration, `BlogPost` model and `BlogPostResource`; migration test (table, unique slug, index) and a resource shape test.
-- **T2** Public `GET blog` and `GET blog/{slug}` (v1 + legacy alias): published only, newest first, 12 per page, drafts and unknown slugs `404`, `Cache-Control: public, max-age=60`, no `Set-Cookie`, per-IP limiter; flips the GAP test for `/api/blog`.
-- **T3** Admin blog CRUD (v1 + legacy aliases): create `201`, update, delete `204`, list with drafts, `published_at` rules, duplicate slug `422 validation_failed` (also on update, but not against itself), invalid slug/status/length `422`, body stored and returned as plain text (HTML is not interpreted or stripped), audit rows via the middleware; flips the GAP test for `/api/admin/blog`.
+- **T1** Retention under test: a PHPUnit test that the schedule contains `cvpilot:prune-temporary` hourly without overlap, and that `schedule:run` at the right minute deletes expired uploads **and their files**, expired admin copies and support messages older than 90 days, while fresh ones, saved work and users survive. Heartbeat written by the command.
+- **T2** Entrypoint modes and the compose `scheduler` service plus `api` healthcheck; CI gains `sh -n docker-entrypoint.sh` and `docker compose config`; a test that runs the entrypoint's role decision with a stub (no Docker needed).
+- **T3** `TRUSTED_PROXIES` and the `admin/system` retention heartbeat (decisions 2 and 3), with tests.
 
 ### Checkpoint A (after T3)
 
-Show: the blog contract against the frontend's `BlogPost`/`BlogPage` types, the cache and cookie headers, the slug and `published_at` behaviour. Review with maintainer.
+Show: the retention test (including the file removal), the entrypoint behaviour per role, the compose file, the HSTS-behind-proxy test. Review with maintainer.
 
-- **T4** `POST admin/users` (v1 + legacy alias): `201` with `AdminUserResource`, role and `verified` handling, `confirm_admin` rule, duplicate email `422`, password never returned or logged, audit events, limiter; a created admin or user can sign in (verified) or is told to verify (unverified).
-- **T5** Contract bookkeeping and docs: update `routes-v1.json`, regenerate `docs/ROUTES.md`, remove the S5 entries from `LATER_SLICES`, SPEC §11 item for S5, `docs/ERRORS.md` untouched (no new codes).
-- **T6** Fresh-clone checks (`composer lint`, `composer test`, `composer test:scripts`, `route:cache`, `composer audit`), open the PR with a deploy note (the migration runs from the entrypoint) and **STOP**.
+- **T4** Stateless sessions and cache: production `SESSION_DRIVER=database` and `CACHE_STORE=database` (migrations for `sessions`, `cache`, `cache_locks`; the file drivers stay the default for local and tests). Tests: a login survives across requests with the database driver, OTP and rate limits work on the database store, and the session boot guard (S4) still holds.
+- **T5** Logs: `LOG_CHANNEL=stderr` in production (a `stderr` channel that keeps the S4 secret-redaction tap); test that the redaction applies on the stderr channel.
+- **T6** Stop storing uploaded originals (maintainer decision; replaces R2, no new dependency, no paid service): the upload is processed from PHP's temp file, its text is extracted, and the temp file is deleted in a `finally` block; only `extracted_text` and metadata are stored. `cv_documents.disk_path` becomes nullable and unused (expand step); a data migration deletes any stored originals and nulls the column. The prune command and account deletion keep a defensive file delete for rows that still have a path. Dropping the column is a later contract step (an old instance still running during a rolling deploy would otherwise fail on insert). Tests: nothing is written to any disk, the temp file is gone after success and after a rejected file, the migration cleans old rows.
+- **T7** `docs/DEPLOYMENT.md` (now also: `storage/` is ephemeral on Sevalla, R2 bucket and token setup, every new env var, database sessions/cache, stderr logs, what a redeploy does and does not lose), README pointer, `.env.example`, and the guide-vs-config test.
+- **T8** SPEC §11 note, fresh-clone checks, open the PR (it starts with the Sevalla steps: env vars, R2 bucket, scheduler, `TRUSTED_PROXIES`) and **STOP**.
 
 ### Checkpoint B (final)
 
-- [ ] CI green; legacy table = baseline + the new aliases only
-- [ ] Every v1 route matches SPEC §3.2 including blog and `POST admin/users`
-- [ ] Maintainer merges S5 before S6 is planned
+- [ ] CI green (lint, tests, scripts, audit, `route:cache`, entrypoint syntax, `docker compose config`)
+- [ ] Retention proven by the scheduler path (database and object-store), not by local paths
+- [ ] Nothing the app needs lives in `storage/` in production (sessions, cache, files, logs)
+- [ ] Maintainer merges S6 before the domain cutover and before S7 and Phase 2b are planned
 
 ## Risks
 
 | Risk | Mitigation |
 | --- | --- |
-| Public blog routes leak a session cookie or get cached with one | Routes skip the session middleware; test asserts no `Set-Cookie` and the exact `Cache-Control` |
-| A draft becomes publicly readable | One `published()` scope used by both public routes; tests for list, show and sitemap-style paging |
-| Stored article body is rendered as HTML somewhere | API returns it as JSON text with `nosniff`; test pins that HTML is stored verbatim; the frontend renders text (`AiResponse`) |
-| `POST admin/users` creates an admin by accident | `confirm_admin` must be exactly `true` for `role=admin`; audited under two events; limiter 10/min |
-| Duplicate slug race between two saves | Validation rule plus the database unique index; a unique-violation maps to the same `422` |
-| The sitemap loops on `last_page` | Paginator always reports `last_page >= 1`; test with zero, one and many posts |
+| The scheduler cannot see the uploads disk, so nothing is deleted | Decision 1; the heartbeat only proves the job ran, so the guide also says to confirm on the disk that an expired file is gone; the test proves file removal |
+| The new `sessions`/`cache` tables are missing when the new env vars are set | Migrations ship in this PR and run from the entrypoint before Apache starts; the guide orders the steps: deploy first, then switch the env vars |
+| Signing everyone out once when sessions move to the database | Expected and documented; do it at a quiet moment together with the first deploy |
+| R2 credentials leak into logs/errors | The S4 log redaction covers common key shapes; the guide uses a bucket-scoped token and tests assert none is logged |
+| Two containers migrate at once | Migrations only for the web role; the scheduler sets `RUN_MIGRATIONS=false` |
+| `RUN_SCHEDULER=true` leaves a zombie or dies silently | The loop is restarted by a tiny `while` supervisor in the entrypoint and logged; the heartbeat in `admin/system` shows if it stops |
+| `TRUSTED_PROXIES=*` accepted from the open internet | Documented as correct only when the container is reachable solely through the platform proxy; default is none |
+| Switching to `lax` breaks login | The guide makes it a separate, reversible step after the domain works; rollback is one env var |
+| Changing `APP_URL` breaks Microsoft SMTP | Guide step 7: register the new redirect URI first |
 
 ## Out of scope
 
-Blog images, tags, categories (decision 10), comments, scheduled publishing, user invitation emails, the scheduler and `DEPLOYMENT.md` (S6), alias removal (S7).
+Horizontal scaling beyond what database sessions/cache allow, a CDN, monitoring/alerting beyond the heartbeat, the actual domain purchase and DNS, Phase 2b (frontend), S7 (alias sunset).

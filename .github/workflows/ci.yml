@@ -50,6 +50,12 @@ jobs:
       - name: Legacy script tests
         run: composer test:scripts
 
+      - name: Container files (entrypoint syntax, compose file)
+        run: |
+          sh -n docker-entrypoint.sh
+          cp .env.example .env
+          DB_PASSWORD=ci MYSQL_ROOT_PASSWORD=ci docker compose config -q
+
       - name: Route cache (no closures in routes)
         run: php artisan route:cache && php artisan route:clear
 

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\Admin\SaveSiteSettingsRequest;
 use App\Models\SiteSetting;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -46,6 +48,16 @@ class SiteSettingsController
             'database_connected' => $connected,
             'smtp_configured' => DB::table('mail_settings')->exists() || (bool) config('mail.mailers.smtp.host'),
             'active_integrations' => DB::table('integrations')->where('enabled', true)->count(),
+            'retention' => $this->retention(),
         ];
+    }
+
+    /** Proof that the scheduler runs: the hourly prune stamps a heartbeat; healthy means it ran in the last 3 hours. */
+    private function retention(): array
+    {
+        $lastRun = Cache::get('retention:last_run_at');
+        $healthy = $lastRun !== null && Carbon::parse($lastRun)->gt(now()->subHours(3));
+
+        return ['last_run_at' => $lastRun, 'healthy' => $healthy];
     }
 }

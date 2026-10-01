@@ -74,7 +74,7 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
         Route::get('analytics', [InsightsController::class, 'analytics'])->name('analytics');
     });
 
-    // CV documents (uploads kept for 48 hours) and stateless text extraction
+    // CV documents (extracted text and metadata kept for 48 hours; the original file is never stored) and stateless text extraction
     Route::prefix('cv-documents')->name('cv-documents.')->group(function () {
         Route::get('/', [CvController::class, 'index'])->name('index');
         Route::post('/', [CvController::class, 'store'])->middleware('throttle:10,1,cv:')->name('store');

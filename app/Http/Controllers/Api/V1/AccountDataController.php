@@ -32,7 +32,7 @@ class AccountDataController
         abort_if($user->role === 'admin', 422, 'Administrator accounts cannot be deleted through personal settings.');
         $data = $request->validated();
         abort_unless(Hash::check($data['current_password'], $user->password), 422, 'Current password is incorrect.');
-        $files = DB::table('cv_documents')->where('user_id', $user->id)->pluck('disk_path');
+        $files = DB::table('cv_documents')->where('user_id', $user->id)->whereNotNull('disk_path')->pluck('disk_path');
         foreach ($files as $path) {
             if (Storage::disk('local')->exists($path) && ! Storage::disk('local')->delete($path)) {
                 abort(503, 'An uploaded file could not be removed. Please retry.');

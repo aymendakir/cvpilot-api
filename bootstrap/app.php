@@ -10,6 +10,7 @@ use App\Http\Middleware\ForceJsonResponses;
 use App\Http\Middleware\RejectMalformedJson;
 use App\Http\Middleware\RequestId;
 use App\Http\Middleware\SecurityHeaders;
+use App\Support\TrustedProxies;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Route;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {
             Route::middleware('web')->prefix('api')->group(function () {
@@ -40,6 +42,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->prepend([RequestId::class, ForceJsonResponses::class, RejectMalformedJson::class]);
+        // Behind a TLS proxy (Sevalla, Cloudflare, Caddy) the proxy's forwarded headers must be trusted for HTTPS detection and HSTS.
+        $middleware->trustProxies(at: TrustedProxies::parse(env('TRUSTED_PROXIES')));
         $middleware->validateCsrfTokens(except: ['api/analytics/events', 'api/contact', 'api/v1/analytics/events', 'api/v1/contact-messages']);
         $middleware->append([EnsureErrorEnvelope::class, SecurityHeaders::class]);
         // Deprecation headers must also decorate responses produced by middleware that runs later (401/403/429).

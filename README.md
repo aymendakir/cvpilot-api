@@ -6,7 +6,7 @@ Production-oriented Laravel 12 + MySQL API for the CVPilot frontend.
 
 - Email/password registration, verified accounts, OTP verification/reset, session rotation and logout.
 - User profile and password change endpoints.
-- Private PDF/DOCX/TXT CV uploads and text extraction.
+- PDF/DOCX/TXT CV uploads with text extraction. The original file is never stored: only the extracted text and metadata are kept, for 48 hours.
 - Local ATS scoring with keyword, section, readability and impact breakdowns.
 - AI gateway for OpenAI, Anthropic, Gemini, Groq, Mistral and OpenRouter.
 - Location-aware job search through JSearch, Adzuna and Jooble, plus eligible public remote feeds and country-specific LinkedIn/Indeed searches.
@@ -30,6 +30,10 @@ Requirements: Docker Engine with the Compose plugin.
 7. Open `http://localhost:8080` locally or your HTTPS backend domain in production.
 
 The API service binds to `127.0.0.1:8080`; put Nginx, Caddy or a hosting proxy with TLS in front of it. MySQL has no host port and must remain private.
+
+## Production deployment
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): environment variables, the scheduler, database sessions/cache and stderr logs for hosts without a persistent disk, the `SameSite=none` to `lax` runbook, and Microsoft OAuth.
 
 ## Connect the frontend
 

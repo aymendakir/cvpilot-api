@@ -14,7 +14,7 @@ class TemporaryDataCleanup
         CvDocument::where('expires_at', '<=', now())->chunkById(100, function ($docs) {
             foreach ($docs as $doc) {
                 $disk = Storage::disk('local');
-                if ($disk->exists($doc->disk_path) && ! $disk->delete($doc->disk_path)) {
+                if ($doc->disk_path && $disk->exists($doc->disk_path) && ! $disk->delete($doc->disk_path)) {
                     throw new \RuntimeException('Could not remove expired upload.');
                 }
                 $doc->delete();
