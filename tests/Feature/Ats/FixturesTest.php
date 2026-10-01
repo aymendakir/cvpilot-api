@@ -2,15 +2,13 @@
 
 namespace Tests\Feature\Ats;
 
-use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Smalot\PdfParser\Parser;
 use Tests\TestCase;
 use ZipArchive;
 
 /**
  * The ATS fixtures (SPEC-ats.md §8) are what they claim to be. This checks the committed files with
- * today's libraries, independent of the engine that S1–S4 build: a later golden test can then trust
+ * the raw tools (ZIP/XML for DOCX, the poppler command line for PDF), independent of the engine: a later golden test can then trust
  * that, for example, two-column.pdf really has a sidebar and F3's CV really lacks Redis.
  */
 class FixturesTest extends TestCase
@@ -42,9 +40,24 @@ class FixturesTest extends TestCase
         return html_entity_decode(strip_tags($xml), ENT_QUOTES | ENT_XML1, 'UTF-8');
     }
 
+    /** @return array{exit: int, output: string} */
+    private static function poppler(string $binary, string ...$args): array
+    {
+        exec(escapeshellcmd($binary).' '.implode(' ', array_map('escapeshellarg', $args)).' 2>/dev/null', $lines, $exit);
+
+        return ['exit' => $exit, 'output' => implode("\n", $lines)];
+    }
+
     public static function pdfText(string $file): string
     {
-        return (new Parser)->parseFile(self::cv($file))->getText();
+        return self::poppler('pdftotext', '-enc', 'UTF-8', self::cv($file), '-')['output'];
+    }
+
+    public static function pdfPages(string $file): int
+    {
+        preg_match('/^Pages:\s+(\d+)/m', self::poppler('pdfinfo', self::cv($file))['output'], $m);
+
+        return (int) ($m[1] ?? 0);
     }
 
     /** @return list<string> */
@@ -122,7 +135,7 @@ class FixturesTest extends TestCase
             $this->assertEqualsWithDelta(480, count(self::words($text)), 24, "{$file}: ~480 words (±5 %)");
         }
         $this->assertSame(self::vocabulary($docx), self::vocabulary($pdf));
-        $this->assertCount(2, (new Parser)->parseFile(self::cv('clean-en.pdf'))->getPages());
+        $this->assertSame(2, self::pdfPages('clean-en.pdf'));
     }
 
     public function test_clean_cvs_have_ten_action_verb_bullets_four_of_them_quantified(): void
@@ -154,12 +167,15 @@ class FixturesTest extends TestCase
 
     // --- layout variants (F4, F5, F6, F7) and the R1 spike table PDF --------------------------------
 
-    /** x positions (pt) of the text runs on each page, from the PDF text matrices. */
+    /** Left x (pt) of each text line on each page, from `pdftotext -bbox-layout`. */
     private static function pdfRunsX(string $file): array
     {
+        $html = self::poppler('pdftotext', '-bbox-layout', '-enc', 'UTF-8', self::cv($file), '-')['output'];
+        preg_match_all('#<page .*?</page>#s', $html, $pagesHtml);
         $pages = [];
-        foreach ((new Parser)->parseFile(self::cv($file))->getPages() as $i => $page) {
-            $pages[$i + 1] = array_map(fn ($run) => (float) $run[0][4], $page->getDataTm());
+        foreach ($pagesHtml[0] as $i => $page) {
+            preg_match_all('#<line xMin="([\d.]+)"#', $page, $m);
+            $pages[$i + 1] = array_map('floatval', $m[1]);
         }
 
         return $pages;
@@ -199,11 +215,10 @@ class FixturesTest extends TestCase
 
     public function test_scanned_pdf_has_one_image_and_no_text(): void
     {
-        $pdf = (new Parser)->parseFile(self::cv('scanned.pdf'));
-
-        $this->assertCount(1, $pdf->getPages());
-        $this->assertSame('', trim($pdf->getText()));
-        $this->assertCount(1, $pdf->getObjectsByType('XObject', 'Image'));
+        $this->assertSame(1, self::pdfPages('scanned.pdf'));
+        $images = array_slice(explode("\n", trim(self::poppler('pdfimages', '-list', self::cv('scanned.pdf'))['output'])), 2);
+        $this->assertSame('', trim(self::pdfText('scanned.pdf')));
+        $this->assertCount(1, $images);
     }
 
     public function test_photo_icons_uses_a_small_photo_and_private_use_glyphs_and_the_fixed_variant_uses_labels(): void
@@ -294,12 +309,8 @@ class FixturesTest extends TestCase
         $this->assertStringStartsWith('MZ', (string) file_get_contents(self::cv('invalid/renamed-exe.pdf')));
 
         foreach (['invalid/encrypted.pdf', 'invalid/corrupt.pdf'] as $file) {
-            try {
-                (new Parser)->parseFile(self::cv($file))->getText();
-                $this->fail("{$file} should not be readable by smalot/pdfparser");
-            } catch (\Throwable $e) {
-                $this->assertNotInstanceOf(AssertionFailedError::class, $e, $e->getMessage());
-            }
+            $this->assertNotSame(0, self::poppler('pdftotext', self::cv($file), '-')['exit'], "{$file} must not be readable without a password or repair");
         }
+        $this->assertSame(0, self::poppler('pdftotext', '-upw', 'secret', self::cv('invalid/encrypted.pdf'), '-')['exit'], 'the encrypted fixture opens with its password');
     }
 }

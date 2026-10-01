@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Services\Ats\Parsing\PdfParser;
+use App\Services\Ats\Parsing\UnreadableDocument;
 use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpWord\IOFactory;
-use Smalot\PdfParser\Parser;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class DocumentExtractor
 {
@@ -76,7 +78,9 @@ class DocumentExtractor
                     $text = mb_convert_encoding($text, 'UTF-8', 'ISO-8859-1');
                 }
             } elseif ($type === 'pdf') {
-                $text = (new Parser)->parseFile($file->getRealPath())->getText();
+                // poppler, shared with the ATS checker (docs/ats-spike-s0.md). A missing binary is a
+                // server fault (500), not the user's file, so only UnreadableDocument becomes a 422 below.
+                $text = app(PdfParser::class)->parse($file->getRealPath())->text;
             } else {
                 $doc = IOFactory::load($file->getRealPath());
                 $parts = [];
@@ -88,10 +92,12 @@ class DocumentExtractor
                     }
                 }$text = implode("\n", $parts);
             }
+        } catch (UnreadableDocument $e) {
+            abort_if($e->reason === UnreadableDocument::PASSWORD_PROTECTED, 422, 'This PDF is password protected. Upload an unlocked copy.');
+            abort(422, 'This document could not be read. Export a fresh text-based PDF or DOCX and try again.');
         } catch (\Throwable $e) {
-            $message = strtolower($e->getMessage());
-            if ($type === 'pdf' && (str_contains($message, 'secured') || str_contains($message, 'encrypt') || str_contains($message, 'password'))) {
-                abort(422, 'This PDF is password protected. Upload an unlocked copy.');
+            if ($type === 'pdf' && ! $e instanceof HttpExceptionInterface) {
+                throw $e;
             }
             abort(422, 'This document could not be read. Export a fresh text-based PDF or DOCX and try again.');
         }

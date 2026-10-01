@@ -27,6 +27,9 @@ jobs:
           extensions: mbstring, zip, gd, dom, intl, pdo_sqlite, sqlite3
           coverage: none
 
+      - name: System packages (poppler for the ATS PDF parser)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils
+
       - name: Get Composer cache directory
         id: composer-cache
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"

@@ -1,120 +1,121 @@
-# Implementation Plan: Phase 3, slice S0 — PDF spike and fixtures
+# Implementation Plan: Phase 3, slice S1 — `ats-language` + `ats-parsing`
 
-Spec: `SPEC-ats.md` (approved), §4.1 (parsing signals), §8 (fixtures and expected scores), §12 R1, §16 (slices), §17 answers 2 and 3. Phase 2 (S0–S7, Phase 2b) is merged and live. This plan covers **S0 only**.
+Spec: `SPEC-ats.md` §2 (modules), §3, §4 (pipeline, §4.1 signals), §7 (structure), §8.3 (stems), §10–§11, §17. Input: `docs/ats-spike-s0.md`. S0 is merged. This plan covers **S1 only**.
 
-Branch: `feature/ats-s0` (from `main`). One PR. Stop after opening it.
+Branch: `feature/ats-s1` (from `main`). One PR. Stop after opening it.
 
-## Overview
+## Decisions already made (after S0)
 
-S0 does two things before any engine code exists:
+- **PDF layout comes from poppler** (`poppler-utils` in the Docker image): `pdftotext -bbox-layout` for text and line positions. smalot stays only if still useful for text; the spike says it isn't (poppler extracts the same text, 2–50× faster), so this plan removes it (decision 1 below).
+- A test **fails** (not skips) when the poppler binaries are missing; `docs/DEPLOYMENT.md` documents the dependency.
+- Missing preferred keywords are severity `info` (confirmed; S3 applies it).
+- Spike findings applied in S1/S2: header/footer = **repeated on every page**, **symbol bullets at line starts are not glyph issues**, image **area threshold** (15 % of the page, §6).
 
-1. **Fixtures.** Build every CV and job-description fixture that §8 scores, with a reproducible `tests/fixtures/ats/build.php`, and write the expected results from §8 as `expected/*.json`. These become the golden tests that S1–S4 must turn green; S0 only checks that the fixtures *are what they claim to be* (a two-column PDF really has two columns, F9 really has ~150 words, and so on).
-2. **Spike (risk R1).** Find out whether `smalot/pdfparser` gives enough position data to detect columns, tables, header/footer text and images in PDFs. The answer decides whether S1 builds the PDF parser on smalot alone or whether I ask you for poppler (§17 answer 3).
+## What I checked before planning
 
-No `app/` code, no route, no Docker change in S0 (`ext-intl` and the stemmer come in S1).
+- smalot is used in exactly one place outside tests: `App\Services\DocumentExtractor` (the live `POST cv-documents` and `cv-documents/extract`), PDF branch only. The legacy engine (`AtsDocumentReview`, `AtsScorer`) works on extracted text and never touches smalot.
+- `wamania/php-stemmer` v4.0.0 (MIT) brings one transitive package, `joomla/string`. `ext-intl` is in CI already but not in the Docker image.
+- `pdfimages -list` reports each image's pixel size **and its resolution (ppi)**, so the placed size (pixels ÷ ppi × 72 pt) and its share of the page come without writing any image file to disk. `pdftohtml -xml` also gives positions but writes the image files to the working directory, which we do not want for CV photos.
+- Laravel's `Process` facade (Symfony Process) is available; no new dependency to call the binaries.
 
-## What I verified before planning
+## Design
 
-- `smalot/pdfparser` v2.12.5 exposes `Page::getDataTm()` (text runs with their transformation matrix, i.e. x/y positions) and `Page::getXObjects()` (images). That is the raw material the spike tests.
-- `gd`, `zip`, `xml` are available locally, so `build.php` can generate the profile photo and the "scanned" page image without new extensions.
-- `phpoffice/phpword` is already a dependency (DOCX fixtures); `setasign/fpdf` is not (added as dev, §17 answer 2).
+```text
+app/Services/Ats/
+  Language/  Normalizer, Tokenizer, StopWords, Stemmer, LanguageDetector
+  Parsing/   DocumentParser (interface), DocumentTypeDetector, TextParser, DocxParser,
+             PdfParser, Poppler (process wrapper), ParsedDocument, Line, Structure,
+             Detection, Confidence (enum), UnreadableDocument (exception with a reason)
+config/ats.php                 # model version, poppler paths, timeouts, thresholds of §4.1
+resources/ats/stopwords.{en,fr}.txt
+```
 
-## Fixture design
+- **`ParsedDocument`**: `type` (`pdf|docx|text`), `text`, `lines[]` (text, page, y, x when known), `pages`, `wordCount`, `textExtractable`, `structure` (null-safe: `inspected=false` for pasted text), `warnings[]`. No file names or paths are stored in it, only what the report needs.
+- **`Detection`** per signal: `detected: ?bool`, `confidence: high|medium|low|null`, `note`, plus extras (`count`, `largestAreaPct`, `contactOnlyThere`, evidence samples ≤ 3).
+- **`UnreadableDocument`** reasons: `password_protected`, `corrupt`, `unsupported_type`, `timeout`. S4 maps them to `422 errors.file`. A scanned PDF is **not** an exception: it parses to `textExtractable=false` (R4, `unreadable` report).
+- **Poppler wrapper**: argument arrays (every argument escaped by Symfony Process, never a hand-built command line), a hard timeout from `config('ats.poppler.timeout')` (default 10 s), output size cap, reads the request's temp file only. `pdfinfo` → pages, encryption; `pdftotext -bbox-layout -enc UTF-8` → words and lines with boxes; `pdfimages -list` → images and placed area.
 
-**Content.** One fictional profile (no real person): **BASE-EN** is a PHP/Laravel developer, ~480 words: name, email, phone; Experience with 3 roles (`MMM YYYY – MMM YYYY`), 10 bullets starting with action verbs, 4 with quantified results; Education; Skills. The wording is chosen so §8.2 is exact: it contains PHP, Laravel, MySQL, Docker, PHPUnit, "RESTful API", "GitHub", "continuous integration", "Vue"; it never mentions Redis, AWS, Kubernetes, GraphQL or Terraform. **BASE-FR** is the same profile in French with *Expérience professionnelle*, *Formation*, *Compétences*, containing PHP, Symfony, MySQL, Docker, "gestion de projets", "tests unitaires" and no Vue. Content lives in `tests/fixtures/ats/content/*.php` so every variant is derived from one source.
+### §4.1 signals as built in S1
 
-**Files** (`tests/fixtures/ats/cvs/`):
-
-| Fixture | Spec | How it is built |
+| Signal | DOCX (ZIP + XML, no PhpWord) | PDF (poppler) |
 | --- | --- | --- |
-| `clean-en.docx` | F1, F3, F13 | PhpWord, BASE-EN |
-| `clean-en.pdf` | F2; also the corrected variant of F4 | FPDF, BASE-EN, single column |
-| `two-column.pdf` | F4, F4b | FPDF, skills + contact in a left sidebar, experience in the right column, 2 pages |
-| `table-layout.docx` | F5 | PhpWord, whole CV in a 2-column table |
-| `table-layout.pdf` | spike only | FPDF, ruled grid table layout (R1 needs a PDF table case) |
-| `scanned.pdf` | F6 | FPDF, one page that is only a GD-rendered image of the CV, no text layer |
-| `photo-icons.docx` | F7 | PhpWord, 4 cm GD-generated photo, private-use icon glyphs (U+F0E0, U+F095) before email/phone |
-| `photo-icons-fixed.docx` | F7 corrected | same, icons replaced by "Email:" / "Phone:" |
-| `missing-sections.docx` | F8 | no Education, no Skills, no phone |
-| `missing-sections-plus-education.docx` | F8 corrected | F8 + Education |
-| `no-email-no-exp.txt` | F9 | ~150 words, phone, Education, Skills; no email, no experience heading, no bullets |
-| `too-long.docx` | F12 | BASE-EN extended to ~1 400 words / 4 pages |
-| `clean-fr.docx` | F11 | PhpWord, BASE-FR |
-| `stuffing.docx` | §8.4 | BASE-EN + "Laravel" repeated to 15 occurrences |
+| Columns | `w:cols` `w:num > 1` / several `w:col` → high | spike heuristic on line starts: clusters ≥ 8 lines, ≥ 25 % width apart, ≥ 50 % vertical overlap → **medium**; **high** when each cluster ≥ 12 lines and overlap ≥ 80 %; a near miss (5–7 lines) → low |
+| Tables | `w:tbl` containing text → high | ≥ 3 consecutive rows of ≥ 3 aligned cells → **low** (spec §4.1; the check reports `unverified`) |
+| Images | `w:drawing` / `w:pict`, size from `wp:extent` or VML style vs `w:pgSz` → high | `pdfimages -list`, area from pixels ÷ ppi → medium (cropping is not seen) |
+| Text boxes | `w:txbxContent`, `v:textbox`, `wps:txbx` → high | n/a (`detected: null`) |
+| Header/footer | text in `word/header*.xml` / `footer*.xml` → high; `contact_only_there` when email/phone appear there and not in the body | **text in the top/bottom 7 % band that repeats on every page** (digits normalized, so page numbers count) of a ≥ 2-page PDF → medium; a 1-page PDF → `detected: false`, medium (decision 2) |
+| Glyph issues | private-use / `U+FFFD` characters and letter-spaced headings, **ignoring a private-use character that is the first character of a line (list bullet)** | same |
+| Pages | `docProps/app.xml` if present, else `null` | `pdfinfo` |
 
-The F5 corrected variant is `clean-en.docx` (same content, no table). Error-case files (encrypted, corrupt, `.doc`, renamed `.exe`, 16 MB) belong to S4's API tests; corrupt/renamed/`.doc` are tiny and built in S0, the 16 MB file is generated at test time (never committed), and the **encrypted PDF** is an open point (decision 3).
+DOCX text keeps body order, includes table cells and text boxes, and reads only `mc:Choice` (not `mc:Fallback`) so text boxes are not duplicated.
 
-**Jobs** (`tests/fixtures/ats/jobs/`): `laravel-dev.txt` (F3), `laravel-dev-short.txt` (F4b: 6 required + 4 preferred, worded so the two-column CV matches 5 + 2), `unrelated-marketing.txt` (F13), `dev-symfony-fr.txt` (F11).
+### Language
 
-**Expected results** (`tests/fixtures/ats/expected/<case>.json`): one file per §8.1/§8.2 row with exactly the subset §11 pins (`score`, `raw_score`, `grade`, `score_status`, per-check `status`/`earned`, keyword `status`/`match_type`, `caps`, top-3 suggestion ids and `impact_points`), copied from the spec tables, plus `manifest.json` mapping each case to its CV, job, mode and corrected variant. Nothing reads them as golden tests until S3/S4; S0 only validates their shape and that the numbers obey R1/R3/R5 arithmetic (a pure test over the JSON, so a typo in the spec tables is caught now).
-
-**Reproducibility.** FPDF and PhpWord embed creation dates and ZIP timestamps, so bytes differ between runs. `build.php` pins the dates it can (document properties, FPDF creation date) and the sanity test compares **content and structure**, not bytes: re-running `build.php` must not change the extracted text or the structural facts below.
-
-## Fixture sanity test (`tests/Feature/Ats/FixturesTest.php`)
-
-Checks each committed fixture with today's libraries, independent of the future engine:
-
-- DOCX: `word/document.xml` contains `w:tbl` only in `table-layout.docx`; `w:drawing` only in `photo-icons*.docx`; PUA glyphs only in `photo-icons.docx`; headings present/absent as the table says (F8: no Education/Skills).
-- PDF: page counts; `scanned.pdf` has no extractable text and one image XObject; `clean-en.pdf` and `two-column.pdf` extract the same words (as a set) as `clean-en.docx`.
-- Word counts within ±5 % of the target (480, 150, 1 400); F9 has a phone but no `@`.
-- Jobs: required/preferred terms present under the right headings.
-- `expected/*.json`: schema of the pinned subset, and `raw_score = round_half_up(100 × Σearned / Σmax)`, cap rule R3 and the corrected-variant arithmetic (current + impact = corrected score).
-
-## Spike (`tests/fixtures/ats/spike/`)
-
-A throwaway probe script, not app code: `probe.php <file.pdf>` prints, per page, the text runs with x/y from `getDataTm()`, then tries the §4.1 heuristics:
-
-- **Columns:** cluster line-start `x`; ≥ 2 clusters, each ≥ 8 lines, gap ≥ 25 % of page width, vertical overlap ≥ 50 %.
-- **Tables:** ≥ 3 consecutive lines with ≥ 3 aligned cells.
-- **Header/footer:** text in the top/bottom 7 % of the page.
-- **Images:** image XObjects, pixel size, share of page area.
-- Timing per file.
-
-Run on `clean-en.pdf`, `two-column.pdf`, `table-layout.pdf`, `scanned.pdf`, and on real PDFs if you provide them (decision 1; they stay outside the repo). Output: `docs/ats-spike-s0.md` with a results table (expected vs detected vs confidence, time), what smalot cannot see, and a recommendation: **smalot is enough** (S1 builds on it) **or poppler is needed** (I stop and ask you, per §17 answer 3). The probe script is deleted in S1 once its heuristics move into `app/Services/Ats/Parsing` (decision 2).
+- `Normalizer`: NFKC, lower-case, an accent-folded comparison form (`intl` Transliterator) next to the display form.
+- `Tokenizer`: token boundaries that keep tech tokens whole (`c#`, `.net`, `node.js`, `ci/cd`, `a/b`, `c++`).
+- `StopWords`: EN/FR lists in `resources/ats/`.
+- `Stemmer`: Snowball EN/FR via `wamania/php-stemmer`.
+- `LanguageDetector`: `en | fr | other` from stop-word and marker ratios (reuses the marker idea of `ResumeLanguage`, which itself stays untouched for the legacy engine).
+- **§8.3 stem check:** a unit table records the actual stems for every §8.3 row. The spec says rows the library contradicts are fixed in the spec and listed in the PR. One is already suspicious: Snowball stems "going" to "go", so `Go` vs "going to the office" would be a stem match unless S2 skips stemming for short or tech terms. S1 records the facts; S2's matcher decides (and the spec row stays as the acceptance target).
 
 ## Tasks
 
-### T1 — `setasign/fpdf` (dev), content sources, `build.php`, clean fixtures
-- `composer require --dev setasign/fpdf`; BASE-EN / BASE-FR content files; `build.php` builds `clean-en.docx`, `clean-en.pdf`, `clean-fr.docx`.
-- **Acceptance:** `php tests/fixtures/ats/build.php` regenerates them; `composer audit` clean; word count ~480; the three files extract the same text content.
-- **Verify:** `composer test`, `pint --test`, `composer audit`.
+### T1 — Tooling: poppler, intl, stemmer, config
+- Dockerfile: `poppler-utils`, `libicu-dev` + `docker-php-ext-install intl`. CI: `apt-get install -y poppler-utils` before the tests.
+- `composer require wamania/php-stemmer:^4.0` and `"ext-intl": "*"` in `require` (a missing extension then fails `composer install`).
+- `config/ats.php` (version `ats-2.0`, poppler binary paths and timeout, §4.1 thresholds).
+- `PopplerAvailabilityTest`: **fails** when `pdftotext`, `pdfinfo` or `pdfimages` is missing or too old (needs `-bbox-layout`), with a message that says how to install it.
+- `docs/DEPLOYMENT.md` (system dependency, image size note, what fails without it) and README (local install: `apt install poppler-utils` / `brew install poppler`).
+- **Acceptance:** CI green with poppler installed; the test fails with a clear message when `ATS_PDFTOTEXT` points to a missing binary; `docker build` succeeds and `docker run … pdftotext -v` works (I will run the build if Docker is available in the session; otherwise the PR says it was not run).
 
-### T2 — Problem variants and corrected variants
-- Two-column PDF, table layouts (DOCX + spike PDF), scanned PDF, photo/icon DOCX (+ fixed), missing sections (+ education), too-long, stuffing, F9 text; tiny corrupt / `.doc` / renamed-`.exe` files.
-- **Acceptance:** every row of the fixture table exists and is rebuilt by `build.php`.
+### T2 — `ats-language`
+- Normalizer, Tokenizer, StopWords (+ files), Stemmer, LanguageDetector, with unit tables (EN/FR accents, tech tokens, token boundaries `Java`/`JavaScript`, the §8.3 stems, language on BASE-EN/BASE-FR/F9 and an "other" sample).
+- **Acceptance:** unit tests green; §8.3 stem facts listed for the PR.
 
-### T3 — Jobs, expected results, manifest, `FixturesTest`
-- Four job descriptions; `expected/*.json` for F1–F13 + F4b; `manifest.json`; `FixturesTest` as above.
-- **Acceptance:** `FixturesTest` green; the arithmetic test reproduces every number in §8.1/§8.2 (any mismatch is a spec error: I fix the spec table and list it in the PR, never silently).
+### T3 — Parsing core + text and DOCX parsers
+- DTOs, `DocumentTypeDetector` (content-based; same rules as `DocumentExtractor::detect`, which later uses it), `TextParser`, `DocxParser` with the DOCX signals above.
+- **Acceptance:** every DOCX fixture and the F9 text give the expected signals (clean: none; `table-layout.docx`: tables high; `photo-icons.docx`: 1 image ≈ 2.6 % of the page and glyph issue; `photo-icons-fixed.docx`: no glyph issue; F9: `structure_inspected=false`); `legacy.doc` and `renamed-exe.pdf` → `unsupported_type`.
 
 ### Checkpoint A
-- [ ] Review with maintainer: fixture list, BASE-EN/BASE-FR text (FR wording is yours to review), expected values.
+- [ ] Review with maintainer: DTO shapes, DOCX results table, §8.3 stem facts.
 
-### T4 — Spike probe
-- `spike/probe.php` with the four heuristics and timing; run on the generated PDFs (and real PDFs if provided).
-- **Acceptance:** results recorded for every file; no app code added.
+### T4 — Poppler wrapper and `PdfParser`
+- Process wrapper (timeouts, no shell, output cap); `PdfParser` with the PDF signals above, including the repetition rule for header/footer and the bullet rule for glyphs.
+- **Acceptance:** `clean-en.pdf` none; `two-column.pdf` columns on both pages (≥ medium); `table-layout.pdf` tables (low); `scanned.pdf` `textExtractable=false`, 1 image ≈ 100 %; `encrypted.pdf` → `password_protected`; `corrupt.pdf` → `corrupt`; a forced timeout → `timeout`.
 
-### T5 — Spike report, PR, STOP
-- `docs/ats-spike-s0.md` (results, limits, recommendation); `tasks/todo.md` updated; open the PR. If the recommendation is poppler, the PR says so and nothing is installed.
+### T5 — Fixture-wide parsing tests, budgets, privacy
+- One data-provider test over `manifest.json` + the extra fixtures asserting the §4.1 signals per file; a time budget (F1/F2 parse ≤ 1.5 s); no file left behind in the temp dir after parsing (poppler writes nothing; asserted).
+
+### T6 — Drop smalot (decision 1)
+- `DocumentExtractor`'s PDF branch uses the new `PdfParser` text; `FixturesTest` reads PDFs through it; `composer remove smalot/pdfparser`; delete `tests/fixtures/ats/spike/` (as agreed in S0).
+- **Behaviour check:** a characterization test pins today's `cv-documents/extract` result on the fixture PDFs (same vocabulary, same error codes and messages for encrypted/corrupt/scanned) before the switch, and must stay green after it. `tests/legacy/cv-extract.php` must still pass.
+
+### T7 — Spec and docs, PR, STOP
+- `SPEC-ats.md`: §3 (poppler, smalot gone), §4.1 table as built, header/footer and bullet rules, §12 R1 resolved; `tasks/todo.md`; open the PR.
 
 ### Checkpoint B (final)
-- [ ] PR opened; you decide smalot vs poppler; S1 is planned after merge.
+- [ ] PR opened; S2 (`ats-checks` + `ats-keywords`) planned after merge.
 
 ## Risks
 
 | Risk | Mitigation |
 | --- | --- |
-| Generated PDFs are cleaner than real CVs (Canva, Word export), so the spike looks better than reality | Real PDFs from you (decision 1); the report states which results come from generated files only |
-| FPDF cannot produce an encrypted PDF | Decision 3 |
-| Fixture text drifts from the §8 numbers (a keyword accidentally present) | `FixturesTest` asserts the presence/absence lists for every job term |
-| Committed binaries bloat the repo | All fixtures are small (target < 100 KB each, < 1 MB total); the 16 MB file is never committed |
+| Poppler parses untrusted PDFs | escaped argument arrays, timeout, output cap, 15 MB upload limit; Debian package kept current through the base image |
+| Image grows | `poppler-utils` adds roughly 10–20 MB to the image; stated in DEPLOYMENT.md |
+| Switching `cv-documents` to poppler changes extracted text | characterization test before/after (T6); decision 1 lets you keep smalot there instead |
+| Snowball stems short words aggressively (`going` → `go`) | recorded in T2; S2 matcher rule; §8.3 stays the acceptance target |
+| DOCX variants (Google Docs, LibreOffice exports) differ from PhpWord output | parser reads raw XML, not PhpWord; S5 calibration CVs will include DOCX if you have them |
 
 ## Decisions needed (recommendation first)
 
-1. **Real PDFs for the spike:** send me 3–5 anonymized real CV PDFs now (ideally Canva and Word exports, at least one with a sidebar), separate from the 20 for S5 calibration. They are used locally only and never committed. *Recommended*: generated PDFs alone can't tell us whether smalot copes with real exports, which is the actual R1 risk. If you prefer not to, the spike runs on generated files and the report says so.
-2. **Spike code:** throwaway script under `tests/fixtures/ats/spike/`, deleted in S1 when the heuristics move into `app/`. *Recommended* over writing the real `PdfParser` now (that is S1's job, with tests).
-3. **Encrypted PDF fixture:** build a minimal password-protected PDF by hand-writing the encryption dictionary in `build.php` (no new dependency). *Recommended.* Alternative: add `setasign/fpdi-protection`-style code or a `qpdf` binary in CI only (both are new dependencies, so they need your approval).
+1. **Remove smalot in S1** (T6): the live CV upload/extract switches to poppler text, guarded by a characterization test, and `smalot/pdfparser` leaves `composer.json`. *Recommended:* one PDF engine, faster uploads, and you asked to drop it unless it is still useful. Alternative: keep smalot for `DocumentExtractor` until the legacy-removal PR.
+2. **Header/footer on one-page PDFs:** report `detected: false` (medium), since a PDF has no separate header layer that an ATS would drop and the band test only finds names there. The `text_boxes_headers` check then still runs on the DOCX header/footer parts (high confidence) and on repeated bands in multi-page PDFs. *Recommended.* Alternative: `unverified` for every one-page PDF (most CVs), which removes the check for most users.
+3. **PDF image area from `pdfimages -list` (pixels ÷ ppi)**, which writes nothing to disk but ignores cropping, so a cropped photo can look larger than it is. *Recommended*, with medium confidence. Alternative: `pdftohtml -xml` in a temp directory deleted in `finally` (exact placement, but the photo is briefly written to disk).
 
 ## Out of scope
 
-Engine code (`app/Services/Ats`), the route, Docker/`ext-intl`/stemmer (S1), golden tests that run the engine (S3/S4), the prompt envelope (S6), any UI.
+Checks and scoring (S2/S3), the route (S4), the keyword taxonomy and synonyms (S2), OCR, anything in `cv-ai`.
+
+## Carried to S2 (matcher)
+
+- **Short and technical terms are never stem-matched.** Snowball stems "going" to "go" (verified in `LanguageTest`), so `Go` would stem-match "going to the office", which §8.3 says must not match. S2's matcher uses exact and synonym matching only for terms of **3 letters or less** and for **technical tokens** (`c#`, `node.js`, `ci/cd`, `vue3`, …); stem matching applies to longer alphabetic terms. The §8.3 row stays the acceptance target.
