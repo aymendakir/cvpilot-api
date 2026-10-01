@@ -40,17 +40,22 @@ class AuthTest extends TestCase
         $this->assertTrue(Hash::check(self::PASSWORD, $user->password));
     }
 
-    public function test_register_with_an_existing_email_is_422_and_reveals_the_account(): void
+    public function test_register_with_an_existing_email_is_the_same_201_and_changes_nothing(): void
     {
-        $this->makeUser(['email' => 'taken@example.test']);
+        $this->fakePlatformMail();
+        $user = $this->makeUser(['email' => 'taken@example.test']);
+        $oldHash = $user->password;
 
+        // S4 (SPEC decision 18.6): no more "email already taken" oracle.
         $this->postJson('/api/register', [
             'name' => 'Someone',
             'email' => 'taken@example.test',
             'password' => self::PASSWORD,
             'password_confirmation' => self::PASSWORD,
-        ])->assertStatus(422)
-            ->assertJsonStructure(['message', 'errors' => ['email']]);
+        ])->assertStatus(201)->assertExactJson(['message' => 'Account created. Request your verification code.']);
+
+        $this->assertSame(1, User::where('email', 'taken@example.test')->count());
+        $this->assertSame($oldHash, $user->refresh()->password);
     }
 
     public function test_register_validation_failures_are_422_with_field_errors(): void
