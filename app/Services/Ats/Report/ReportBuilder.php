@@ -235,7 +235,11 @@ final class ReportBuilder
             return $evidence;
         }
 
-        return array_map(fn (string $text, string $side) => $catalog->formattingNote('columns', $side, ['text' => $text]), $evidence, $this->columnSides);
+        return array_map(function (string $text, string $side) use ($catalog) {
+            $line = $catalog->formattingNote('columns', $side, ['text' => $text]);
+
+            return mb_strlen($line) <= 200 ? $line : rtrim(mb_substr($line, 0, 199)).'…'; // §5.2: ≤ 200 chars
+        }, $evidence, $this->columnSides);
     }
 
     /** "1", "1 and 2", "1, 2 and 3" in the report locale. @param list<int|string> $items */

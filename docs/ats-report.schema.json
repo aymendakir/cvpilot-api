@@ -1,0 +1,835 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AtsReport",
+  "description": "Response of POST /api/v1/ats/analyses (SPEC-ats.md §5.2, model ats-2.0). Field names and enums are the contract: additions are allowed, removals or renames bump the version. Every object is closed (additionalProperties: false), so the contract test fails on any field the spec does not list.",
+  "$defs": {
+    "score": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "severity",
+        "status",
+        "earned",
+        "max",
+        "applicable",
+        "confidence",
+        "finding",
+        "action",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "readable_text",
+            "single_column",
+            "layout_tables",
+            "images",
+            "text_boxes_headers",
+            "file_supported",
+            "clean_characters",
+            "email",
+            "phone",
+            "experience_section",
+            "education_section",
+            "skills_section",
+            "dates",
+            "action_verbs",
+            "quantified_results",
+            "length",
+            "no_duplicates",
+            "keyword_coverage"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "blocker",
+            "major",
+            "minor"
+          ]
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "fail",
+            "unverified"
+          ]
+        },
+        "earned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "applicable": {
+          "type": "boolean"
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "finding": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "category": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "earned",
+        "max",
+        "checks"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "format",
+            "sections",
+            "content",
+            "keywords"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "earned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/check"
+          }
+        }
+      }
+    },
+    "keywordItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "term",
+        "kind",
+        "weight",
+        "status",
+        "match_type",
+        "matched_as",
+        "found_in",
+        "evidence",
+        "job_context"
+      ],
+      "properties": {
+        "term": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "required",
+            "preferred"
+          ]
+        },
+        "weight": {
+          "enum": [
+            2,
+            1
+          ]
+        },
+        "status": {
+          "enum": [
+            "matched",
+            "missing"
+          ]
+        },
+        "match_type": {
+          "enum": [
+            "exact",
+            "synonym",
+            "stem",
+            null
+          ]
+        },
+        "matched_as": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "found_in": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "experience",
+              "skills",
+              "education",
+              "other"
+            ]
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "job_context": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "keywordReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "coverage",
+        "required",
+        "preferred",
+        "items",
+        "stuffing"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "ok",
+            "insufficient_job_description"
+          ]
+        },
+        "coverage": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "required": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "matched",
+            "total"
+          ],
+          "properties": {
+            "matched": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "preferred": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "matched",
+            "total"
+          ],
+          "properties": {
+            "matched": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "$ref": "#/$defs/keywordItem"
+          }
+        },
+        "stuffing": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "term",
+              "count"
+            ],
+            "properties": {
+              "term": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 11
+              }
+            }
+          }
+        }
+      }
+    },
+    "sectionFound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "found",
+        "heading",
+        "line"
+      ],
+      "properties": {
+        "found": {
+          "type": "boolean"
+        },
+        "heading": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      }
+    },
+    "detection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "detected",
+        "confidence",
+        "note"
+      ],
+      "properties": {
+        "detected": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low",
+            null
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "suggestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "rank",
+        "severity",
+        "category",
+        "check_id",
+        "title",
+        "detail",
+        "action",
+        "impact_points",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^([a-z_]+|keyword(_skills_only|_stuffing)?:.+)$"
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "severity": {
+          "enum": [
+            "blocker",
+            "major",
+            "minor",
+            "info"
+          ]
+        },
+        "category": {
+          "enum": [
+            "format",
+            "sections",
+            "content",
+            "keywords"
+          ]
+        },
+        "check_id": {
+          "enum": [
+            "readable_text",
+            "single_column",
+            "layout_tables",
+            "images",
+            "text_boxes_headers",
+            "file_supported",
+            "clean_characters",
+            "email",
+            "phone",
+            "experience_section",
+            "education_section",
+            "skills_section",
+            "dates",
+            "action_verbs",
+            "quantified_results",
+            "length",
+            "no_duplicates",
+            "keyword_coverage",
+            "keyword_missing",
+            "keyword_skills_only",
+            "keyword_stuffing"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detail": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "impact_points": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "mode",
+    "score_status",
+    "score",
+    "raw_score",
+    "grade",
+    "summary",
+    "locale",
+    "language",
+    "document",
+    "categories",
+    "keywords",
+    "sections",
+    "formatting",
+    "caps",
+    "suggestions",
+    "limitations",
+    "generated_at"
+  ],
+  "properties": {
+    "version": {
+      "const": "ats-2.0"
+    },
+    "mode": {
+      "enum": [
+        "document",
+        "job_match"
+      ]
+    },
+    "score_status": {
+      "enum": [
+        "scored",
+        "insufficient_text",
+        "unreadable"
+      ]
+    },
+    "score": {
+      "$ref": "#/$defs/score"
+    },
+    "raw_score": {
+      "$ref": "#/$defs/score"
+    },
+    "grade": {
+      "enum": [
+        "strong",
+        "good",
+        "needs_work",
+        "poor",
+        null
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "locale": {
+      "enum": [
+        "en",
+        "fr"
+      ]
+    },
+    "language": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "detected",
+        "supported"
+      ],
+      "properties": {
+        "detected": {
+          "enum": [
+            "en",
+            "fr",
+            "other"
+          ]
+        },
+        "supported": {
+          "type": "boolean"
+        }
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "file_name",
+        "type",
+        "size_bytes",
+        "pages",
+        "word_count",
+        "text_extractable",
+        "structure_inspected"
+      ],
+      "properties": {
+        "source": {
+          "enum": [
+            "file",
+            "text"
+          ]
+        },
+        "file_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "enum": [
+            "pdf",
+            "docx",
+            "text"
+          ]
+        },
+        "size_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "pages": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "word_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "text_extractable": {
+          "type": "boolean"
+        },
+        "structure_inspected": {
+          "type": "boolean"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 100000
+        }
+      }
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/category"
+      }
+    },
+    "keywords": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/keywordReport"
+        }
+      ]
+    },
+    "sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contact",
+        "experience",
+        "education",
+        "skills"
+      ],
+      "properties": {
+        "contact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "email",
+            "phone"
+          ],
+          "properties": {
+            "email": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "phone": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "experience": {
+          "$ref": "#/$defs/sectionFound"
+        },
+        "education": {
+          "$ref": "#/$defs/sectionFound"
+        },
+        "skills": {
+          "$ref": "#/$defs/sectionFound"
+        }
+      }
+    },
+    "formatting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "columns",
+        "tables",
+        "images",
+        "text_boxes",
+        "header_footer",
+        "glyph_issues"
+      ],
+      "properties": {
+        "columns": {
+          "$ref": "#/$defs/detection"
+        },
+        "tables": {
+          "$ref": "#/$defs/detection"
+        },
+        "images": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "detected",
+            "confidence",
+            "note",
+            "count",
+            "largest_area_pct"
+          ],
+          "properties": {
+            "detected": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "confidence": {
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                null
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "largest_area_pct": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "text_boxes": {
+          "$ref": "#/$defs/detection"
+        },
+        "header_footer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "detected",
+            "confidence",
+            "note",
+            "contact_only_there"
+          ],
+          "properties": {
+            "detected": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "confidence": {
+              "enum": [
+                "high",
+                "medium",
+                "low",
+                null
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "contact_only_there": {
+              "type": "boolean"
+            }
+          }
+        },
+        "glyph_issues": {
+          "$ref": "#/$defs/detection"
+        }
+      }
+    },
+    "caps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "limit",
+          "applied",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "major_format_issue",
+              "no_email",
+              "no_experience"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "applied": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/suggestion"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    }
+  }
+}
