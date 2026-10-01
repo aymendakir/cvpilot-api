@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\Admin\MailSettingsController;
 use App\Http\Controllers\Api\V1\AiController;
 use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\ApplicationController;
+use App\Http\Controllers\Api\V1\Ats\AnalysisController as AtsAnalysisController;
 use App\Http\Controllers\Api\V1\AtsDocumentController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BlogController;
@@ -105,6 +106,7 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
     Route::post('ai/ats-analysis', [AiController::class, 'atsAnalysis'])->middleware('throttle:10,1,ai-ats-analysis:')->name('ai.ats-analysis');
     Route::post('ai/cover-letter', [AiController::class, 'coverLetter'])->middleware('throttle:10,1,ai-cover-letter:')->name('ai.cover-letter');
     Route::post('ats/document', [AtsDocumentController::class, 'analyze'])->middleware('throttle:20,1,ats-document:')->name('ats.document');
+    Route::post('ats/analyses', [AtsAnalysisController::class, 'store'])->middleware('throttle:20,1,ats-analyses:')->name('ats.analyses.store');
 
     // Career workspace: saved CV versions, job workspaces, reports, mock interviews and the library
     Route::prefix('cv-versions')->name('cv-versions.')->group(function () {

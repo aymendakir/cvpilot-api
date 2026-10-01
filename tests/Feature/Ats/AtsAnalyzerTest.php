@@ -123,7 +123,13 @@ class AtsAnalyzerTest extends TestCase
         $this->assertSame([['id' => 'major_format_issue', 'limit' => 84, 'applied' => true,
             'reason' => 'A major layout problem (columns, tables or large images) limits the score to 84.']], $report['caps']);
         $this->assertTrue($report['formatting']['columns']['detected']);
-        $this->assertSame('Text is laid out in two columns on page 1, 2.', $report['formatting']['columns']['note']);
+        $this->assertSame('Text is laid out in two columns on pages 1 and 2.', $report['formatting']['columns']['note']);
+        $this->assertStringStartsWith('Left column: Samir Benali', $report['suggestions'][0]['evidence'][0]);
+        $this->assertStringStartsWith('Right column: ', $report['categories'][0]['checks'][1]['evidence'][1]);
+
+        $fr = $this->report('cvs/two-column.pdf', null, 'fr')->toArray();
+        $this->assertSame('Le texte est disposé sur deux colonnes aux pages 1 et 2.', $fr['formatting']['columns']['note']);
+        $this->assertStringStartsWith("Colonne de gauche\u{00A0}: Samir Benali", $fr['categories'][0]['checks'][1]['evidence'][0]);
         $this->assertSame(['email' => 'samir.benali@example.com', 'phone' => '+212 600 123 456'], $report['sections']['contact']);
         $this->assertSame(['found' => true, 'heading' => 'Work Experience'], array_slice($report['sections']['experience'], 0, 2));
         $this->assertSame(['source' => 'file', 'file_name' => 'two-column.pdf', 'type' => 'pdf'], array_slice($report['document'], 0, 3));

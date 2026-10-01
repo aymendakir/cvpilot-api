@@ -256,6 +256,11 @@
     },
     {
         "method": "POST",
+        "uri": "v1/ats/analyses",
+        "scope": "auth"
+    },
+    {
+        "method": "POST",
         "uri": "v1/ats/document",
         "scope": "auth"
     },

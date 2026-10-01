@@ -90,12 +90,12 @@ return [
         ],
         'file_supported' => [
             'title' => 'Type et taille du fichier',
-            'suggestion' => 'Utilisez un fichier PDF ou DOCX de moins de 5 Mo',
+            'suggestion' => 'Utilisez un fichier PDF ou DOCX de moins de 5 Mo',
             'why' => 'La plupart des ATS acceptent le PDF et le DOCX, et refusent souvent les fichiers très lourds.',
-            'fix' => 'utiliser un fichier PDF ou DOCX de moins de 5 Mo',
+            'fix' => 'utiliser un fichier PDF ou DOCX de moins de 5 Mo',
             'findings' => [
-                'ok' => 'Fichier :type, :megabytes Mo.',
-                'too_large' => 'Le fichier fait :megabytes Mo (5 Mo au maximum).',
+                'ok' => 'Fichier :type, :megabytes Mo.',
+                'too_large' => 'Le fichier fait :megabytes Mo (5 Mo au maximum).',
             ],
             'actions' => [
                 'too_large' => 'Compressez ou supprimez les images, puis exportez à nouveau le CV.',
@@ -345,14 +345,17 @@ return [
         'common' => [
             'not_inspected' => 'Un texte collé n\'a pas de mise en page à analyser.',
             'not_applicable_pdf' => 'Ne s\'applique pas aux fichiers PDF.',
+            'and' => 'et',
         ],
         'columns' => [
             'found' => 'Le texte est disposé sur plusieurs colonnes.',
-            'found_pages' => 'Le texte est disposé sur deux colonnes à la page :pages.',
+            'found_pages' => '{1} Le texte est disposé sur deux colonnes à la page :pages.|[2,*] Le texte est disposé sur deux colonnes aux pages :pages.',
+            'left' => 'Colonne de gauche : :text',
+            'right' => 'Colonne de droite : :text',
         ],
         'tables' => [
             'found' => '{0} Des tableaux contiennent du texte.|{1} Un tableau contient du texte.|[2,*] :count tableaux contiennent du texte.',
-            'possible' => 'Texte aligné qui ressemble à un tableau à la page :pages (confiance faible).',
+            'possible' => '{1} Texte aligné qui ressemble à un tableau à la page :pages (confiance faible).|[2,*] Texte aligné qui ressemble à un tableau aux pages :pages (confiance faible).',
         ],
         'images' => [
             'found' => '{1} Une image.|[2,*] :count images.',

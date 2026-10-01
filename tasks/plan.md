@@ -1,162 +1,156 @@
-# Implementation Plan: Phase 3, slice S3 — `ats-scoring`
+# Implementation Plan: Phase 3, slice S4 — `ats-api`
 
-Spec: `SPEC-ats.md` §5.2 (report contract), §6 (points, R1–R8), §8.1–§8.2 (golden scores), §17. S2 is merged (checks + keyword report). This plan covers **S3 only**.
+Spec: `SPEC-ats.md` §5 (request, response, errors), §8.4 (error, contract, determinism, privacy, performance tests), §14 (boundaries). S3 is merged (`AtsAnalyzer` returns the full §5.2 report in-process). This plan covers **S4 only**.
 
-Branch: `feature/ats-s3` (from `main`). One PR. Stop after opening it.
+Branch: `feature/ats-s4` (from `main`). One PR. Stop after opening it.
 
-Delivery order from here (noted in `SPEC-ats.md` §16): **S3 → S4 → Phase 4 (frontend) → S5 calibration and S6 prompt envelope** (after or alongside Phase 4, since neither changes the API contract).
+Order from here: **S4 → Phase 4 (frontend) → S5 calibration and S6 prompt envelope** (after or alongside Phase 4; neither changes the API contract).
 
 ## Overview
 
-S3 turns S2's check results and keyword report into the **scored report**:
+S4 puts the engine behind `POST /api/v1/ats/analyses` and pins the contract:
 
-- points per check;
-- category totals;
-- raw score and caps;
-- grade and status;
-- what-if impact for every suggestion;
-- the ranked suggestion list;
-- EN/FR text for every title, finding, action, summary, cap reason and limitation.
+- the route, the FormRequest and the Resource;
+- `docs/ats-report.schema.json`, plus a contract test that validates every fixture response against it;
+- the 422 error cases;
+- determinism and privacy tests (no file left behind, no CV text in logs, nothing stored);
+- the time budget.
 
-All of it is pure and deterministic. The clock is injected, so only `generated_at` varies.
+The legacy `POST /api/v1/ats/document` and `ai/ats-analysis` stay untouched until the legacy-removal PR (§17 answer 6).
 
-S3 ends with an in-process `AtsAnalyzer` that returns the full §5.2 shape. S4 then only adds the HTTP layer: route, FormRequest, Resource, JSON Schema, privacy and error tests.
+**Included fix (your request after S3):** file sizes in the `file_supported` finding use a decimal comma and "Mo" in French ("0,01 Mo"), and "0.01 MB" in English.
 
-The golden files already pin everything S3 must produce:
-
-- `score`, `raw_score`, `grade` and `caps`;
-- per-check `status` and `earned`;
-- the top-3 suggestion ids and `impact_points`.
-
-All 15 cases (F1–F13, F4b, F7/F8 fixed) are reproduced through the real pipeline.
+- What main does today: 9 KB gives "0,01 Mo" / "0.01 MB" and 4.8 MB gives "4,8 Mo".
+- The gaps: a file under 5 KB reads "0 Mo", and the format depends on a float cast.
+- The fix: format the size explicitly, per locale, with two decimals and a minimum of 0.01 for a non-empty file. Tests pin both locales.
 
 ## What I checked before planning
 
-- **Golden figures are consistent with R1–R6.** Some examples:
-
-  | Case | Figures | Why |
-  | --- | --- | --- |
-  | F4b | 87 raw, capped to 84; `single_column` +9, `keyword:redis` +0 | the cap stays binding |
-  | F5 | 93 raw, capped to 84; `layout_tables` +16 | fixing it lifts the cap |
-  | F9 | 44, two caps triggered but not binding | both limits are above 44 |
-  | F3 | `aws`/`redis` +3 tie, ordered by id; preferred +2 (severity `info`) | R5 tie-break |
-  | F13 | three +5 ties, ordered by id | R5 tie-break |
-  | F6 | unreadable: `impact_points: null` | R4 |
-
-- **Keyword earned points:** `keyword_coverage` earned is `round_half_up(30 × coverage)`; F4b's 22.5 rounds to 23. The check's status is `fail` whenever coverage < 1 (F3, F4b), as the golden files show.
-- **Message keys:** S2 checks return message keys and parameters. The keys are: `ok`, `found`, `missing`, `empty`, `no_text`, `too_short`, `garbled`, `too_many`, `too_large`, `text_boxes`, `contact_in_header`, `glyphs`, `low_confidence`, `not_inspected`, `no_experience_section`, `too_few`, `mixed_styles`, `no_bullets`, `weak_start`, `too_long`, `duplicates`. With the check id they map 1:1 to catalog entries.
-- **Translation files:** there is no `lang/` directory yet, so `lang/{en,fr}/ats.php` are new. Laravel's translator loads them with no extra setup.
+- **Conventions to follow (Phase 2):**
+  - routes in `routes/api.php` inside the authenticated v1 group;
+  - per-user throttles `throttle:N,1,<name>:`;
+  - FormRequests extend `ApiFormRequest`;
+  - Resources without a `data` wrapper (`JsonResource::withoutWrapping()`);
+  - the error envelope `{message, code, errors?, request_id}` from `docs/ERRORS.md`, where clients map `code` and never show `message`;
+  - the route contract test plus `docs/ROUTES.md` (regenerated with `UPDATE_ROUTE_DOCS=1`).
+- **Upload limits:** the Dockerfile sets `upload_max_filesize=16M` and `post_max_size=20M`. The §5.1 limit is 15 MB, so a 16 MB file is rejected by validation (422). A body over 20 MB is rejected earlier as `413 payload_too_large` (existing behaviour).
+- **Unreadable files:** `UnreadableDocument` already carries a reason: `password_protected`, `corrupt`, `unsupported_type` or `timeout`. `DocumentTypeDetector` decides the type from the content: `.doc`, a renamed `.exe` and a `.txt` upload are not PDF/DOCX.
+- **No JSON Schema validator** is installed (see decision 28).
 
 ## Design
 
 ```text
-config/ats.php            + points/severity per check, caps, grade bands, suggestion limits
-app/Services/Ats/
-  Scoring/  ScoreCalculator (R1 + categories), Caps (R3), Grade (R8), ScoreResult,
-            WhatIf (R5), SuggestionBuilder (R6 + ranking), Suggestion, MessageCatalog
-  Report/   AtsReport (DTO, toArray() = §5.2 shape), FormattingReport, SectionsReport
-  AtsAnalyzer.php          parse → checks → keywords → score → suggestions → report
-lang/en/ats.php, lang/fr/ats.php
+routes/api.php                         POST ats/analyses → Api\V1\Ats\AnalysisController (throttle 20/min/user)
+app/Http/Requests/Ats/StoreAtsAnalysisRequest.php
+app/Http/Controllers/Api/V1/Ats/AnalysisController.php
+app/Http/Resources/AtsReportResource.php   wraps AtsReport::toArray() (no data wrapper)
+docs/ats-report.schema.json            JSON Schema (draft 2020-12) of §5.2
+docs/ROUTES.md, docs/ERRORS.md         regenerated / ATS file reasons documented
 ```
 
-- **`ScoreCalculator`** is pure. Input: check results and the optional keyword report. Output: per-check `earned`/`max`/`applicable`, category totals, `raw_score`, `score`, `caps` and `score_status`.
-- **`WhatIf`** re-runs the calculator with one item flipped. For a check, it passes. For a keyword, it becomes matched and the coverage is recomputed. The impact is `max(0, new score − score)`, caps included. It is null when the score is null.
-- **`SuggestionBuilder`** creates one suggestion per failed check and the keyword suggestions (R6). It ranks them by impact, then severity, then id, and numbers the ranks 1..n.
-- **`MessageCatalog`** resolves text from the locale and keys with Laravel's translator. It never builds sentences by string concatenation.
+### Request (§5.1)
 
-### Rules as I will build them (R1–R8 made precise; decisions below)
-
-| Topic | Rule |
+| Field | Rule |
 | --- | --- |
-| Points | §6 table in `config/ats.php`; `pass` earns max, `fail`/`unverified` earn 0; `unverified` → `applicable: false`, excluded from Σ max |
-| Raw score | `round_half_up(100 × Σ earned / Σ max)` over applicable checks; categories in fixed order format, sections, content, keywords? |
-| Keywords | `earned = round_half_up(30 × coverage)`; `pass` only at coverage 1; with `insufficient_job_description` the check is `unverified` (not applicable) |
-| Caps | triggered when the condition holds (failed major format check → 84, `email` fails → 79, `experience_section` fails → 74); `applied` = `limit < raw_score`; score = min(raw, binding limits) |
-| Status | no extractable text, or `readable_text` failed for garbled text → `unreadable` (other checks `unverified`); text but < 40 words → `insufficient_text` (checks still run and are shown); both → `score`, `raw_score`, `grade` null, `impact_points` null |
-| Grade | strong ≥ 85, good 70–84, needs_work 50–69, poor < 50 |
-| Suggestions | one per failed check, with severity from §6; up to 5 missing required keywords (severity `minor`, weight order, then id); up to 3 missing preferred keywords (`info`); `keyword_skills_only` and `keyword_stuffing` (`info`, impact 0) |
-| Ranking | `impact_points` desc → severity (`blocker > major > minor > info`) → `id`; `rank` 1..n |
-| Locale | request `locale`, else detected CV language when en/fr, else `en` |
-| Limitations | always the estimate disclaimer; plus PDF heuristics (PDF), no OCR (when unreadable), pasted text format checks unverified (text), CV language not EN/FR: exact matching only (other) |
+| `file` | `file`, ≤ 15 MB; exactly one of `file` / `cv_text` (`required_without` + `prohibits`) |
+| `cv_text` | string, 30–30 000 characters |
+| `job_description` | optional string, 60–30 000 characters → `mode: "job_match"` |
+| `locale` | optional `en` \| `fr` |
+| `include_text` | optional boolean |
+
+- The type is decided from the content, after validation, by `DocumentTypeDetector`. A PDF or DOCX passes; anything else (`.doc`, `.exe`, `.txt`, images) → 422 `errors.file`.
+- `UnreadableDocument` → 422 `validation_failed` with `errors.file` (decision 29).
+- The uploaded file is read in place from PHP's temp upload; nothing is copied. A missing poppler binary stays a 500 (S1 behaviour).
+
+### Response
+
+`200` with the §5.2 body, exactly as `AtsAnalyzer` builds it. The Resource adds nothing and reorders nothing.
 
 ## Tasks
 
-### T1 — Points, categories, caps, grade, status
+### T1 — File size format (requested fix)
 
-- Add the scoring constants to `config/ats.php`. Build `ScoreCalculator`, `Caps`, `Grade` and `ScoreResult`.
+- Locale-aware size formatting in `MessageCatalog`:
+  - EN: `0.01 MB`, `4.80 MB`;
+  - FR: `0,01 Mo`, `4,80 Mo`;
+  - two decimals, minimum 0.01 for a non-empty file.
+- **Acceptance:** unit tests for 3 KB, 9 KB, 4.8 MB and 12.35 MB in both locales. The S3 fixture text still resolves with no placeholders.
+
+### T2 — Route, request, controller, Resource
+
 - **Acceptance:**
-  - For every golden case: per-check `earned`, `score`, `raw_score`, `grade`, `caps` (id, limit, applied) and `score_status` are reproduced through the real pipeline.
-  - Unit tests cover round-half-up edges (x.5) and the status rules above.
+  - A feature test posts every fixture (file, or `cv_text` for F9) with and without a job description, as a signed-in user.
+  - The `200` body equals `AtsAnalyzer` output for the same input, except `generated_at`. Golden score, grade, caps and top suggestions hold.
+  - `include_text` and `locale` work.
+  - `401` when signed out; `429` after 20 requests a minute.
+  - `docs/ROUTES.md` is regenerated and the route contract test passes.
 
-### T2 — What-if and suggestions
+### T3 — Error cases (§8.4)
 
-- Build `WhatIf`, `SuggestionBuilder` and `Suggestion`, and the ranking.
-- **Acceptance:**
-  - The top-3 suggestion ids and `impact_points` of every golden file are reproduced. This includes F4b `keyword:redis` = 0 (cap binding), F5 `layout_tables` = 16 (cap lifted) and F6 = null.
-  - `stuffing.docx` gives the same score as `clean-en.docx` plus one `keyword:laravel` stuffing suggestion with impact 0.
-  - Limits hold: at most 5 required and 3 preferred keyword suggestions.
-  - Ranks are 1..n with no gaps.
-
-### T3 — EN/FR message catalog
-
-- Write `lang/en/ats.php` and `lang/fr/ats.php` and `MessageCatalog`. They cover:
-  - check titles;
-  - findings for every (check, key) pair, with the S2 params (`:count`, `:percent`, `:found`…);
-  - actions, cap reasons and suggestion titles/details/actions, including the keyword ones ("add only if true for you");
-  - summaries per status/grade and the main issue;
-  - formatting notes and limitations.
-- **Acceptance:**
-  - Parity test: the same keys exist in EN and FR with the same placeholders.
-  - Every key the checks can emit has an entry.
-  - Running all fixtures in both locales gives no raw key and no unreplaced `:placeholder`.
-  - F11 is in French.
+- **Acceptance:** each case gives `422 validation_failed` with the right field in `errors`, and no stack trace, path or class name in the body.
+  - `invalid/encrypted.pdf`, `invalid/corrupt.pdf`, `invalid/legacy.doc`, `invalid/renamed-exe.pdf`, a `.txt` upload, and a 16 MB file (generated in the test's temp dir and deleted) → `errors.file`.
+  - Both or neither of `file`/`cv_text`; `cv_text` < 30 or > 30 000 characters → `errors.cv_text`.
+  - `job_description` < 60 characters → `errors.job_description`.
+  - `locale: "de"` → `errors.locale`.
+- `docs/ERRORS.md` documents the ATS `errors.file` reasons.
 
 ### Checkpoint A
 
-- [ ] You review the **French and English copy** (§17 item 11) and the scoring rules table above before I wire the report.
+- [ ] You review the request rules, the error-reason format (decision 29) and the schema approach (decision 28) on real responses before the contract and privacy tests.
 
-### T4 — Report assembly and analyzer
+### T4 — JSON Schema and contract test
 
-- Build `AtsAnalyzer` and `AtsReport` with the full §5.2 shape:
-  - `document`, `language`, `categories`, `keywords` (S2 report), `sections` (contact values, heading, line), `formatting` (detections with notes);
-  - `caps`, `suggestions`, `limitations`, `generated_at` (injected clock).
+- `docs/ats-report.schema.json`, written from the §5.2 types:
+  - every enum;
+  - integer score from 0 to 100 or null;
+  - evidence ≤ 3 items of ≤ 200 characters;
+  - keyword items ≤ 40;
+  - `additionalProperties: false` on every object, so a stray field fails.
 - **Acceptance:**
-  - Every fixture produces every §5.2 field with the right types.
-  - Determinism: two runs give identical output except `generated_at`.
-  - Σ earned / Σ max of applicable checks reproduces `raw_score`.
-  - Performance budget: F1/F2 ≤ 1.5 s.
+  - Every fixture response (both modes, both locales, pasted text, unreadable) validates.
+  - Ranks are 1..n; `impact_points` is ≥ 0 or null only when `score` is null.
+  - Σ earned / Σ max reproduces `raw_score`.
+  - A deliberately broken body (missing field, wrong enum) fails validation, so the test can fail.
 
-### T5 — Spec, docs, PR, STOP
+### T5 — Determinism, privacy, performance
 
-- Update `SPEC-ats.md` with the rules as built and decisions 22–27, and `tasks/todo.md`.
+- **Acceptance:**
+  - **Determinism:** the same request twice gives identical bodies except `generated_at`.
+  - **No files left:** after requests (including failing ones), no new file remains in the temp dir or `storage/`.
+  - **No CV text in logs:** a sentinel string in the CV and in the job description never appears in the log output (log channel captured in the test).
+  - **Nothing stored:** no row is added to any table.
+  - **Time:** F1/F2 ≤ 1.5 s over HTTP; a ~15 MB worst-case PDF (generated at test time, many pages of text plus a large image) ≤ 10 s (§8.4).
+
+### T6 — Spec, docs, PR, STOP
+
+- `SPEC-ats.md` §5 as built (error reasons, rules) and decisions 28–30; `tasks/todo.md`.
 - Run the full suite, the legacy scripts, `pint --test`, `composer audit` and a fresh-clone check.
-- Open the PR and stop.
+- Open the PR, with a post-merge smoke check for you, and stop.
 
 ### Checkpoint B (final)
 
-- [ ] PR opened; S4 (route, request, Resource, JSON Schema, privacy and error tests) planned after merge.
+- [ ] PR opened; Phase 4 (frontend) spec after merge.
 
 ## Risks
 
 | Risk | Mitigation |
 | --- | --- |
-| What-if under caps confuses users (a +0 keyword) | R5 is exact by design; the copy says the cap is why (cap reason shown in the report); UI explains it in Phase 4 |
-| French copy quality | your review at Checkpoint A; vocabulary review again during S5 |
-| S5 calibration changes weights after the UI is built | weights are config only; the contract does not change; golden files and the changelog (`docs/ats-scoring.md`) are updated in S5 |
-| Too many suggestions on weak CVs | per-type limits (R6) and ranking; the UI shows the top 4 on Overview |
+| Big or hostile PDFs slow the request | poppler timeouts (10 s per call, S1) → 422 `timeout`; the 15 MB limit; per-user throttle; the worst-case timing test |
+| The schema drifts from the code | the contract test runs on every fixture; `additionalProperties: false`; Phase 4 generates its TS types from the same file |
+| CV content leaking into logs | sentinel test; the existing redaction stays; the controller logs nothing about content |
+| A frontend cannot tell why a file was refused | stable reason tokens in `errors.file` (decision 29) |
 
 ## Decisions needed (recommendation first)
 
-22. **Scope boundary with S4:** S3 includes `AtsAnalyzer` and the full §5.2 report (sections, formatting, summary, limitations), so the golden tests run the complete pipeline in-process. S4 adds only the HTTP layer. *Recommended.*
-23. **`unreadable` vs `insufficient_text`:** `unreadable` when there is no extractable text or the text is garbled (replacement characters > 1 %), with every other check `unverified`. `insufficient_text` when the text is readable but under 40 words: the checks still run and are shown, and `score`, `grade` and `impact_points` are null. *Recommended.*
-24. **Short job description** (`insufficient_job_description`):
-    - `keyword_coverage` is `unverified` (not applicable), so the report is scored like document mode.
-    - One suggestion is added: id `keyword_coverage`, check_id `keyword_coverage`, severity `info`, impact 0, "paste the full job description".
-    - *Recommended.*
-25. **Unverified checks get no suggestion.** Pasted text gets a limitation line ("format checks need the original file") instead. *Recommended.*
-26. **`keyword_skills_only`:** up to 3, severity `info`, impact 0, required terms first, then by id. R6 sets no limit, and a long skills list could otherwise flood the list. *Recommended.*
-27. **Summary sentence:** chosen from the status, then the top suggestion's check, e.g. "Good content, but the two-column layout can scramble text in many ATS parsers." Otherwise a sentence per grade. *Recommended.*
+28. **JSON Schema validator:** add `opis/json-schema` (draft 2020-12, maintained, no other dependencies) as a **dev** dependency, used only by the contract test. *Recommended.* Alternative: a small hand-written validator for the subset we use (more code to trust, no new package).
+29. **`errors.file` content for unreadable files:**
+    - one stable reason token per refusal: `password_protected`, `corrupt`, `unsupported_type`, `timeout`, `too_large`;
+    - the frontend maps it to EN/FR text, as `docs/ERRORS.md` already asks clients to do for `code`;
+    - Laravel's own messages stay for the other fields;
+    - the reasons are documented in `docs/ERRORS.md`.
+    *Recommended.*
+30. **Analysis log line:** log one line per analysis (status, mode, type, page count, duration in ms, `request_id`), **no** text, file name or score. This gives production visibility without content. *Recommended.* Alternative: no logging.
 
 ## Out of scope
 
-The route, FormRequest, Resource, JSON Schema, 422 error cases and privacy tests (S4). Calibration and `docs/ats-scoring.md` (S5). The keyword-source choice (requirement blocks only vs. the whole job ad), which is decided in S5 with real job ads. The prompt envelope (S6). Any UI (Phase 4).
+The UI (Phase 4); calibration and `docs/ats-scoring.md` (S5); the prompt envelope (S6); the keyword-source choice (S5); removal of the legacy ATS endpoints (separate PR after Phase 4).

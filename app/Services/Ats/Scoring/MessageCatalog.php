@@ -151,6 +151,7 @@ final class MessageCatalog
                     fn ($s) => $this->translator->get('ats.date_styles.'.trim($s), [], $this->locale, false),
                     explode(',', (string) $value),
                 )),
+                $name === 'megabytes' && is_numeric($value) => $this->number((float) $value, 2),
                 is_float($value) => $this->locale === 'fr' ? str_replace('.', ',', (string) $value) : (string) $value,
                 $value === null => '',
                 default => (string) $value,
@@ -158,5 +159,13 @@ final class MessageCatalog
         }
 
         return $params;
+    }
+
+    /** A number with fixed decimals: "4.80" in English, "4,80" in French (non-breaking thousands space). */
+    private function number(float $value, int $decimals): string
+    {
+        return $this->locale === 'fr'
+            ? number_format($value, $decimals, ',', "\u{00A0}")
+            : number_format($value, $decimals, '.', ',');
     }
 }

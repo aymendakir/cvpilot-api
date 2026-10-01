@@ -22,7 +22,8 @@ final class FileSupported implements Check
         if ($doc->type === 'text') {
             return CheckResult::unverified($this->id(), 'not_inspected', ['type' => 'text']);
         }
-        $mb = $doc->sizeBytes === null ? null : round($doc->sizeBytes / 1048576, 2);
+        // Two decimals; a non-empty file is at least 0.01 MB (never "0 MB").
+        $mb = $doc->sizeBytes === null ? null : max($doc->sizeBytes > 0 ? 0.01 : 0.0, round($doc->sizeBytes / 1048576, 2));
         if ($doc->sizeBytes !== null && $doc->sizeBytes > self::MAX_BYTES) {
             return CheckResult::fail($this->id(), 'too_large', ['type' => $doc->type, 'megabytes' => $mb]);
         }

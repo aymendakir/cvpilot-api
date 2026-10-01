@@ -83,8 +83,8 @@ class ParsingFixturesTest extends TestCase
         $columns = $this->parse('cvs/two-column.pdf')->structure->columns;
 
         $this->assertSame([1, 2], $columns->extra['pages']);
-        $this->assertStringStartsWith('Left column: Samir Benali', $columns->samples[0]);
-        $this->assertStringStartsWith('Right column: ', $columns->samples[1]);
+        $this->assertStringStartsWith('Samir Benali', $columns->samples[0], 'left column first');
+        $this->assertSame(['left', 'right'], $columns->extra['sample_sides']);
     }
 
     public function test_pdf_and_docx_versions_of_a_cv_give_the_same_text(): void

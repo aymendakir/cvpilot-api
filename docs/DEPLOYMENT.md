@@ -56,6 +56,7 @@ fixes for poppler arrive with each rebuild. A custom host that does not use this
 | `SESSION_DRIVER` | `database` | `file` loses every session at each deploy (everyone signed out). |
 | `CACHE_STORE` | `database` | `file` loses OTP codes and rate-limit counters at each deploy. |
 | `LOG_CHANNEL` | `stderr` | `single` writes `storage/logs`, which vanishes on deploy. |
+| `LOG_LEVEL` | `info` to see one `ats.analysis` line per ATS analysis (outcome, mode, file type, pages, duration; never CV text, file name or score), else unset | Unset = `warning`: errors only, no analysis lines. |
 | `SESSION_SECURE_COOKIE` | `true` | Production refuses to boot otherwise. |
 | `SESSION_SAME_SITE` | `none` until the shared domain is live, then `lax` (section 6) | `lax` across different sites: nobody can sign in. |
 | `SESSION_DOMAIN` | empty until the shared domain is live, then `.<domain>` | Wrong value = cookie not sent. |

@@ -73,3 +73,21 @@ Notes on specific codes:
 ## Adding or changing a code
 
 Add it to `App\Exceptions\ErrorCode` (status and standard message), to the table above, and to the tests (`tests/Feature/Api/ErrorEnvelopeTest.php`). `ErrorDocsTest` fails if this table and the enum disagree. Raise it with `throw new ApiException(ErrorCode::…)`; use `UpstreamUnavailableException` / `UpstreamInvalidResponseException` for provider failures.
+
+## ATS analysis: `errors.file` reasons
+
+`POST /api/v1/ats/analyses` (SPEC-ats.md §5) refuses a file with `422 validation_failed` and **one stable token** in `errors.file` instead of a sentence, so the client can show its own EN/FR text. Other fields (`cv_text`, `job_description`, `locale`, `include_text`) keep the standard Laravel messages.
+
+| Token                | Meaning                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| `missing`            | neither `file` nor `cv_text` was sent                                                    |
+| `both_given`         | both `file` and `cv_text` were sent                                                      |
+| `upload_failed`      | the upload did not arrive as a file (interrupted, or refused by PHP's upload limits)     |
+| `too_large`          | the file is over 15 MB                                                                   |
+| `unsupported_type`   | the content is not a PDF or DOCX (`.doc`, images, plain text, a renamed executable…)     |
+| `password_protected` | the PDF needs a password                                                                 |
+| `corrupt`            | the file is damaged or cannot be parsed                                                  |
+| `timeout`            | reading the file took too long                                                           |
+
+A scanned PDF is **not** refused: it returns `200` with `score_status: "unreadable"`. A request body over 20 MB is refused before validation with `413 payload_too_large`.
+

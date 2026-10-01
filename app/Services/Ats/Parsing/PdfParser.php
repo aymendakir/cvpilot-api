@@ -222,8 +222,8 @@ final class PdfParser implements DocumentParser
         return Detection::found(
             $confidence,
             '2 text columns on page'.(count($found) > 1 ? 's ' : ' ').$list,
-            ['Left column: '.$sample($first['left']), 'Right column: '.$sample($first['right'])],
-            ['pages' => array_keys($found)],
+            [$sample($first['left']), $sample($first['right'])],
+            ['pages' => array_keys($found), 'sample_sides' => ['left', 'right']], // samples: left column, then right column (labelled per locale in the report)
         );
     }
 
