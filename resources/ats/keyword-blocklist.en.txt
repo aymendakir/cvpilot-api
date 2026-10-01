@@ -1,0 +1,22 @@
+# Generic words that are never job keywords on their own (SPEC-ats.md §6.1 step 5).
+# One folded phrase per line; a candidate equal to one of them is dropped.
+ability
+abilities
+candidate
+company
+environment
+experience
+knowledge
+mission
+others
+position
+profile
+responsibilities
+responsibility
+role
+skills
+team
+teams
+work
+year
+years

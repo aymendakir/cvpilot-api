@@ -1,0 +1,21 @@
+# Mots génériques qui ne sont jamais des mots-clés d'offre à eux seuls (SPEC-ats.md §6.1 étape 5).
+# Une expression par ligne ; un candidat égal à l'une d'elles est écarté.
+an
+ans
+année
+années
+candidat
+candidate
+capacité
+compétences
+connaissances
+entreprise
+environnement
+équipe
+expérience
+mission
+missions
+poste
+profil
+responsabilités
+travail

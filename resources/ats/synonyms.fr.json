@@ -1,0 +1,10 @@
+{
+  "_comment": "Groupes de synonymes français et franco-anglais pour la comparaison (SPEC-ats.md §6.2) qui ne sont pas des compétences de skills.json. Une entrée qui nomme une compétence de skills.json étend son groupe.",
+  "groups": [
+    ["développement web", "web development"],
+    ["base de données", "database"],
+    ["revue de code", "code review"],
+    ["gestion d'équipe", "management d'équipe", "team management"],
+    ["service après-vente", "sav", "after-sales service"]
+  ]
+}
