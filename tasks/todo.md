@@ -1,23 +1,20 @@
-# Task list — Phase 2, slice S4 (security and auth)
+# Task list — Phase 2, slice S5 (blog and `POST admin/users`)
 
-Branch `refactor/api-s4-security`. Detail: `tasks/plan.md`. Spec: `SPEC.md` §6, §7, §18.
-Status: **T1–T9 built; S4 PR opened.** Decisions answered: explicit SESSION_SAME_SITE=none before deploy, prompt envelope moved to Phase 3, admin audit via `admin.<route name>`.
+Branch `refactor/api-s5-blog`. Detail: `tasks/plan.md`. Spec: `SPEC.md` §8.
+Status: **plan written, waiting for maintainer approval. No code yet.**
 
-- [x] T1 Session hardening and production boot guard
-- [x] T2 `Member` → `AuthSession`; 401/403 split
-- [x] T3 Throttles: login 5/30, admin 60/min
-- [x] T4 Headers and CORS
+- [ ] T1 Migration, `BlogPost` model, `BlogPostResource`
+- [ ] T2 Public `GET blog` and `GET blog/{slug}` (cacheable, cookie-free)
+- [ ] T3 Admin blog CRUD
 
 ### Checkpoint A
 
-- [x] Review with maintainer
+- [ ] Review with maintainer
 
-- [x] T5 Register enumeration (always 201, notice email)
-- [x] T6 Uniform admin audit middleware
-- [x] T7 `AdminReview` stops storing CV text, purge migration
-- [x] T8 Redaction, CSRF-exemption and audit pins
-- [x] T9 Docs, fresh-clone checks, open the PR, **STOP**
+- [ ] T4 `POST admin/users`
+- [ ] T5 Contract bookkeeping and docs
+- [ ] T6 Fresh-clone checks, open the PR, **STOP**
 
 ### Checkpoint B (final)
 
-- [x] Deploy note at the top of the PR; maintainer merges S4 before S5 is planned
+- [ ] CI green; maintainer merges S5 before S6 is planned
