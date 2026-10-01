@@ -1,11 +1,11 @@
 # Task list — Phase 3, slice S2 (`ats-checks` + `ats-keywords`)
 
 Branch `feature/ats-s2`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §6, §6.1, §6.2, §8.
-Status: **planned; waiting for maintainer approval** (decisions 1–5 in the plan).
+Status: **T0–T2 built; at Checkpoint A.** Decisions 1–5 approved as recommended.
 
 - [x] T0 CI fix on `main` (temp-dir scan), first commit of this branch
-- [ ] T1 Section detection and ported vocabulary (headings, action verbs/nouns)
-- [ ] T2 Checks (17) and runner; expected statuses reproduced for every fixture
+- [x] T1 Section detection and ported vocabulary (headings, action verbs/nouns)
+- [x] T2 Checks (17) and runner; expected statuses reproduced for every fixture
 
 ### Checkpoint A
 
