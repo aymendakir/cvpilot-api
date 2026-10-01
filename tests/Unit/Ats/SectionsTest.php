@@ -120,4 +120,23 @@ class SectionsTest extends TestCase
     {
         $this->assertSame($expected, DateRanges::find($line));
     }
+
+    /** French month names and abbreviations, as the FR advice tells users to write them (S3 Checkpoint A). */
+    public function test_french_months_and_abbreviations(): void
+    {
+        foreach (['janv.', 'janvier', 'févr.', 'février', 'mars', 'avr.', 'avril', 'mai', 'juin', 'juil.', 'juillet', 'août',
+            'sept.', 'septembre', 'oct.', 'octobre', 'nov.', 'novembre', 'déc.', 'décembre'] as $month) {
+            $this->assertSame([['month', 'month']], DateRanges::find("{$month} 2021 – juin 2022"), $month);
+            $this->assertSame([['month', 'month']], DateRanges::find('Mars 2020 – '.mb_convert_case($month, MB_CASE_TITLE).' 2021'), "capitalised {$month}");
+        }
+    }
+
+    public function test_french_open_ends(): void
+    {
+        foreach (["aujourd'hui", "aujourd\u{2019}hui", "Aujourd'hui", 'à ce jour', 'À ce jour', 'en cours', 'présent', 'Présent'] as $end) {
+            $this->assertSame([['month', null]], DateRanges::find("mars 2022 – {$end}"), $end);
+        }
+        $this->assertSame([['month', null]], DateRanges::find("De mars 2022 à aujourd'hui"));
+        $this->assertSame([['numeric', null]], DateRanges::find('03/2022 - en cours'));
+    }
 }

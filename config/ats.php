@@ -1,8 +1,8 @@
 <?php
 
 /*
- * ATS checker (SPEC-ats.md). Scoring weights and caps join this file in S3; S1 needs the parser
- * settings only.
+ * ATS checker (SPEC-ats.md). Parser settings (S1) and the scoring model (§6, S3). Changing a point
+ * value, cap or band changes scores: update the golden files and the changelog (docs/ats-scoring.md).
  */
 
 return [
@@ -29,5 +29,45 @@ return [
         'table_rows' => 3,           // ≥ 3 consecutive rows …
         'table_cells' => 3,          // … of ≥ 3 aligned cells
         'table_align_pt' => 6.0,
+    ],
+
+    // §6 scoring model: category, severity and points of every check, in report order.
+    'checks' => [
+        'readable_text' => ['category' => 'format', 'severity' => 'blocker', 'points' => 6],
+        'single_column' => ['category' => 'format', 'severity' => 'major', 'points' => 6],
+        'layout_tables' => ['category' => 'format', 'severity' => 'major', 'points' => 5],
+        'images' => ['category' => 'format', 'severity' => 'major', 'points' => 5],
+        'text_boxes_headers' => ['category' => 'format', 'severity' => 'minor', 'points' => 3],
+        'file_supported' => ['category' => 'format', 'severity' => 'minor', 'points' => 3],
+        'clean_characters' => ['category' => 'format', 'severity' => 'minor', 'points' => 2],
+        'email' => ['category' => 'sections', 'severity' => 'major', 'points' => 5],
+        'phone' => ['category' => 'sections', 'severity' => 'minor', 'points' => 3],
+        'experience_section' => ['category' => 'sections', 'severity' => 'major', 'points' => 6],
+        'education_section' => ['category' => 'sections', 'severity' => 'minor', 'points' => 4],
+        'skills_section' => ['category' => 'sections', 'severity' => 'minor', 'points' => 4],
+        'dates' => ['category' => 'sections', 'severity' => 'minor', 'points' => 3],
+        'action_verbs' => ['category' => 'content', 'severity' => 'minor', 'points' => 5],
+        'quantified_results' => ['category' => 'content', 'severity' => 'minor', 'points' => 5],
+        'length' => ['category' => 'content', 'severity' => 'minor', 'points' => 3],
+        'no_duplicates' => ['category' => 'content', 'severity' => 'minor', 'points' => 2],
+        'keyword_coverage' => ['category' => 'keywords', 'severity' => 'minor', 'points' => 30],
+    ],
+
+    // R3 caps, applied after normalization (lowest binding limit wins). A cap is triggered when one of
+    // its checks fails (unverified never triggers a cap).
+    'caps' => [
+        'major_format_issue' => ['limit' => 84, 'checks' => ['single_column', 'layout_tables', 'images']],
+        'no_email' => ['limit' => 79, 'checks' => ['email']],
+        'no_experience' => ['limit' => 74, 'checks' => ['experience_section']],
+    ],
+
+    // R8 grade bands: lowest score of each grade.
+    'grades' => ['strong' => 85, 'good' => 70, 'needs_work' => 50, 'poor' => 0],
+
+    // R6 suggestion limits per kind.
+    'suggestions' => [
+        'keyword_missing_required' => 5,
+        'keyword_missing_preferred' => 3,
+        'keyword_skills_only' => 3,
     ],
 ];

@@ -26,16 +26,19 @@ final readonly class KeywordReport
         return count($this->matches) < self::MIN_TERMS ? 'insufficient_job_description' : 'ok';
     }
 
-    /** Weighted coverage 0–1, 3 decimals; null when the job description is insufficient. */
-    public function coverage(): ?float
+    /**
+     * Weighted coverage 0–1, 3 decimals; null when the job description is insufficient. With
+     * `$assumeMatched` (an index into `matches`), that keyword counts as matched: the what-if (R5).
+     */
+    public function coverage(?int $assumeMatched = null): ?float
     {
         if ($this->status() !== 'ok') {
             return null;
         }
         $total = $matched = 0;
-        foreach ($this->matches as $match) {
+        foreach ($this->matches as $i => $match) {
             $total += $match->keyword->weight();
-            $matched += $match->matched() ? $match->keyword->weight() : 0;
+            $matched += $match->matched() || $i === $assumeMatched ? $match->keyword->weight() : 0;
         }
 
         return round($matched / $total, 3);
