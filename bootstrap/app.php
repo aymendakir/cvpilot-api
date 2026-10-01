@@ -10,7 +10,6 @@ use App\Http\Middleware\RejectMalformedJson;
 use App\Http\Middleware\RequestId;
 use App\Http\Middleware\SecurityHeaders;
 use App\Support\TrustedProxies;
-use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;

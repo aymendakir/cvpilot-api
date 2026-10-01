@@ -6,9 +6,7 @@ use App\Exceptions\UpstreamInvalidResponseException;
 use App\Http\Requests\Ai\AtsAnalysisRequest;
 use App\Http\Requests\Ai\ChatRequest;
 use App\Http\Requests\Ai\CoverLetterRequest;
-use App\Http\Requests\Ai\ImproveCvRequest;
 use App\Models\CareerReport;
-use App\Models\CvDocument;
 use App\Services\AdminReview;
 use App\Services\AiGateway;
 use App\Services\ResumeAudit;
@@ -23,15 +21,6 @@ class AiController
         $prompt = "User question:\n{$d['message']}".(! empty($d['context']) ? "\n\nContext:\n{$d['context']}" : '');
 
         return $ai->chat($prompt, 'assistant', $r->user()->id, $d['provider'] ?? null);
-    }
-
-    public function improveCv(ImproveCvRequest $r, AiGateway $ai)
-    {
-        $d = $r->validated();
-        $cv = CvDocument::where('user_id', $r->user()->id)->findOrFail($d['cv_document_id']);
-        $prompt = "Analyze this CV against the job. Return concise JSON with score, missing_keywords, strengths, and line_suggestions. Never invent experience.\n\nCV:\n{$cv->extracted_text}\n\nJOB:\n{$d['job_description']}";
-
-        return $ai->chat($prompt, 'ats', $r->user()->id);
     }
 
     public function atsAnalysis(AtsAnalysisRequest $r, AiGateway $ai)

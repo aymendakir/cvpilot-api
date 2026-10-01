@@ -118,7 +118,8 @@ class AdminController
         return AdminApplicationResource::paginate(Application::whereIn('id', $validIds)->with('user:id,name,email')->when($r->search, fn ($q) => $q->where(fn ($s) => $s->where('title', 'like', '%'.$r->search.'%')->orWhere('company', 'like', '%'.$r->search.'%')->orWhereHas('user', fn ($u) => $u->where('name', 'like', '%'.$r->search.'%')->orWhere('email', 'like', '%'.$r->search.'%'))))->when($r->status, fn ($q) => $q->where('status', $r->status))->latest()->paginate($r->perPage(20)));
     }
 
-    public function warning(SendWarningRequest $r, User $user, PlatformMail $mail)
+    /** Records the warning, mails the user when SMTP works, and answers 201 with the outcome. */
+    public function storeWarning(SendWarningRequest $r, User $user, PlatformMail $mail)
     {
         $d = $r->validated();
         $emailSent = false;
@@ -132,13 +133,7 @@ class AdminController
         DB::table('audit_events')->insert(['user_id' => $user->id, 'event' => 'warning: '.substr($d['subject'], 0, 120), 'ip' => $r->ip(), 'user_agent' => substr($payload, 0, 512), 'created_at' => now()]);
         AuthController::audit($r, 'warning_sent:'.$user->id, $r->user()->id);
 
-        return ['message' => $emailSent ? 'Warning email sent successfully and recorded in user logs.' : 'Warning recorded in user logs and history (Email not delivered: configure SMTP in dashboard).', 'email_sent' => $emailSent];
-    }
-
-    /** v1: 201 Created. The legacy route keeps the 200 from warning(). Removed with the legacy aliases. */
-    public function storeWarning(SendWarningRequest $r, User $user, PlatformMail $mail)
-    {
-        return response()->json($this->warning($r, $user, $mail), 201);
+        return response()->json(['message' => $emailSent ? 'Warning email sent successfully and recorded in user logs.' : 'Warning recorded in user logs and history (Email not delivered: configure SMTP in dashboard).', 'email_sent' => $emailSent], 201);
     }
 
     public function integrations()

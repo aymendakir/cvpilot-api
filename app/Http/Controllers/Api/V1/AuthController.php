@@ -150,14 +150,6 @@ class AuthController
         return response()->noContent();
     }
 
-    /** Legacy response (POST logout): 200 with a message. Removed with the legacy aliases. */
-    public function logoutLegacy(Request $r)
-    {
-        $this->signOut($r);
-
-        return ['message' => 'Signed out.'];
-    }
-
     private function signOut(Request $r): void
     {
         self::audit($r, 'logout', $r->user()->id);
