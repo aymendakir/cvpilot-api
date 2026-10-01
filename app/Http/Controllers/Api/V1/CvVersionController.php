@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\Career\StoreCvVersionRequest;
+use App\Http\Requests\Career\UpdateCvVersionRequest;
 use App\Models\CvVersion;
 use App\Models\JobWorkspace;
 use App\Services\AdminReview;
@@ -15,9 +17,9 @@ class CvVersionController
         return CvVersion::where('user_id', $r->user()->id)->latest()->limit(100)->get();
     }
 
-    public function store(Request $r)
+    public function store(StoreCvVersionRequest $r)
     {
-        $d = $r->validate(['job_workspace_id' => 'nullable|integer', 'name' => 'required|string|max:180', 'content' => 'required|string|min:30|max:50000', 'source' => 'nullable|in:manual,ai,imported', 'builder_data' => 'nullable|array']);
+        $d = $r->validated();
         if (! empty($d['job_workspace_id'])) {
             JobWorkspace::where('user_id', $r->user()->id)->findOrFail($d['job_workspace_id']);
         }$d['user_id'] = $r->user()->id;
@@ -35,10 +37,9 @@ class CvVersionController
         return $version;
     }
 
-    public function update(Request $r, CvVersion $version)
+    public function update(UpdateCvVersionRequest $r, CvVersion $version)
     {
-        Gate::forUser($r->user())->authorize('update', $version);
-        $d = $r->validate(['name' => 'required|string|max:180', 'content' => 'required|string|min:30|max:50000', 'builder_data' => 'nullable|array']);
+        $d = $r->validated();
         $version->update($d);
         AdminReview::record('cv', $version);
 

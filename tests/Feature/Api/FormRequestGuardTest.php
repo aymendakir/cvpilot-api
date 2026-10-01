@@ -11,7 +11,6 @@ use Tests\TestCase;
 /**
  * SPEC §5.9: a /api/v1 controller that reads input must take a FormRequest, not a plain Request.
  * A method that only uses the request for `user()`, `ip()`, `userAgent()` or `session()` may keep it.
- * Routes not yet converted are pinned in tests/fixtures/unconverted-requests.json; the list only shrinks.
  */
 class FormRequestGuardTest extends TestCase
 {
@@ -56,7 +55,10 @@ class FormRequestGuardTest extends TestCase
     {
         $lines = array_slice(file($ref->getFileName()), $ref->getStartLine(), $ref->getEndLine() - $ref->getStartLine());
         $body = implode('', $lines);
-        $body = str_replace('AuthController::audit($'.$var.',', 'AuthController::audit(', $body);
+        // Helpers that only use the request for the signed-in user, ip or user agent.
+        foreach (['AuthController::audit(', '$this->report(', '$this->signOut('] as $helper) {
+            $body = str_replace($helper.'$'.$var, $helper.'null', $body);
+        }
 
         // Any use of the variable other than a harmless accessor counts as reading input.
         preg_match_all('/\$'.$var.'\b(->(\w+))?/', $body, $m, PREG_SET_ORDER);
@@ -71,14 +73,25 @@ class FormRequestGuardTest extends TestCase
 
     public function test_v1_actions_that_read_input_use_form_requests(): void
     {
-        $pinned = json_decode((string) file_get_contents(base_path('tests/fixtures/unconverted-requests.json')), true);
-        $offenders = $this->offenders();
+        $this->assertSame([], $this->offenders(), 'These v1 actions read input through a plain Request: use a FormRequest');
+    }
 
-        if (getenv('UPDATE_REQUEST_GUARD')) {
-            file_put_contents(base_path('tests/fixtures/unconverted-requests.json'), json_encode($offenders, JSON_PRETTY_PRINT)."\n");
-        }
+    public function test_the_guard_detects_a_plain_request_that_reads_input(): void
+    {
+        $plain = new class
+        {
+            public function reads(Request $r)
+            {
+                return $r->input('x');
+            }
 
-        $this->assertSame([], array_values(array_diff($offenders, $pinned)), 'New v1 action reads input through a plain Request: use a FormRequest');
-        $this->assertSame([], array_values(array_diff($pinned, $offenders)), 'Converted: remove these from tests/fixtures/unconverted-requests.json');
+            public function harmless(Request $r)
+            {
+                return $r->user()->id;
+            }
+        };
+
+        $this->assertTrue($this->readsInput(new ReflectionMethod($plain, 'reads'), 'r'));
+        $this->assertFalse($this->readsInput(new ReflectionMethod($plain, 'harmless'), 'r'));
     }
 }

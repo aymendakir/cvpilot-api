@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\Cv\ExtractCvTextRequest;
+use App\Http\Requests\Cv\StoreCvDocumentRequest;
 use App\Models\CvDocument;
 use App\Services\AtsScorer;
 use App\Services\DocumentExtractor;
@@ -17,9 +19,8 @@ class CvController
         return CvDocument::where('user_id', $r->user()->id)->latest()->get();
     }
 
-    public function store(Request $r, DocumentExtractor $extractor)
+    public function store(StoreCvDocumentRequest $r, DocumentExtractor $extractor)
     {
-        $r->validate(['file' => 'required|file|max:'.DocumentExtractor::MAX_KILOBYTES, 'is_primary' => 'nullable|boolean']);
         $file = $r->file('file');
         $text = $extractor->extract($file);
         $path = $file->store('cv/'.$r->user()->id, 'local');
@@ -35,9 +36,8 @@ class CvController
     }
 
     /** Text extraction only: nothing is stored and no CvDocument is created. */
-    public function extract(Request $r, DocumentExtractor $extractor)
+    public function extract(ExtractCvTextRequest $r, DocumentExtractor $extractor)
     {
-        $r->validate(['file' => 'required|file|max:'.DocumentExtractor::MAX_KILOBYTES]);
 
         return response()->json(['text' => $extractor->extract($r->file('file'))]);
     }

@@ -3,6 +3,11 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Requests\Admin\ListApplicationsRequest;
+use App\Http\Requests\Admin\ListAuditEventsRequest;
+use App\Http\Requests\Admin\ListUsersRequest;
+use App\Http\Requests\Admin\SendWarningRequest;
+use App\Http\Requests\Admin\SuspendUserRequest;
 use App\Models\AdminReviewItem;
 use App\Models\Application;
 use App\Models\CareerReport;
@@ -27,17 +32,16 @@ class AdminController
         return ['activity' => $activity, 'users' => User::count(), 'verified_users' => User::whereNotNull('verified_at')->count(), 'new_users_7d' => User::where('created_at', '>=', now()->subDays(7))->count(), 'active_users_24h' => DB::table('audit_events')->where('created_at', '>=', now()->subDay())->whereNotNull('user_id')->distinct()->count('user_id'), 'failed_logins_24h' => DB::table('audit_events')->where('event', 'login_failed')->where('created_at', '>=', now()->subDay())->count(), 'cv_documents' => DB::table('cv_documents')->count(), 'ats_reports' => DB::table('ats_reports')->count(), 'applications' => DB::table('applications')->count(), 'ai_requests_7d' => DB::table('ai_usage')->where('created_at', '>=', now()->subDays(7))->count(), 'ai_failures_24h' => DB::table('ai_usage')->where('success', false)->where('created_at', '>=', now()->subDay())->count(), 'job_searches_7d' => DB::table('job_search_events')->where('created_at', '>=', now()->subDays(7))->count(), 'job_search_failures_24h' => DB::table('job_search_events')->where('success', false)->where('created_at', '>=', now()->subDay())->count(), 'integrations_enabled' => DB::table('integrations')->where('enabled', true)->count(), 'note' => 'Counts come from the application database. IP metadata is recorded only for security auditing.'];
     }
 
-    public function users(Request $r)
+    public function users(ListUsersRequest $r)
     {
-        $r->validate(['search' => 'nullable|string|max:120', 'page' => 'nullable|integer|min:1']);
 
         return User::when($r->search, fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', '%'.$r->search.'%')->orWhere('email', 'like', '%'.$r->search.'%')))->orderByDesc('id')->paginate(20);
     }
 
-    public function suspend(Request $r, User $user)
+    public function suspend(SuspendUserRequest $r, User $user)
     {
         abort_if($user->role === 'admin', 422, 'Admin accounts cannot be suspended here.');
-        $d = $r->validate(['suspended' => 'required|boolean']);
+        $d = $r->validated();
         $user->suspended = $d['suspended'];
         $user->session_version++;
         $user->save();
@@ -46,9 +50,8 @@ class AdminController
         return $user;
     }
 
-    public function logs(Request $r)
+    public function logs(ListAuditEventsRequest $r)
     {
-        $r->validate(['event' => 'nullable|string|max:100', 'page' => 'nullable|integer|min:1']);
 
         return DB::table('audit_events')->leftJoin('users', 'users.id', '=', 'audit_events.user_id')->select('audit_events.*', 'users.name as user_name', 'users.email as user_email')->when($r->event, fn ($q) => $q->where('event', $r->event))->orderByDesc('audit_events.id')->paginate(30);
     }
@@ -63,17 +66,16 @@ class AdminController
         return ['user' => $user, 'counts' => $counts, 'activity' => DB::table('audit_events')->where('user_id', $user->id)->latest('id')->limit(100)->get(['id', 'event', 'ip', 'user_agent', 'created_at']), 'uploads' => CvDocument::where('user_id', $user->id)->latest()->get()->makeVisible(['extracted_text']), 'cv_versions' => CvVersion::where('user_id', $user->id)->latest()->get(), 'applications' => Application::where('user_id', $user->id)->latest()->get(), 'interviews' => InterviewSession::where('user_id', $user->id)->latest()->get(), 'reports' => CareerReport::where('user_id', $user->id)->latest()->get(), 'reviews' => AdminReviewItem::where('user_id', $user->id)->latest('updated_at')->limit(50)->get()];
     }
 
-    public function applications(Request $r)
+    public function applications(ListApplicationsRequest $r)
     {
-        $r->validate(['page' => 'nullable|integer|min:1', 'search' => 'nullable|string|max:120', 'status' => 'nullable|string|max:40']);
         $validIds = AdminReviewItem::where('kind', 'application')->where('expires_at', '>', now())->pluck('record_id');
 
         return Application::whereIn('id', $validIds)->with('user:id,name,email')->when($r->search, fn ($q) => $q->where(fn ($s) => $s->where('title', 'like', '%'.$r->search.'%')->orWhere('company', 'like', '%'.$r->search.'%')->orWhereHas('user', fn ($u) => $u->where('name', 'like', '%'.$r->search.'%')->orWhere('email', 'like', '%'.$r->search.'%'))))->when($r->status, fn ($q) => $q->where('status', $r->status))->latest()->paginate(20);
     }
 
-    public function warning(Request $r, User $user, PlatformMail $mail)
+    public function warning(SendWarningRequest $r, User $user, PlatformMail $mail)
     {
-        $d = $r->validate(['subject' => 'required|string|max:180', 'message' => 'required|string|min:5|max:5000', 'severity' => 'nullable|string|in:notice,warning,urgent']);
+        $d = $r->validated();
         $emailSent = false;
         $errorMsg = null;
         try {
@@ -89,7 +91,7 @@ class AdminController
     }
 
     /** v1: 201 Created. The legacy route keeps the 200 from warning(). Removed with the legacy aliases. */
-    public function storeWarning(Request $r, User $user, PlatformMail $mail)
+    public function storeWarning(SendWarningRequest $r, User $user, PlatformMail $mail)
     {
         return response()->json($this->warning($r, $user, $mail), 201);
     }

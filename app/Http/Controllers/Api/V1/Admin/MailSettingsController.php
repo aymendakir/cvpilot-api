@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Requests\Admin\SaveSmtpSettingsRequest;
 use App\Models\MailSetting;
 use App\Services\BrevoSmtp;
 use App\Services\MailConfigurationException;
@@ -43,24 +44,9 @@ class MailSettingsController
         ];
     }
 
-    public function save(Request $request)
+    public function save(SaveSmtpSettingsRequest $request)
     {
-        foreach (['host', 'username', 'from_address', 'oauth_client_id', 'oauth_tenant'] as $field) {
-            if (is_string($request->input($field))) {
-                $request->merge([$field => trim($request->input($field))]);
-            }
-        }
-        if (is_string($request->input('host'))) {
-            $request->merge(['host' => strtolower($request->input('host'))]);
-        }
-        $data = $request->validate([
-            'host' => 'required|string|max:253|regex:/^[a-zA-Z0-9.-]+$/', 'port' => 'required|integer|between:1,65535',
-            'encryption' => 'required|in:tls,ssl', 'username' => 'nullable|string|max:254', 'password' => 'nullable|string|max:2000',
-            'from_address' => 'required|email|max:254', 'from_name' => 'required|string|max:120',
-            'auth_mode' => 'sometimes|required|in:password,microsoft',
-            'oauth_tenant' => 'nullable|string|max:253|regex:/^[a-zA-Z0-9.-]+$/',
-            'oauth_client_id' => 'nullable|uuid', 'oauth_client_secret' => 'nullable|string|max:2000',
-        ]);
+        $data = $request->validated();
         $settings = $this->settings();
         $data['auth_mode'] = $data['auth_mode'] ?? $settings->auth_mode ?? 'password';
         $data['oauth_tenant'] = $data['oauth_tenant'] ?? $settings->oauth_tenant ?? 'common';

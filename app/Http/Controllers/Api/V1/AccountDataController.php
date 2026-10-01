@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\Account\DeleteAccountRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -24,11 +25,11 @@ class AccountDataController
         return response()->json($data)->header('Content-Disposition', 'attachment; filename="cvpilot-account.json"');
     }
 
-    public function destroy(Request $request)
+    public function destroy(DeleteAccountRequest $request)
     {
         $user = $request->user();
         abort_if($user->role === 'admin', 422, 'Administrator accounts cannot be deleted through personal settings.');
-        $data = $request->validate(['current_password' => 'required|string', 'confirmation' => 'required|in:DELETE']);
+        $data = $request->validated();
         abort_unless(Hash::check($data['current_password'], $user->password), 422, 'Current password is incorrect.');
         $files = DB::table('cv_documents')->where('user_id', $user->id)->pluck('disk_path');
         foreach ($files as $path) {
