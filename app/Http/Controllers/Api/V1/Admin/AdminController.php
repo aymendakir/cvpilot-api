@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Http\Controllers\Api\V1\AuthController;
 use App\Models\AdminReviewItem;
 use App\Models\Application;
 use App\Models\CareerReport;
@@ -85,6 +86,12 @@ class AdminController
         AuthController::audit($r, 'warning_sent:'.$user->id, $r->user()->id);
 
         return ['message' => $emailSent ? 'Warning email sent successfully and recorded in user logs.' : 'Warning recorded in user logs and history (Email not delivered: configure SMTP in dashboard).', 'email_sent' => $emailSent];
+    }
+
+    /** v1: 201 Created. The legacy route keeps the 200 from warning(). Removed with the legacy aliases. */
+    public function storeWarning(Request $r, User $user, PlatformMail $mail)
+    {
+        return response()->json($this->warning($r, $user, $mail), 201);
     }
 
     public function download(Request $r, CvDocument $cv)

@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Http\Controllers\Api\V1\AuthController;
 use App\Models\MailSetting;
 use App\Services\BrevoSmtp;
 use App\Services\MailConfigurationException;

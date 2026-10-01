@@ -1,0 +1,961 @@
+[
+    {
+        "method": "GET",
+        "uri": "/",
+        "action": "Closure",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/analytics",
+        "action": "AnalyticsController@report",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/applications",
+        "action": "AdminController@applications",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/admin/cache/clear",
+        "action": "Closure",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/contact-messages",
+        "action": "SupportController@index",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "PATCH",
+        "uri": "api/admin/contact-messages/{message}",
+        "action": "SupportController@update",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/cv-templates",
+        "action": "CvTemplateController@index",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/admin/cv-templates",
+        "action": "CvTemplateController@store",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "DELETE",
+        "uri": "api/admin/cv-templates/{template}",
+        "action": "CvTemplateController@destroy",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "PATCH",
+        "uri": "api/admin/cv-templates/{template}",
+        "action": "CvTemplateController@update",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/integrations",
+        "action": "IntegrationController@index",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/admin/integrations",
+        "action": "IntegrationController@store",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/admin/integrations/reorder",
+        "action": "IntegrationController@reorder",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "DELETE",
+        "uri": "api/admin/integrations/{integration}",
+        "action": "IntegrationController@destroy",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "PATCH",
+        "uri": "api/admin/integrations/{integration}",
+        "action": "IntegrationController@update",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/admin/integrations/{integration}/test",
+        "action": "IntegrationController@test",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin",
+            "throttle:10,1,integrations--integration--test:"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/logs",
+        "action": "AdminController@logs",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/site-settings",
+        "action": "SiteSettingsController@show",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "PUT",
+        "uri": "api/admin/site-settings",
+        "action": "SiteSettingsController@save",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/smtp",
+        "action": "MailSettingsController@show",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "PUT",
+        "uri": "api/admin/smtp",
+        "action": "MailSettingsController@save",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/admin/smtp/check",
+        "action": "MailSettingsController@check",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin",
+            "throttle:3,1,smtp-check:"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/smtp/microsoft/callback",
+        "action": "MailSettingsController@microsoftCallback",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/admin/smtp/microsoft/connect",
+        "action": "MailSettingsController@connectMicrosoft",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin",
+            "throttle:5,1,smtp-connect:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/admin/smtp/test",
+        "action": "MailSettingsController@test",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin",
+            "throttle:3,1,smtp-test:"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/summary",
+        "action": "AdminController@summary",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/system",
+        "action": "SiteSettingsController@system",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/uploads/{cv}",
+        "action": "AdminController@download",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/users",
+        "action": "AdminController@users",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/admin/users/{user}",
+        "action": "AdminController@detail",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "PATCH",
+        "uri": "api/admin/users/{user}",
+        "action": "AdminController@suspend",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/admin/users/{user}/warning",
+        "action": "AdminController@warning",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "admin",
+            "throttle:10,1,warning:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/ai/ats-analysis",
+        "action": "AiController@atsAnalysis",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:10,1,ai-ats-analysis:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/ai/chat",
+        "action": "AiController@chat",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:20,1,ai-chat:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/ai/cover-letter",
+        "action": "AiController@coverLetter",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:10,1,ai-cover-letter:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/ai/improve-cv",
+        "action": "AiController@improveCv",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:10,1,ai-improve-cv:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/analytics/events",
+        "action": "AnalyticsController@store",
+        "middleware": [
+            "web",
+            "throttle:120,1,analytics-events:"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/applications",
+        "action": "ApplicationController@index",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/applications",
+        "action": "ApplicationController@store",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "DELETE",
+        "uri": "api/applications/{application}",
+        "action": "ApplicationController@destroy",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "PATCH",
+        "uri": "api/applications/{application}",
+        "action": "ApplicationController@update",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "PUT",
+        "uri": "api/applications/{application}",
+        "action": "ApplicationController@update",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/ats/document",
+        "action": "AtsDocumentController@analyze",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:20,1,ats-document:"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/career/analytics",
+        "action": "CareerController@analytics",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/application-pack",
+        "action": "CareerController@applicationPack",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:6,1,career-application-pack:"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/career/cv-versions",
+        "action": "CareerController@versions",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/cv-versions",
+        "action": "CareerController@storeVersion",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "DELETE",
+        "uri": "api/career/cv-versions/{version}",
+        "action": "CareerController@destroyVersion",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/career/cv-versions/{version}",
+        "action": "CareerController@version",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "PATCH",
+        "uri": "api/career/cv-versions/{version}",
+        "action": "CareerController@updateVersion",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/career/dashboard",
+        "action": "CareerController@dashboard",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/diagnostic",
+        "action": "CareerController@diagnostic",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:5,1,career-diagnostic:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/follow-up",
+        "action": "CareerController@followUp",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:10,1,career-follow-up:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/interviews",
+        "action": "CareerController@startInterview",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:10,1,career-interviews:"
+        ]
+    },
+    {
+        "method": "DELETE",
+        "uri": "api/career/interviews/{session}",
+        "action": "CareerController@destroyInterview",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/career/interviews/{session}",
+        "action": "CareerController@interview",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/interviews/{session}/finish",
+        "action": "CareerController@finishInterview",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:5,1,career-interviews--session--finish:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/interviews/{session}/reply",
+        "action": "CareerController@replyInterview",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:20,1,career-interviews--session--reply:"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/career/library",
+        "action": "CareerController@library",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/portfolio",
+        "action": "CareerController@portfolio",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:10,1,career-portfolio:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/recruiter-view",
+        "action": "CareerController@recruiterView",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:10,1,career-recruiter-view:"
+        ]
+    },
+    {
+        "method": "DELETE",
+        "uri": "api/career/reports/{report}",
+        "action": "CareerController@destroyReport",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/skill-gap",
+        "action": "CareerController@skillGap",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:10,1,career-skill-gap:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/tailor-cv",
+        "action": "CareerController@tailorCv",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:8,1,career-tailor-cv:"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/career/workspaces",
+        "action": "CareerController@workspaces",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/career/workspaces",
+        "action": "CareerController@storeWorkspace",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/career/workspaces/{workspace}",
+        "action": "CareerController@workspace",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/contact",
+        "action": "SupportController@store",
+        "middleware": [
+            "web",
+            "throttle:3,10,contact:"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/csrf",
+        "action": "Closure",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/cv",
+        "action": "CvController@index",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/cv",
+        "action": "CvController@store",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:10,1,cv:"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/cv-templates",
+        "action": "CvTemplateController@published",
+        "middleware": [
+            "web",
+            "throttle:60,1,cv-templates:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/cv/extract",
+        "action": "CvController@extract",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:20,1,cv-extract:"
+        ]
+    },
+    {
+        "method": "DELETE",
+        "uri": "api/cv/{cv}",
+        "action": "CvController@destroy",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/cv/{cv}/analyze",
+        "action": "CvController@analyze",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/jobs/links",
+        "action": "JobsController@links",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/jobs/saved-searches",
+        "action": "JobsController@saved",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/jobs/saved-searches",
+        "action": "JobsController@save",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "DELETE",
+        "uri": "api/jobs/saved-searches/{search}",
+        "action": "JobsController@destroySaved",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/jobs/search",
+        "action": "JobsController@search",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:20,1,jobs-search:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/login",
+        "action": "AuthController@login",
+        "middleware": [
+            "web",
+            "throttle:login"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/logout",
+        "action": "AuthController@logout",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "DELETE",
+        "uri": "api/me",
+        "action": "AccountDataController@destroy",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:3,10,account-delete:"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/me",
+        "action": "Closure",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "PATCH",
+        "uri": "api/me",
+        "action": "AuthController@profile",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/me/export",
+        "action": "AccountDataController@export",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member",
+            "throttle:3,1,account-export:"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/otp/request",
+        "action": "AuthController@code",
+        "middleware": [
+            "web",
+            "throttle:otp-send"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/otp/verify",
+        "action": "AuthController@verify",
+        "middleware": [
+            "web",
+            "throttle:otp-verify"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/password",
+        "action": "AuthController@password",
+        "middleware": [
+            "web",
+            "throttle:api",
+            "member"
+        ]
+    },
+    {
+        "method": "POST",
+        "uri": "api/register",
+        "action": "AuthController@register",
+        "middleware": [
+            "web",
+            "throttle:register"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "api/site-settings",
+        "action": "SiteSettingsController@show",
+        "middleware": [
+            "web"
+        ]
+    },
+    {
+        "method": "GET",
+        "uri": "up",
+        "action": "Closure",
+        "middleware": []
+    }
+]

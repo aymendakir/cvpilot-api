@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\V1;
 
 use App\Models\Application;
 use App\Models\CvVersion;
@@ -28,6 +28,13 @@ class ApplicationController
         AuthController::audit($r, 'application_saved', $r->user()->id);
 
         return response()->json($item, $item->wasRecentlyCreated ? 201 : 200);
+    }
+
+    public function show(Request $r, Application $application)
+    {
+        abort_unless($application->user_id === $r->user()->id, 404);
+
+        return $application;
     }
 
     public function update(Request $r, Application $application)

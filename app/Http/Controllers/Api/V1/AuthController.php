@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\V1;
 
 use App\Exceptions\ApiException;
 use App\Exceptions\ErrorCode;
@@ -107,13 +107,27 @@ class AuthController
         });
     }
 
+    /** v1: 204 No Content. */
     public function logout(Request $r)
+    {
+        $this->signOut($r);
+
+        return response()->noContent();
+    }
+
+    /** Legacy response (POST logout): 200 with a message. Removed with the legacy aliases. */
+    public function logoutLegacy(Request $r)
+    {
+        $this->signOut($r);
+
+        return ['message' => 'Signed out.'];
+    }
+
+    private function signOut(Request $r): void
     {
         self::audit($r, 'logout', $r->user()->id);
         $r->session()->invalidate();
         $r->session()->regenerateToken();
-
-        return ['message' => 'Signed out.'];
     }
 
     public function profile(Request $r)
