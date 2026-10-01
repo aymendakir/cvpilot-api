@@ -18,6 +18,19 @@ Both under one registrable domain means the session cookie is **same-site**: it 
 Until the domain is live, the API and frontend are on different sites and production runs the temporary `SameSite=none` setting
 (section 6).
 
+### System packages in the image
+
+The Dockerfile installs **`poppler-utils`** (`pdftotext`, `pdfinfo`, `pdfimages`) and the PHP **`intl`** extension. The ATS
+checker reads CV PDFs with poppler: text, line positions (columns, tables, repeated header/footer text) and image sizes
+(`docs/ats-spike-s0.md` explains why). They are not optional:
+
+- the test suite fails (`PopplerAvailabilityTest`) when a binary is missing or too old, with the install command;
+- `composer install` fails without `ext-intl`.
+
+Poppler adds roughly 10–20 MB to the image. It runs only on the request's temporary upload, with no shell, a hard timeout
+(`ATS_POPPLER_TIMEOUT`, default 10 s per call) and nothing written to disk; keep the base image updated so Debian's security
+fixes for poppler arrive with each rebuild. A custom host that does not use this Dockerfile must install the same packages.
+
 ## 2. DNS, TLS and the proxy
 
 1. Point `app.<domain>` at the frontend host and `api.<domain>` at the API host; enable HTTPS on both (the platform issues certificates).
@@ -51,6 +64,7 @@ Until the domain is live, the API and frontend are on different sites and produc
 | `RUN_MIGRATIONS` | unset | Web containers migrate by default; set `false` on any extra container that shares the image. |
 | `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | the owner account | Used by `php artisan db:seed --force`. |
 | `MAIL_*` | optional fallback | SMTP is normally saved in Dashboard > Settings > Email. |
+| `ATS_POPPLER_TIMEOUT` | unset (10 s) | Seconds per poppler call when reading a PDF; a timeout rejects the file instead of hanging the request. |
 
 ### Frontend
 

@@ -1,7 +1,10 @@
 FROM php:8.3-apache
-RUN apt-get update && apt-get install -y libonig-dev libzip-dev libpng-dev libjpeg62-turbo-dev libfreetype6-dev unzip \
+# poppler-utils: pdftotext/pdfinfo/pdfimages read CV PDFs for the ATS checker (SPEC-ats.md §4.1, docs/DEPLOYMENT.md).
+# libicu-dev + intl: Unicode normalization for keyword matching.
+RUN apt-get update && apt-get install -y libonig-dev libzip-dev libpng-dev libjpeg62-turbo-dev libfreetype6-dev libicu-dev unzip \
+    poppler-utils \
  && docker-php-ext-configure gd --with-freetype --with-jpeg \
- && docker-php-ext-install -j$(nproc) pdo_mysql mbstring zip gd \
+ && docker-php-ext-install -j$(nproc) pdo_mysql mbstring zip gd intl \
  && a2enmod rewrite headers \
  && rm -rf /var/lib/apt/lists/*
 RUN printf 'upload_max_filesize=16M\npost_max_size=20M\nmax_file_uploads=5\n' > /usr/local/etc/php/conf.d/uploads.ini

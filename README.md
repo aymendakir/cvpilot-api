@@ -220,6 +220,10 @@ The API supports BazaarLink as an OpenAI-compatible AI provider. In the admin da
 
 ## Development
 
+Local requirements besides PHP 8.3 and Composer: the PHP `intl` extension and **poppler-utils**
+(`apt-get install poppler-utils` on Debian/Ubuntu, `brew install poppler` on macOS). The ATS checker reads PDFs with
+poppler, and the test suite fails without it.
+
 ```bash
 composer install
 composer test           # PHPUnit feature/unit tests (php artisan test --env=testing, in-memory SQLite)
