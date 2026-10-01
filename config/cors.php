@@ -9,8 +9,8 @@ return [
         env('APP_URL'),
     ]))),
     'allowed_origins_patterns' => [],
-    'allowed_headers' => ['*'],
-    'exposed_headers' => ['Retry-After'],
+    'allowed_headers' => ['Content-Type', 'Accept', 'X-CSRF-TOKEN', 'X-Requested-With', 'X-Request-Id'],
+    'exposed_headers' => ['Retry-After', 'X-Request-Id'],
     'max_age' => 600,
     'supports_credentials' => true,
 ];

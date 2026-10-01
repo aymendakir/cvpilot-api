@@ -1,27 +1,23 @@
-# Task list — Phase 2, slice S3 (validation, Resources, Policies)
+# Task list — Phase 2, slice S4 (security and auth)
 
-Branch `refactor/api-s3-validation`. Detail: `tasks/plan.md`. Spec: `SPEC.md` §5, §6, §11.
-Status: **T1–T12 built; S3 PR opened. Waiting for the maintainer to merge before S4 is planned.**
+Branch `refactor/api-s4-security`. Detail: `tasks/plan.md`. Spec: `SPEC.md` §6, §7, §18.
+Status: **T1–T9 built; S4 PR opened.** Decisions answered: explicit SESSION_SAME_SITE=none before deploy, prompt envelope moved to Phase 3, admin audit via `admin.<route name>`.
 
-- [x] T1 `ApiFormRequest`, `Limits`, audit-guard test (red)
-- [x] T2 Policies + IDOR matrix
-- [x] T3 FormRequests: auth
-- [x] T4 FormRequests: documents, applications, career records
-- [x] T5 FormRequests: AI and ATS (rules unchanged)
-- [x] T6 FormRequests: jobs, contact, analytics, library
-- [x] T7 FormRequests: admin (+ analytics `days` enum)
-- [x] T8 Data-provider validation tests
+- [x] T1 Session hardening and production boot guard
+- [x] T2 `Member` → `AuthSession`; 401/403 split
+- [x] T3 Throttles: login 5/30, admin 60/min
+- [x] T4 Headers and CORS
 
 ### Checkpoint A
 
-- [x] Guard strict (no allow-list); owner-access matrix green on v1 and legacy
 - [x] Review with maintainer
 
-- [x] T9 `UserResource` / `AdminUserResource`
-- [x] T10 Resources for owned models and admin lists; poisoned-model test
-- [x] T11 Provider failure codes 502/503
-- [x] T12 Admin CV text (per decision)
+- [x] T5 Register enumeration (always 201, notice email)
+- [x] T6 Uniform admin audit middleware
+- [x] T7 `AdminReview` stops storing CV text, purge migration
+- [x] T8 Redaction, CSRF-exemption and audit pins
+- [x] T9 Docs, fresh-clone checks, open the PR, **STOP**
 
 ### Checkpoint B (final)
 
-- [x] Legacy table unchanged except the removed admin CV download; fresh-clone checks run; S3 PR opened; STOP
+- [x] Deploy note at the top of the PR; maintainer merges S4 before S5 is planned

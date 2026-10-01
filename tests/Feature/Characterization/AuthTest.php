@@ -40,17 +40,22 @@ class AuthTest extends TestCase
         $this->assertTrue(Hash::check(self::PASSWORD, $user->password));
     }
 
-    public function test_register_with_an_existing_email_is_422_and_reveals_the_account(): void
+    public function test_register_with_an_existing_email_is_the_same_201_and_changes_nothing(): void
     {
-        $this->makeUser(['email' => 'taken@example.test']);
+        $this->fakePlatformMail();
+        $user = $this->makeUser(['email' => 'taken@example.test']);
+        $oldHash = $user->password;
 
+        // S4 (SPEC decision 18.6): no more "email already taken" oracle.
         $this->postJson('/api/register', [
             'name' => 'Someone',
             'email' => 'taken@example.test',
             'password' => self::PASSWORD,
             'password_confirmation' => self::PASSWORD,
-        ])->assertStatus(422)
-            ->assertJsonStructure(['message', 'errors' => ['email']]);
+        ])->assertStatus(201)->assertExactJson(['message' => 'Account created. Request your verification code.']);
+
+        $this->assertSame(1, User::where('email', 'taken@example.test')->count());
+        $this->assertSame($oldHash, $user->refresh()->password);
     }
 
     public function test_register_validation_failures_are_422_with_field_errors(): void
@@ -306,13 +311,14 @@ class AuthTest extends TestCase
         $this->withSession($session)->getJson('/api/me')->assertStatus(401);
     }
 
-    public function test_suspended_and_unverified_members_are_401_on_member_routes(): void
+    public function test_suspended_and_unverified_members_are_403_with_their_own_codes(): void
     {
         $suspended = $this->makeUser(['suspended' => true]);
         $unverified = $this->makeUser(['verified_at' => null]);
 
-        $this->signIn($suspended)->getJson('/api/me')->assertStatus(401);
-        $this->signIn($unverified)->getJson('/api/me')->assertStatus(401);
+        // S4 (SPEC §6): the account state is a 403 with a distinct code, not a 401.
+        $this->signIn($suspended)->getJson('/api/me')->assertStatus(403)->assertJsonPath('code', 'account_suspended');
+        $this->signIn($unverified)->getJson('/api/me')->assertStatus(403)->assertJsonPath('code', 'email_not_verified');
     }
 
     public function test_a_session_for_a_deleted_user_is_401(): void

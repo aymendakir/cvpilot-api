@@ -45,7 +45,7 @@ Route::post('login', [AuthController::class, 'login'])->middleware('throttle:log
 Route::post('otp/request', [AuthController::class, 'code'])->middleware('throttle:otp-send')->middleware('deprecated:/api/v1/auth/otp/request');
 Route::post('otp/verify', [AuthController::class, 'verify'])->middleware('throttle:otp-verify')->middleware('deprecated:/api/v1/auth/otp/verify');
 Route::get('cv-templates', [CvTemplateController::class, 'published'])->middleware('throttle:60,1,cv-templates:')->middleware('deprecated:/api/v1/cv-templates');
-Route::middleware(['throttle:api', 'member'])->group(function () {
+Route::middleware(['throttle:api', 'auth.session'])->group(function () {
     Route::get('me/export', [AccountDataController::class, 'export'])->middleware('throttle:3,1,account-export:')->middleware('deprecated:/api/v1/me/export');
     Route::delete('me', [AccountDataController::class, 'destroy'])->middleware('throttle:3,10,account-delete:')->middleware('deprecated:/api/v1/me');
     Route::get('me', CurrentUserController::class)->middleware('deprecated:/api/v1/me');
@@ -95,7 +95,7 @@ Route::middleware(['throttle:api', 'member'])->group(function () {
     Route::post('ai/ats-analysis', [AiController::class, 'atsAnalysis'])->middleware('throttle:10,1,ai-ats-analysis:')->middleware('deprecated:/api/v1/ai/ats-analysis');
     Route::post('ai/cover-letter', [AiController::class, 'coverLetter'])->middleware('throttle:10,1,ai-cover-letter:')->middleware('deprecated:/api/v1/ai/cover-letter');
     Route::post('ats/document', [AtsDocumentController::class, 'analyze'])->middleware('throttle:20,1,ats-document:')->middleware('deprecated:/api/v1/ats/document');
-    Route::prefix('admin')->middleware('admin')->group(function () {
+    Route::prefix('admin')->middleware(['admin', 'throttle:admin', 'admin.audit'])->group(function () {
         Route::get('site-settings', [SiteSettingsController::class, 'show'])->middleware('deprecated:/api/v1/admin/site-settings');
         Route::put('site-settings', [SiteSettingsController::class, 'save'])->middleware('deprecated:/api/v1/admin/site-settings');
         Route::get('system', [SiteSettingsController::class, 'system'])->middleware('deprecated:/api/v1/admin/system');

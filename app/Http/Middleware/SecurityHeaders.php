@@ -19,6 +19,11 @@ class SecurityHeaders
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
         if ($request->is('api/*')) {
             $response->headers->set('Cache-Control', 'no-store, private');
+            // JSON only: the Microsoft OAuth callback is an HTML page with inline styles.
+            if ($request->route()?->getName() !== 'smtp.microsoft.callback') {
+                $response->headers->set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+                $response->headers->set('Cross-Origin-Resource-Policy', 'same-site');
+            }
         }
         if ($request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

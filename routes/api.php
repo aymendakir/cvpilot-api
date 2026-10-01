@@ -128,7 +128,7 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
     Route::post('ai/career-diagnostic', [CareerAiController::class, 'diagnostic'])->middleware('throttle:5,1,career-diagnostic:')->name('ai.career-diagnostic');
 
     // Administration (admin role required)
-    Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware(['admin', 'throttle:admin', 'admin.audit'])->group(function () {
         Route::get('site-settings', [SiteSettingsController::class, 'show'])->name('site-settings.show');
         Route::put('site-settings', [SiteSettingsController::class, 'save'])->name('site-settings.update');
         Route::get('system', [SiteSettingsController::class, 'system'])->name('system');

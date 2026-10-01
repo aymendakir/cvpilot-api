@@ -2,10 +2,11 @@
 
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\Admin;
+use App\Http\Middleware\AuditAdmin;
+use App\Http\Middleware\AuthSession;
 use App\Http\Middleware\Deprecated;
 use App\Http\Middleware\EnsureErrorEnvelope;
 use App\Http\Middleware\ForceJsonResponses;
-use App\Http\Middleware\Member;
 use App\Http\Middleware\RejectMalformedJson;
 use App\Http\Middleware\RequestId;
 use App\Http\Middleware\SecurityHeaders;
@@ -39,18 +40,18 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->prepend([RequestId::class, ForceJsonResponses::class, RejectMalformedJson::class]);
-        $middleware->validateCsrfTokens(except: ['api/analytics/events', 'api/contact']);
+        $middleware->validateCsrfTokens(except: ['api/analytics/events', 'api/contact', 'api/v1/analytics/events', 'api/v1/contact-messages']);
         $middleware->append([EnsureErrorEnvelope::class, SecurityHeaders::class]);
         // Deprecation headers must also decorate responses produced by middleware that runs later (401/403/429).
         $middleware->prependToPriorityList(before: EncryptCookies::class, prepend: Deprecated::class);
         // Authenticate (member, admin) before route-model binding, so an anonymous request for a
         // missing id gets 401 instead of a 404 that reveals which ids exist.
         $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: Admin::class);
-        $middleware->prependToPriorityList(before: Admin::class, prepend: Member::class);
+        $middleware->prependToPriorityList(before: Admin::class, prepend: AuthSession::class);
         $middleware->alias([
-            'member' => Member::class,
-            'auth.session' => Member::class,
+            'auth.session' => AuthSession::class,
             'admin' => Admin::class,
+            'admin.audit' => AuditAdmin::class,
             'deprecated' => Deprecated::class,
         ]);
     })

@@ -149,9 +149,10 @@ class ErrorShapesTest extends TestCase
         ])->assertStatus(201);
     }
 
-    public function test_login_is_throttled_with_429_after_20_attempts_per_email_and_ip(): void
+    public function test_login_is_throttled_with_429_after_5_attempts_per_email_and_ip(): void
     {
-        for ($i = 1; $i <= 20; $i++) {
+        // S4 (SPEC §7 item 4): 5 per minute per email+IP (was 20).
+        for ($i = 1; $i <= 5; $i++) {
             $this->postJson('/api/login', ['email' => 'nobody@example.test', 'password' => 'whatever-123'])
                 ->assertStatus(401);
         }
@@ -235,7 +236,9 @@ class ErrorShapesTest extends TestCase
         $this->assertSame('DENY', $response->headers->get('X-Frame-Options'));
         $this->assertSame('strict-origin-when-cross-origin', $response->headers->get('Referrer-Policy'));
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
-        $this->assertFalse($response->headers->has('Content-Security-Policy'));
+        // S4 (SPEC §7 item 5): the API sends a restrictive CSP and CORP (was missing).
+        $this->assertSame("default-src 'none'; frame-ancestors 'none'", $response->headers->get('Content-Security-Policy'));
+        $this->assertSame('same-site', $response->headers->get('Cross-Origin-Resource-Policy'));
         $this->assertTrue($response->headers->has('X-Request-Id'));
     }
 

@@ -28,15 +28,44 @@ class AuthController
         DB::table('audit_events')->insert(['user_id' => $id, 'event' => $event, 'ip' => $r->ip(), 'user_agent' => substr($r->userAgent() ?? '', 0, 512), 'created_at' => now()]);
     }
 
+    /**
+     * Always answers the same 201, so the response never reveals whether an email is registered
+     * (SPEC decision 18.6). A new email creates the account; an existing one gets a notice email
+     * after the response (no timing difference), at most one per address every 10 minutes.
+     */
     public function register(RegisterRequest $r)
     {
         $d = $r->validated();
-        $u = new User;
-        $u->name = $d['name'];
-        $u->email = strtolower(trim($d['email']));
-        $u->password = Hash::make($d['password']);
-        $u->save();
-        self::audit($r, 'register', $u->id);
+        $email = strtolower(trim($d['email']));
+        $existing = User::where('email', $email)->first();
+
+        if ($existing) {
+            self::audit($r, 'register_existing_email', $existing->id);
+            if (Cache::add('register-notice:'.hash('sha256', $email), true, now()->addMinutes(10))) {
+                $sent = false;
+                app()->terminating(function () use ($existing, &$sent) {
+                    if ($sent) { // a long-lived app (tests, Octane) keeps terminating callbacks between requests (runs after the response)
+                        return;
+                    }
+                    $sent = true;
+                    try {
+                        app(PlatformMail::class)->send($existing->email, 'You already have a CVPilot account', 'emails.notice', [
+                            'name' => $existing->name, 'heading' => 'You already have a CVPilot account',
+                            'noticeMessage' => 'Someone tried to create a CVPilot account with this email address. You already have one, so nothing was changed. Sign in, or use "Forgot password" if you need a new password. If this was not you, you can ignore this email.',
+                        ]);
+                    } catch (\Throwable $e) {
+                        Log::warning('Account notice email failed', ['exception' => $e::class, 'message' => Redactor::scrub($e->getMessage())]);
+                    }
+                });
+            }
+        } else {
+            $u = new User;
+            $u->name = $d['name'];
+            $u->email = $email;
+            $u->password = Hash::make($d['password']);
+            $u->save();
+            self::audit($r, 'register', $u->id);
+        }
 
         return response()->json(['message' => 'Account created. Request your verification code.'], 201);
     }
