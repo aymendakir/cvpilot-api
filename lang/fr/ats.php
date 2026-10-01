@@ -21,9 +21,9 @@ return [
             'fix' => 'rendre le texte lisible',
             'findings' => [
                 'ok' => 'Le texte est lisible (:words mots).',
-                'no_text' => 'Aucun texte n\'a pu être lu : le fichier ressemble à un scan ou à une image.',
-                'garbled' => ':percent % des caractères sont illisibles.',
-                'too_short' => 'Seulement :words mots ont pu être lus ; il en faut au moins 40 pour noter un CV.',
+                'no_text' => 'Aucun texte n\'a pu être lu : le fichier ressemble à un scan ou à une image.',
+                'garbled' => ':percent % des caractères sont illisibles.',
+                'too_short' => 'Seulement :words mots ont pu être lus ; il en faut au moins 40 pour noter un CV.',
             ],
             'actions' => [
                 'no_text' => 'Exportez à nouveau votre CV depuis votre éditeur en PDF ou DOCX contenant du vrai texte. Ne le scannez pas et ne le photographiez pas.',
@@ -59,14 +59,14 @@ return [
         ],
         'images' => [
             'title' => 'Images',
-            'suggestion' => 'Utilisez moins d\'images, et plus petites',
+            'suggestion' => 'Limitez le nombre et la taille des images',
             'why' => 'Les ATS ignorent les images, et une grande image décale ou masque le texte.',
-            'fix' => 'utiliser moins d\'images, et plus petites',
+            'fix' => 'limiter le nombre et la taille des images',
             'findings' => [
                 'none' => 'Aucune image.',
                 'small' => '{1} Une petite image, ce qui convient.|[2,*] :count petites images, ce qui convient.',
                 'too_many' => ':count images (2 au maximum).',
-                'too_large' => 'Une image couvre environ :largest_area_pct % de la page (15 % au maximum).',
+                'too_large' => 'Une image couvre environ :largest_area_pct % de la page (15 % au maximum).',
             ],
             'actions' => [
                 'too_many' => 'Gardez au plus une petite photo ou un logo, et supprimez les images et icônes décoratives.',
@@ -76,7 +76,7 @@ return [
         'text_boxes_headers' => [
             'title' => 'Zones de texte et en-têtes',
             'suggestion' => 'Sortez le contenu des zones de texte et des en-têtes',
-            'why' => 'Beaucoup d\'ATS ignorent les zones de texte et les en-têtes ou pieds de page : des coordonnées placées là peuvent être perdues.',
+            'why' => 'Beaucoup d\'ATS ignorent les zones de texte et les en-têtes ou pieds de page : des coordonnées placées là peuvent être perdues.',
             'fix' => 'sortir le contenu des zones de texte et des en-têtes',
             'findings' => [
                 'ok' => 'Aucun texte dans des zones de texte, et vos coordonnées sont dans le corps de la page.',
@@ -102,16 +102,16 @@ return [
             ],
         ],
         'clean_characters' => [
-            'title' => 'Caractères propres',
+            'title' => 'Icônes et caractères spéciaux',
             'suggestion' => 'Remplacez les icônes et les caractères spéciaux',
             'why' => 'Dans un ATS, les polices d\'icônes et les titres aux lettres espacées deviennent des symboles étranges ou des mots coupés.',
             'fix' => 'remplacer les icônes et les caractères spéciaux',
             'findings' => [
                 'ok' => 'Aucune icône, aucun caractère illisible ni titre aux lettres espacées.',
-                'glyphs' => 'Icônes, caractères illisibles ou titres aux lettres espacées détectés (icônes : :private_use, illisibles : :replacement, titres espacés : :letter_spaced).',
+                'glyphs' => 'Icônes, caractères illisibles ou titres aux lettres espacées détectés (icônes : :private_use, illisibles : :replacement, titres espacés : :letter_spaced).',
             ],
             'actions' => [
-                'glyphs' => 'Écrivez les libellés en toutes lettres (« E-mail », « Téléphone ») au lieu d\'icônes, et tapez les titres normalement (« Compétences », pas « C O M P É T E N C E S »).',
+                'glyphs' => 'Écrivez les libellés en toutes lettres (« E-mail », « Téléphone ») au lieu d\'icônes, et tapez les titres normalement (« Compétences », pas « C O M P É T E N C E S »).',
             ],
         ],
         'email' => [
@@ -120,7 +120,7 @@ return [
             'why' => 'Les recruteurs en ont besoin pour vous contacter, et beaucoup d\'ATS l\'exigent.',
             'fix' => 'ajouter votre adresse e-mail',
             'findings' => [
-                'found' => 'Trouvée : :email.',
+                'found' => 'Trouvée : :email.',
                 'missing' => 'Aucune adresse e-mail trouvée.',
             ],
             'actions' => [
@@ -133,7 +133,7 @@ return [
             'why' => 'Les recruteurs appellent souvent avant d\'écrire.',
             'fix' => 'ajouter votre numéro de téléphone',
             'findings' => [
-                'found' => 'Trouvé : :phone.',
+                'found' => 'Trouvé : :phone.',
                 'missing' => 'Aucun numéro de téléphone trouvé.',
             ],
             'actions' => [
@@ -143,16 +143,16 @@ return [
         'experience_section' => [
             'title' => 'Section expérience',
             'suggestion' => 'Ajoutez une section expérience clairement titrée',
-            'why' => 'Les ATS cherchent un titre standard pour trouver votre parcours ; sans lui, votre expérience risque de ne pas être reconnue comme telle.',
+            'why' => 'Les ATS cherchent un titre standard pour trouver votre parcours ; sans lui, votre expérience risque de ne pas être reconnue comme telle.',
             'fix' => 'ajouter une section expérience clairement titrée',
             'findings' => [
-                'found' => 'Titre trouvé : « :heading » (ligne :line).',
-                'missing' => 'Aucun titre d\'expérience trouvé (par exemple « Expérience professionnelle » ou « Projets »).',
-                'empty' => 'Le titre « :heading » n\'est suivi d\'aucun contenu.',
+                'found' => 'Titre trouvé : « :heading » (ligne :line).',
+                'missing' => 'Aucun titre d\'expérience trouvé (par exemple « Expérience professionnelle » ou « Projets »).',
+                'empty' => 'Le titre « :heading » n\'est suivi d\'aucun contenu.',
             ],
             'actions' => [
-                'missing' => 'Placez votre parcours sous un titre standard comme « Expérience professionnelle » ou « Projets ».',
-                'empty' => 'Listez vos postes sous « :heading » : intitulé, entreprise, dates et 2 à 5 puces chacun.',
+                'missing' => 'Placez votre parcours sous un titre standard comme « Expérience professionnelle » ou « Projets ».',
+                'empty' => 'Listez vos postes sous « :heading » : intitulé, entreprise, dates et 2 à 5 puces chacun.',
             ],
         ],
         'education_section' => [
@@ -161,34 +161,34 @@ return [
             'why' => 'Beaucoup de filtres de recrutement vérifient les diplômes et les écoles, que les ATS trouvent sous un titre standard.',
             'fix' => 'ajouter une section formation',
             'findings' => [
-                'found' => 'Titre trouvé : « :heading » (ligne :line).',
-                'missing' => 'Aucun titre de formation trouvé (par exemple « Formation »).',
-                'empty' => 'Le titre « :heading » n\'est suivi d\'aucun contenu.',
+                'found' => 'Titre trouvé : « :heading » (ligne :line).',
+                'missing' => 'Aucun titre de formation trouvé (par exemple « Formation »).',
+                'empty' => 'Le titre « :heading » n\'est suivi d\'aucun contenu.',
             ],
             'actions' => [
-                'missing' => 'Ajoutez une section « Formation » avec votre diplôme, l\'établissement et les dates.',
-                'empty' => 'Listez vos diplômes sous « :heading » : diplôme, établissement et dates.',
+                'missing' => 'Ajoutez une section « Formation » avec votre diplôme, l\'établissement et les dates.',
+                'empty' => 'Listez vos diplômes sous « :heading » : diplôme, établissement et dates.',
             ],
         ],
         'skills_section' => [
             'title' => 'Section compétences',
             'suggestion' => 'Ajoutez une section compétences',
-            'why' => 'Les ATS et les recruteurs cherchent une liste de compétences pour vous rapprocher de l\'offre.',
+            'why' => 'Les ATS et les recruteurs cherchent une liste de compétences pour comparer votre profil à l\'offre.',
             'fix' => 'ajouter une section compétences',
             'findings' => [
-                'found' => 'Titre trouvé : « :heading » (ligne :line).',
-                'missing' => 'Aucun titre de compétences trouvé (par exemple « Compétences »).',
-                'empty' => 'Le titre « :heading » n\'est suivi d\'aucun contenu.',
+                'found' => 'Titre trouvé : « :heading » (ligne :line).',
+                'missing' => 'Aucun titre de compétences trouvé (par exemple « Compétences »).',
+                'empty' => 'Le titre « :heading » n\'est suivi d\'aucun contenu.',
             ],
             'actions' => [
-                'missing' => 'Ajoutez une section « Compétences » qui liste vos principaux outils et savoir-faire.',
-                'empty' => 'Listez vos principaux outils et savoir-faire sous « :heading ».',
+                'missing' => 'Ajoutez une section « Compétences » qui liste vos principaux outils et savoir-faire.',
+                'empty' => 'Listez vos principaux outils et savoir-faire sous « :heading ».',
             ],
         ],
         'dates' => [
             'title' => 'Dates',
             'suggestion' => 'Utilisez des dates claires et homogènes',
-            'why' => 'Les ATS calculent vos années d\'expérience à partir des périodes ; des dates absentes ou de formats mélangés sont mal lues.',
+            'why' => 'Les ATS calculent vos années d\'expérience à partir des périodes ; des dates absentes ou de formats mélangés sont mal lues.',
             'fix' => 'utiliser des dates claires et homogènes',
             'findings' => [
                 'ok' => ':count périodes, toutes au même format (:style).',
@@ -198,8 +198,8 @@ return [
             ],
             'actions' => [
                 'no_experience_section' => 'Ajoutez une section expérience avec une période pour chaque poste.',
-                'too_few' => 'Indiquez une date de début et de fin pour chaque poste, par exemple « mars 2022 – aujourd\'hui ».',
-                'mixed_styles' => 'Écrivez toutes les dates au même format, par exemple « mars 2022 – aujourd\'hui ».',
+                'too_few' => 'Indiquez une date de début et de fin pour chaque poste, par exemple « mars 2022 – aujourd\'hui ».',
+                'mixed_styles' => 'Écrivez toutes les dates au même format, par exemple « mars 2022 – aujourd\'hui ».',
             ],
         ],
         'action_verbs' => [
@@ -209,12 +209,12 @@ return [
             'fix' => 'commencer vos puces par un verbe d\'action',
             'findings' => [
                 'ok' => ':count puces sur :total commencent par un verbe ou un nom d\'action.',
-                'weak_start' => 'Seulement :count puces sur :total commencent par un verbe ou un nom d\'action (60 % requis).',
+                'weak_start' => 'Seulement :count puces sur :total commencent par un verbe ou un nom d\'action (60 % requis).',
                 'no_bullets' => 'Aucune puce trouvée dans votre expérience.',
             ],
             'actions' => [
-                'weak_start' => 'Commencez chaque puce par un verbe comme « Développé », « Piloté », « Réduit » ou « Lancé », ou par un nom d\'action comme « Mise en place de… ».',
-                'no_bullets' => 'Décrivez chaque poste en 2 à 5 puces commençant par « • » ou « - ».',
+                'weak_start' => 'Commencez chaque puce par un verbe comme « Développé », « Piloté », « Réduit » ou « Lancé », ou par un nom d\'action comme « Mise en place de… ».',
+                'no_bullets' => 'Décrivez chaque poste en 2 à 5 puces commençant par « • » ou « - ».',
             ],
         ],
         'quantified_results' => [
@@ -228,14 +228,14 @@ return [
                 'no_bullets' => 'Aucune puce trouvée dans votre expérience.',
             ],
             'actions' => [
-                'too_few' => 'Ajoutez un résultat mesurable à au moins deux puces, par exemple « temps de chargement réduit de 40 % » ou « 120 tickets traités par semaine ».',
+                'too_few' => 'Ajoutez un résultat mesurable à au moins deux puces, par exemple « temps de chargement réduit de 40 % » ou « 120 tickets traités par semaine ».',
                 'no_bullets' => 'Décrivez chaque poste en 2 à 5 puces, avec des résultats mesurables.',
             ],
         ],
         'length' => [
             'title' => 'Longueur',
             'suggestion' => 'Ajustez la longueur',
-            'why' => 'Un CV trop court paraît léger, un CV trop long noie l\'essentiel. 250 à 1 000 mots conviennent à la plupart des postes.',
+            'why' => 'Un CV trop court paraît léger, un CV trop long noie l\'essentiel. 250 à 1 000 mots conviennent à la plupart des postes.',
             'fix' => 'ajuster la longueur',
             'findings' => [
                 'ok' => ':words mots.',
@@ -243,7 +243,7 @@ return [
                 'too_long' => ':words mots (au plus :max recommandés).',
             ],
             'actions' => [
-                'too_short' => 'Détaillez vos postes : périmètre, outils utilisés et résultats.',
+                'too_short' => 'Détaillez vos postes : périmètre, outils utilisés et résultats.',
                 'too_long' => 'Retirez les postes anciens ou moins pertinents, et limitez chaque puce à une ou deux lignes.',
             ],
         ],
@@ -267,37 +267,37 @@ return [
             'fix' => 'couvrir davantage de mots-clés de l\'offre',
             'findings' => [
                 'complete' => 'Les :total mots-clés de l\'offre apparaissent dans votre CV.',
-                'partial' => ':matched mots-clés de l\'offre sur :total apparaissent dans votre CV (couverture pondérée :percent %).',
-                'insufficient_job_description' => 'Non noté : trop peu de mots-clés ont été trouvés dans l\'offre.',
+                'partial' => ':matched mots-clés de l\'offre sur :total apparaissent dans votre CV (couverture pondérée :percent %).',
+                'insufficient_job_description' => 'Non noté : trop peu de mots-clés ont été trouvés dans l\'offre.',
             ],
             'actions' => [
-                'partial' => 'Ajoutez les mots-clés manquants qui vous correspondent vraiment ; voir les suggestions de mots-clés.',
+                'partial' => 'Ajoutez les mots-clés manquants qui vous correspondent vraiment ; voir les suggestions de mots-clés.',
             ],
         ],
     ],
 
     'unverified' => [
-        'not_inspected' => 'Non vérifié : un texte collé n\'a pas de mise en page. Importez le fichier pour le vérifier.',
-        'low_confidence' => 'Non vérifié : la détection n\'était pas assez fiable sur ce fichier.',
-        'no_text' => 'Non vérifié : aucun texte n\'a pu être lu.',
+        'not_inspected' => 'Non vérifié : un texte collé n\'a pas de mise en page. Importez le fichier pour le vérifier.',
+        'low_confidence' => 'Non vérifié : la détection n\'était pas assez fiable sur ce fichier.',
+        'no_text' => 'Non vérifié : aucun texte n\'a pu être lu.',
     ],
 
     'keywords' => [
         'keyword_missing' => [
             'required' => [
-                'title' => 'Mot-clé requis manquant : :term',
-                'detail' => 'L\'offre demande « :term », et ce terme n\'apparaît pas dans votre CV.',
+                'title' => 'Mot-clé requis manquant : :term',
+                'detail' => 'L\'offre demande « :term », et ce terme n\'apparaît pas dans votre CV.',
                 'action' => 'Si vous avez une réelle expérience de :term, ajoutez-la dans une puce pertinente ou dans vos compétences. N\'ajoutez pas de compétences que vous n\'avez pas.',
             ],
             'preferred' => [
-                'title' => 'Mot-clé souhaité manquant : :term',
-                'detail' => 'L\'offre cite « :term » comme un atout, et ce terme n\'apparaît pas dans votre CV.',
+                'title' => 'Mot-clé souhaité manquant : :term',
+                'detail' => 'L\'offre cite « :term » comme un atout, et ce terme n\'apparaît pas dans votre CV.',
                 'action' => 'Si vous avez une réelle expérience de :term, ajoutez-la dans une puce pertinente ou dans vos compétences. N\'ajoutez pas de compétences que vous n\'avez pas.',
             ],
         ],
         'keyword_skills_only' => [
             'title' => 'Montrez :term dans votre expérience',
-            'detail' => '« :term » apparaît uniquement dans votre liste de compétences. Les recruteurs accordent plus de poids à une compétence montrée dans un poste réel.',
+            'detail' => '« :term » apparaît uniquement dans votre liste de compétences. Les recruteurs accordent plus de poids à une compétence montrée dans un poste réel.',
             'action' => 'Mentionnez :term dans une puce d\'expérience où vous l\'avez utilisé, si c\'est vrai.',
         ],
         'keyword_stuffing' => [
@@ -321,24 +321,24 @@ return [
     'summary' => [
         'unreadable' => 'Aucun texte n\'a pu être lu dans ce fichier, il ne peut donc pas être noté.',
         'insufficient_text' => 'Seulement :words mots ont pu être lus, c\'est trop peu pour noter ce CV.',
-        'top_gain' => '{1} :verdict (:score/100) ; le gain le plus important : :fix (+1 point).|[2,*] :verdict (:score/100) ; le gain le plus important : :fix (+:count points).',
-        'no_gain' => ':verdict (:score/100) ; aucune correction seule ne l\'augmente, mais les suggestions ci-dessous restent utiles.',
-        'all_passed' => ':verdict (:score/100) ; tous les contrôles sont réussis.',
+        'top_gain' => '{1} :verdict (:score/100) ; le gain le plus important : :fix (+1 point).|[2,*] :verdict (:score/100) ; le gain le plus important : :fix (+:count points).',
+        'no_gain' => ':verdict (:score/100) ; aucune correction seule ne l\'augmente, mais les suggestions ci-dessous restent utiles.',
+        'all_passed' => ':verdict (:score/100) ; tous les contrôles sont réussis.',
         'verdicts' => [
             'strong' => 'Très bon score',
             'good' => 'Bon score',
-            'needs_work' => 'Votre CV est à améliorer',
+            'needs_work' => 'Score à améliorer',
             'poor' => 'Score faible',
         ],
-        'fix_keyword' => 'ajouter « :term » si cela vous correspond',
+        'fix_keyword' => 'ajouter « :term » si cela vous correspond',
     ],
 
     'limitations' => [
         'estimate' => 'Ceci est une estimation de la qualité du document et de la couverture des mots-clés, pas le résultat de l\'ATS d\'un employeur.',
-        'pdf_heuristics' => 'La détection de la mise en page dans les PDF est approximative ; chaque constat indique son niveau de confiance.',
+        'pdf_heuristics' => 'La détection de la mise en page dans les PDF est approximative ; chaque constat indique son niveau de confiance.',
         'no_ocr' => 'Les documents scannés ne sont pas lus (pas d\'OCR).',
-        'pasted_text' => 'Un texte collé n\'a pas de mise en page : les contrôles de format n\'ont pas été faits. Importez le fichier pour les obtenir.',
-        'other_language' => 'Votre CV n\'est ni en français ni en anglais : les mots-clés ne sont reconnus que s\'ils sont écrits de la même façon.',
+        'pasted_text' => 'Un texte collé n\'a pas de mise en page : les contrôles de format n\'ont pas été faits. Importez le fichier pour les obtenir.',
+        'other_language' => 'Votre CV n\'est ni en français ni en anglais : les mots-clés ne sont reconnus que s\'ils sont écrits de la même façon.',
     ],
 
     'formatting' => [
@@ -356,7 +356,7 @@ return [
         ],
         'images' => [
             'found' => '{1} Une image.|[2,*] :count images.',
-            'found_area' => '{1} Une image, environ :largest_area_pct % de la page.|[2,*] :count images, la plus grande couvre environ :largest_area_pct % de la page.',
+            'found_area' => '{1} Une image, environ :largest_area_pct % de la page.|[2,*] :count images, la plus grande couvre environ :largest_area_pct % de la page.',
         ],
         'text_boxes' => [
             'found' => '{0} Des zones de texte contiennent du texte.|{1} Une zone de texte contient du texte.|[2,*] :count zones de texte contiennent du texte.',
@@ -364,7 +364,7 @@ return [
         'header_footer' => [
             'found' => 'Du texte figure dans l\'en-tête ou le pied de page.',
             'contact_only' => 'Les coordonnées apparaissent uniquement dans l\'en-tête ou le pied de page.',
-            'single_page' => 'PDF d\'une seule page : aucun en-tête ou pied de page répété à détecter.',
+            'single_page' => 'PDF d\'une seule page : aucun en-tête ou pied de page répété à détecter.',
         ],
         'glyph_issues' => [
             'found' => 'Icônes, caractères illisibles ou titres aux lettres espacées détectés.',

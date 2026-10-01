@@ -122,13 +122,21 @@ class AtsMessagesTest extends TestCase
     {
         $f4b = ScoringFixturesTest::assess('cvs/two-column.pdf', 'jobs/laravel-dev-short.txt');
         $this->assertSame('Good score (84/100); the biggest gain is to use a single-column layout (+9 points).', (new MessageCatalog('en'))->summary($f4b->score, $f4b->suggestions));
-        $this->assertSame('Bon score (84/100) ; le gain le plus important : passer à une mise en page sur une colonne (+9 points).', (new MessageCatalog('fr'))->summary($f4b->score, $f4b->suggestions));
+        $this->assertSame("Bon score (84/100)\u{00A0}; le gain le plus important\u{00A0}: passer à une mise en page sur une colonne (+9 points).", (new MessageCatalog('fr'))->summary($f4b->score, $f4b->suggestions));
 
         $fr = new MessageCatalog('fr');
-        $this->assertSame('3,5 % des caractères sont illisibles.', $fr->finding('readable_text', 'garbled', ['percent' => 3.5]));
+        $this->assertSame("3,5\u{00A0}% des caractères sont illisibles.", $fr->finding('readable_text', 'garbled', ['percent' => 3.5]));
         $this->assertSame('Vos périodes utilisent des formats différents (mars 2022, 03/2022).', $fr->finding('dates', 'mixed_styles', ['count' => 3, 'styles' => 'month, numeric']));
         $this->assertSame('Fichier PDF, 0,1 Mo.', $fr->finding('file_supported', 'ok', ['type' => 'pdf', 'megabytes' => 0.1]));
         $this->assertSame('Une seule période trouvée dans votre expérience.', $fr->finding('dates', 'too_few', ['count' => 1]));
         $this->assertSame('Not checked: pasted text has no layout. Upload the file to check it.', (new MessageCatalog('en'))->finding('images', 'not_inspected', ['type' => 'text']));
+    }
+
+    /** French typography (Checkpoint A): non-breaking spaces before ":" ";" "%" and inside « ». */
+    public function test_french_typography_uses_non_breaking_spaces(): void
+    {
+        foreach ($this->flat('fr') as $key => $text) {
+            $this->assertDoesNotMatchRegularExpression('/ [;%»]| :(?=\s|$)|« /u', $text, $key);
+        }
     }
 }
