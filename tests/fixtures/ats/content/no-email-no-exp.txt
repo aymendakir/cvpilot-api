@@ -1,0 +1,21 @@
+Samir Benali
+Backend Developer
++212 600 123 456
+Rabat, Morocco
+
+Profile
+Backend developer who builds reliable web applications for small product teams. I care about readable code, careful database design and automated tests, and I enjoy working closely with designers and support staff to turn customer feedback into features that people actually use. I am looking for a role in a friendly product team where I can keep learning, share what I know and help junior developers grow with patience and clear explanations.
+
+Education
+Bachelor of Science in Computer Science
+Mohammed V University, Rabat
+Final project: a room reservation system for the faculty library, used by students during my final year.
+
+Skills
+PHP, Laravel, MySQL and PHPUnit
+Docker and GitHub Actions
+HTML, CSS and Vue
+Linux servers and Nginx
+Code review, written documentation and agile teamwork
+Customer support and clear communication with non-technical colleagues
+English and French (fluent), Arabic (native)

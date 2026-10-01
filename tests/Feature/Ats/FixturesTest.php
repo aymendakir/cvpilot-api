@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Ats;
 
+use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Smalot\PdfParser\Parser;
 use Tests\TestCase;
@@ -18,7 +19,7 @@ class FixturesTest extends TestCase
 
     public static function cv(string $file): string
     {
-        return self::DIR.'/cvs/'.$file;
+        return self::DIR.'/'.(str_contains($file, '/') ? $file : "cvs/{$file}");
     }
 
     /** Paragraph text of a DOCX body, one paragraph per line. */
@@ -76,8 +77,9 @@ class FixturesTest extends TestCase
         $this->assertSame(0, $code);
         $this->assertNotEmpty($names);
         foreach ($names as $name) {
-            $this->assertFileExists(self::cv($name));
+            $this->assertFileExists(self::DIR.'/'.$name);
         }
+        $this->assertContains('invalid/encrypted.pdf', $names);
     }
 
     // --- clean fixtures (F1, F2, F3, F11, F13) ----------------------------------------------------
@@ -147,6 +149,157 @@ class FixturesTest extends TestCase
             $body = self::docxPart($file, 'word/document.xml');
             $this->assertStringNotContainsString('<w:tbl>', $body, "{$file}: no table");
             $this->assertStringNotContainsString('<w:drawing', $body, "{$file}: no image");
+        }
+    }
+
+    // --- layout variants (F4, F5, F6, F7) and the R1 spike table PDF --------------------------------
+
+    /** x positions (pt) of the text runs on each page, from the PDF text matrices. */
+    private static function pdfRunsX(string $file): array
+    {
+        $pages = [];
+        foreach ((new Parser)->parseFile(self::cv($file))->getPages() as $i => $page) {
+            $pages[$i + 1] = array_map(fn ($run) => (float) $run[0][4], $page->getDataTm());
+        }
+
+        return $pages;
+    }
+
+    public function test_two_column_pdf_has_a_sidebar_of_at_least_eight_lines_on_both_pages(): void
+    {
+        $pages = self::pdfRunsX('two-column.pdf');
+
+        $this->assertCount(2, $pages);
+        foreach ($pages as $number => $xs) {
+            // Sidebar text starts at 10 mm (~28 pt), the main column at 76 mm (~215 pt); 70 mm = 198 pt.
+            $this->assertGreaterThanOrEqual(8, count(array_filter($xs, fn ($x) => $x < 198)), "page {$number}: sidebar lines");
+            $this->assertGreaterThanOrEqual(8, count(array_filter($xs, fn ($x) => $x > 198)), "page {$number}: main column lines");
+        }
+        $this->assertSame(self::vocabulary(self::docxText('clean-en.docx')), self::vocabulary(self::pdfText('two-column.pdf')));
+    }
+
+    public function test_table_layout_docx_puts_the_whole_cv_in_one_table(): void
+    {
+        $body = self::docxPart('table-layout.docx', 'word/document.xml');
+
+        $this->assertSame(1, substr_count($body, '<w:tbl>'));
+        $outside = preg_replace('#<w:tbl>.*</w:tbl>#s', '', $body);
+        $this->assertSame('', trim(strip_tags(str_replace('</w:p>', ' ', $outside))), 'no text outside the table');
+        $this->assertSame(self::vocabulary(self::docxText('clean-en.docx')), self::vocabulary(self::docxText('table-layout.docx')));
+    }
+
+    public function test_table_layout_pdf_has_the_two_grids(): void
+    {
+        $text = self::pdfText('table-layout.pdf');
+
+        foreach (['Dates', 'Role', 'Company', 'Atlas Commerce, Rabat', 'Agile teamwork'] as $needle) {
+            $this->assertStringContainsString($needle, $text);
+        }
+    }
+
+    public function test_scanned_pdf_has_one_image_and_no_text(): void
+    {
+        $pdf = (new Parser)->parseFile(self::cv('scanned.pdf'));
+
+        $this->assertCount(1, $pdf->getPages());
+        $this->assertSame('', trim($pdf->getText()));
+        $this->assertCount(1, $pdf->getObjectsByType('XObject', 'Image'));
+    }
+
+    public function test_photo_icons_uses_a_small_photo_and_private_use_glyphs_and_the_fixed_variant_uses_labels(): void
+    {
+        foreach (['photo-icons.docx', 'photo-icons-fixed.docx'] as $file) {
+            $body = self::docxPart($file, 'word/document.xml');
+            // PhpWord writes images as VML (<w:pict>); Word itself uses <w:drawing>. §4.1 covers both.
+            $this->assertSame(1, substr_count($body, '<w:pict'), "{$file}: one image");
+            preg_match('/width:([\d.]+)pt; height:([\d.]+)pt/', $body, $m);
+            $area = ((float) $m[1] / 28.3465) * ((float) $m[2] / 28.3465); // pt → cm
+            $this->assertEqualsWithDelta(16, $area, 0.5, "{$file}: 4 × 4 cm photo");
+            $this->assertLessThan(0.15 * 21 * 29.7, $area, 'below the 15 % image rule');
+        }
+
+        $icons = self::docxText('photo-icons.docx');
+        $this->assertSame(2, preg_match_all('/\p{Co}/u', $icons));
+        $this->assertStringContainsString('samir.benali@example.com', $icons);
+
+        $fixed = self::docxText('photo-icons-fixed.docx');
+        $this->assertSame(0, preg_match_all('/\p{Co}/u', $fixed));
+        $this->assertStringContainsString('Email: samir.benali@example.com', $fixed);
+        $this->assertStringContainsString('Phone: +212 600 123 456', $fixed);
+    }
+
+    // --- content variants (F8, F9, F12, stuffing) -----------------------------------------------
+
+    public function test_missing_sections_lacks_education_skills_and_phone_and_the_corrected_variant_adds_education(): void
+    {
+        $missing = self::docxText('missing-sections.docx');
+        foreach (["\nEducation\n", "\nSkills\n", '+212'] as $needle) {
+            $this->assertStringNotContainsString($needle, $missing);
+        }
+        $this->assertStringContainsString("\nWork Experience\n", $missing);
+        $this->assertGreaterThanOrEqual(250, count(self::words($missing)), 'length still passes');
+
+        $fixed = self::docxText('missing-sections-plus-education.docx');
+        $this->assertStringContainsString("\nEducation\n", $fixed);
+        $this->assertStringNotContainsString("\nSkills\n", $fixed);
+        $this->assertStringNotContainsString('+212', $fixed);
+    }
+
+    public function test_pasted_text_has_150_words_a_phone_education_and_skills_but_no_email_experience_or_bullets(): void
+    {
+        $text = (string) file_get_contents(self::cv('no-email-no-exp.txt'));
+
+        $this->assertEqualsWithDelta(150, count(self::words($text)), 8);
+        $this->assertStringContainsString('+212 600 123 456', $text);
+        $this->assertStringNotContainsString('@', $text);
+        $this->assertDoesNotMatchRegularExpression('/^(work )?experience|projects$/im', $text);
+        $this->assertDoesNotMatchRegularExpression('/^\s*[-•*]/m', $text);
+        foreach (["\nEducation\n", "\nSkills\n"] as $needle) {
+            $this->assertStringContainsString($needle, $text);
+        }
+    }
+
+    public function test_too_long_has_about_1400_words_and_otherwise_passing_content(): void
+    {
+        $text = self::docxText('too-long.docx');
+        preg_match_all('/^• (.+)$/mu', $text, $m);
+
+        $this->assertEqualsWithDelta(1400, count(self::words($text)), 70);
+        $this->assertCount(26, $m[1]);
+        $this->assertCount(4, array_filter($m[1], fn ($b) => preg_match('/\d/', $b)), 'still 4 quantified bullets');
+        foreach (['Redis', 'AWS', 'Kubernetes', 'GraphQL', 'Terraform', 'Vue.js', 'CI/CD'] as $term) {
+            $this->assertSame(0, self::occurrences($text, $term), "no new §8.2 keyword: {$term}");
+        }
+    }
+
+    public function test_stuffing_repeats_laravel_fifteen_times_and_changes_nothing_else(): void
+    {
+        $stuffed = self::docxText('stuffing.docx');
+        $clean = self::docxText('clean-en.docx');
+
+        $this->assertSame(15, self::occurrences($stuffed, 'Laravel'));
+        $this->assertSame(self::vocabulary($clean), self::vocabulary($stuffed));
+    }
+
+    // --- invalid files (S4 error cases) ----------------------------------------------------------
+
+    public function test_invalid_files_are_what_their_names_say(): void
+    {
+        $encrypted = (string) file_get_contents(self::cv('invalid/encrypted.pdf'));
+        $this->assertStringStartsWith('%PDF-1.4', $encrypted);
+        $this->assertStringContainsString('/Encrypt 6 0 R', $encrypted);
+        $this->assertStringNotContainsString('Samir', $encrypted, 'the page text is encrypted');
+
+        $this->assertStringStartsWith(hex2bin('D0CF11E0A1B11AE1'), (string) file_get_contents(self::cv('invalid/legacy.doc')));
+        $this->assertStringStartsWith('MZ', (string) file_get_contents(self::cv('invalid/renamed-exe.pdf')));
+
+        foreach (['invalid/encrypted.pdf', 'invalid/corrupt.pdf'] as $file) {
+            try {
+                (new Parser)->parseFile(self::cv($file))->getText();
+                $this->fail("{$file} should not be readable by smalot/pdfparser");
+            } catch (\Throwable $e) {
+                $this->assertNotInstanceOf(AssertionFailedError::class, $e, $e->getMessage());
+            }
         }
     }
 }
