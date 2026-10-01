@@ -1,0 +1,211 @@
+{
+  "case": "F13",
+  "spec": "§8.2",
+  "cv": "cvs/clean-en.docx",
+  "job": "jobs/unrelated-marketing.txt",
+  "mode": "job_match",
+  "source": "file",
+  "score_status": "scored",
+  "score": 70,
+  "raw_score": 70,
+  "grade": "good",
+  "checks": {
+    "readable_text": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "single_column": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "layout_tables": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "images": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "text_boxes_headers": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "file_supported": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "clean_characters": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    },
+    "email": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "phone": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "experience_section": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "education_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "skills_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "dates": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "action_verbs": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "quantified_results": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "length": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "no_duplicates": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    },
+    "keyword_coverage": {
+      "status": "fail",
+      "earned": 0,
+      "max": 30,
+      "applicable": true
+    }
+  },
+  "checks_complete": true,
+  "caps": [],
+  "keywords": {
+    "status": "ok",
+    "coverage": 0.0,
+    "required": {
+      "matched": 0,
+      "total": 5
+    },
+    "preferred": {
+      "matched": 0,
+      "total": 3
+    },
+    "items": [
+      {
+        "term": "SEO",
+        "kind": "required",
+        "weight": 2,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "Google Analytics",
+        "kind": "required",
+        "weight": 2,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "Content strategy",
+        "kind": "required",
+        "weight": 2,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "Copywriting",
+        "kind": "required",
+        "weight": 2,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "Email marketing",
+        "kind": "required",
+        "weight": 2,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "HubSpot",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "A/B testing",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "Photoshop",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "missing",
+        "match_type": null
+      }
+    ]
+  },
+  "top_suggestions": [
+    {
+      "id": "keyword:content strategy",
+      "impact_points": 5
+    },
+    {
+      "id": "keyword:copywriting",
+      "impact_points": 5
+    },
+    {
+      "id": "keyword:email marketing",
+      "impact_points": 5
+    }
+  ],
+  "notes": [
+    "Ties at +5 are ordered by id (R5). Ids keep the term as written, lower-cased; whether multi-word ids are slugged is open (Checkpoint A notes)."
+  ]
+}

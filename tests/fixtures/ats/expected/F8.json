@@ -1,0 +1,137 @@
+{
+  "case": "F8",
+  "spec": "§8.1",
+  "cv": "cvs/missing-sections.docx",
+  "job": null,
+  "mode": "document",
+  "source": "file",
+  "score_status": "scored",
+  "score": 84,
+  "raw_score": 84,
+  "grade": "good",
+  "checks": {
+    "readable_text": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "single_column": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "layout_tables": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "images": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "text_boxes_headers": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "file_supported": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "clean_characters": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    },
+    "email": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "phone": {
+      "status": "fail",
+      "earned": 0,
+      "max": 3,
+      "applicable": true
+    },
+    "experience_section": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "education_section": {
+      "status": "fail",
+      "earned": 0,
+      "max": 4,
+      "applicable": true
+    },
+    "skills_section": {
+      "status": "fail",
+      "earned": 0,
+      "max": 4,
+      "applicable": true
+    },
+    "dates": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "action_verbs": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "quantified_results": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "length": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "no_duplicates": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    }
+  },
+  "checks_complete": true,
+  "caps": [],
+  "keywords": null,
+  "top_suggestions": [
+    {
+      "id": "education_section",
+      "impact_points": 6
+    },
+    {
+      "id": "skills_section",
+      "impact_points": 6
+    },
+    {
+      "id": "phone",
+      "impact_points": 5
+    }
+  ],
+  "corrected": {
+    "check": "education_section",
+    "case": "F8-fixed"
+  }
+}

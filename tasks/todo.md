@@ -1,11 +1,11 @@
 # Task list — Phase 3, slice S0 (PDF spike and fixtures)
 
 Branch `feature/ats-s0`. Detail: `tasks/plan.md`. Spec: `SPEC-ats.md` §4.1, §8, §12 R1, §16, §17.
-Status: **planned; waiting for maintainer approval** (decisions 1–3 in the plan).
+Status: **T1–T3 built; at Checkpoint A.** Decisions: real PDFs arrive before T4 (local only, deleted after the spike); throwaway spike script; hand-written encrypted PDF.
 
-- [ ] T1 `setasign/fpdf` (dev), BASE-EN/BASE-FR content, `build.php`, clean fixtures
-- [ ] T2 Problem variants, corrected variants, error-case files
-- [ ] T3 Jobs, `expected/*.json`, `manifest.json`, `FixturesTest`
+- [x] T1 `setasign/fpdf` (dev), BASE-EN/BASE-FR content, `build.php`, clean fixtures
+- [x] T2 Problem variants, corrected variants, error-case files
+- [x] T3 Jobs, `expected/*.json`, `manifest.json`, `FixturesTest`
 
 ### Checkpoint A
 

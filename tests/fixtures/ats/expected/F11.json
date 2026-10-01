@@ -1,0 +1,197 @@
+{
+  "case": "F11",
+  "spec": "§8.2",
+  "cv": "cvs/clean-fr.docx",
+  "job": "jobs/dev-symfony-fr.txt",
+  "mode": "job_match",
+  "source": "file",
+  "score_status": "scored",
+  "score": 98,
+  "raw_score": 98,
+  "grade": "strong",
+  "checks": {
+    "readable_text": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "single_column": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "layout_tables": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "images": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "text_boxes_headers": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "file_supported": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "clean_characters": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    },
+    "email": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "phone": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "experience_section": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "education_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "skills_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "dates": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "action_verbs": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "quantified_results": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "length": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "no_duplicates": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    },
+    "keyword_coverage": {
+      "status": "fail",
+      "earned": 28,
+      "max": 30,
+      "applicable": true
+    }
+  },
+  "checks_complete": true,
+  "caps": [],
+  "keywords": {
+    "status": "ok",
+    "coverage": 0.923,
+    "required": {
+      "matched": 6,
+      "total": 6
+    },
+    "preferred": {
+      "matched": 0,
+      "total": 1
+    },
+    "items": [
+      {
+        "term": "PHP",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "Symfony",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "MySQL",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "Docker",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "Gestion de projet",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "stem"
+      },
+      {
+        "term": "Tests unitaires",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "Vue.js",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "missing",
+        "match_type": null
+      }
+    ]
+  },
+  "top_suggestions": [
+    {
+      "id": "keyword:vue.js",
+      "impact_points": 2
+    }
+  ],
+  "notes": [
+    "Messages are expected in French (locale fr).",
+    "\"Tests unitaires\" appears verbatim in the CV, so it is pinned as an exact match; §8.2 groups it with the stem example."
+  ]
+}

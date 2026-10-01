@@ -1,0 +1,224 @@
+{
+  "case": "F4b",
+  "spec": "§8.2, §5.3",
+  "cv": "cvs/two-column.pdf",
+  "job": "jobs/laravel-dev-short.txt",
+  "mode": "job_match",
+  "source": "file",
+  "score_status": "scored",
+  "score": 84,
+  "raw_score": 87,
+  "grade": "good",
+  "checks": {
+    "readable_text": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "single_column": {
+      "status": "fail",
+      "earned": 0,
+      "max": 6,
+      "applicable": true
+    },
+    "layout_tables": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "images": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "text_boxes_headers": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "file_supported": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "clean_characters": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    },
+    "email": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "phone": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "experience_section": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "education_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "skills_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "dates": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "action_verbs": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "quantified_results": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "length": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "no_duplicates": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    },
+    "keyword_coverage": {
+      "status": "fail",
+      "earned": 23,
+      "max": 30,
+      "applicable": true
+    }
+  },
+  "checks_complete": true,
+  "caps": [
+    {
+      "id": "major_format_issue",
+      "limit": 84,
+      "applied": true
+    }
+  ],
+  "keywords": {
+    "status": "ok",
+    "coverage": 0.75,
+    "required": {
+      "matched": 5,
+      "total": 6
+    },
+    "preferred": {
+      "matched": 2,
+      "total": 4
+    },
+    "items": [
+      {
+        "term": "PHP",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "Laravel",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "MySQL",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "Docker",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "CI/CD",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "synonym"
+      },
+      {
+        "term": "Redis",
+        "kind": "required",
+        "weight": 2,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "Vue.js",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "matched",
+        "match_type": "synonym"
+      },
+      {
+        "term": "Git",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "matched",
+        "match_type": "synonym"
+      },
+      {
+        "term": "Kubernetes",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "Terraform",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "missing",
+        "match_type": null
+      }
+    ]
+  },
+  "top_suggestions": [
+    {
+      "id": "single_column",
+      "impact_points": 9
+    },
+    {
+      "id": "keyword:redis",
+      "impact_points": 0
+    }
+  ]
+}

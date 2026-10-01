@@ -1,0 +1,249 @@
+{
+  "case": "F3",
+  "spec": "§8.2",
+  "cv": "cvs/clean-en.docx",
+  "job": "jobs/laravel-dev.txt",
+  "mode": "job_match",
+  "source": "file",
+  "score_status": "scored",
+  "score": 91,
+  "raw_score": 91,
+  "grade": "strong",
+  "checks": {
+    "readable_text": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "single_column": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "layout_tables": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "images": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "text_boxes_headers": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "file_supported": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "clean_characters": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    },
+    "email": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "phone": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "experience_section": {
+      "status": "pass",
+      "earned": 6,
+      "max": 6,
+      "applicable": true
+    },
+    "education_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "skills_section": {
+      "status": "pass",
+      "earned": 4,
+      "max": 4,
+      "applicable": true
+    },
+    "dates": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "action_verbs": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "quantified_results": {
+      "status": "pass",
+      "earned": 5,
+      "max": 5,
+      "applicable": true
+    },
+    "length": {
+      "status": "pass",
+      "earned": 3,
+      "max": 3,
+      "applicable": true
+    },
+    "no_duplicates": {
+      "status": "pass",
+      "earned": 2,
+      "max": 2,
+      "applicable": true
+    },
+    "keyword_coverage": {
+      "status": "fail",
+      "earned": 21,
+      "max": 30,
+      "applicable": true
+    }
+  },
+  "checks_complete": true,
+  "caps": [],
+  "keywords": {
+    "status": "ok",
+    "coverage": 0.708,
+    "required": {
+      "matched": 8,
+      "total": 10
+    },
+    "preferred": {
+      "matched": 1,
+      "total": 4
+    },
+    "items": [
+      {
+        "term": "PHP",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "Laravel",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "MySQL",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "REST APIs",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "synonym"
+      },
+      {
+        "term": "Docker",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "Git",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "synonym"
+      },
+      {
+        "term": "PHPUnit",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "exact"
+      },
+      {
+        "term": "CI/CD",
+        "kind": "required",
+        "weight": 2,
+        "status": "matched",
+        "match_type": "synonym"
+      },
+      {
+        "term": "Redis",
+        "kind": "required",
+        "weight": 2,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "AWS",
+        "kind": "required",
+        "weight": 2,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "Vue.js",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "matched",
+        "match_type": "synonym"
+      },
+      {
+        "term": "Kubernetes",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "GraphQL",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "missing",
+        "match_type": null
+      },
+      {
+        "term": "Terraform",
+        "kind": "preferred",
+        "weight": 1,
+        "status": "missing",
+        "match_type": null
+      }
+    ]
+  },
+  "top_suggestions": [
+    {
+      "id": "keyword:aws",
+      "impact_points": 3
+    },
+    {
+      "id": "keyword:redis",
+      "impact_points": 3
+    }
+  ],
+  "notes": [
+    "Only the first two suggestions are pinned. §8.2 lists the missing preferred terms as separate suggestions (+2 each), but R6 says missing preferred terms get one summary suggestion; S3 settles this (see the Checkpoint A notes)."
+  ]
+}

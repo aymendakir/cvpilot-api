@@ -1,0 +1,32 @@
+{
+  "case": "F6",
+  "spec": "§8.1",
+  "cv": "cvs/scanned.pdf",
+  "job": null,
+  "mode": "document",
+  "source": "file",
+  "score_status": "unreadable",
+  "score": null,
+  "raw_score": null,
+  "grade": null,
+  "checks": {
+    "readable_text": {
+      "status": "fail",
+      "earned": 0,
+      "max": 6,
+      "applicable": true
+    }
+  },
+  "checks_complete": false,
+  "caps": [],
+  "keywords": null,
+  "top_suggestions": [
+    {
+      "id": "readable_text",
+      "impact_points": null
+    }
+  ],
+  "notes": [
+    "Only readable_text is pinned: §8.1 does not define the other checks or impact_points for an unreadable document (Checkpoint A notes)."
+  ]
+}
