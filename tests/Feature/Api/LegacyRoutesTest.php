@@ -61,7 +61,7 @@ class LegacyRoutesTest extends TestCase
     private const RENAMED_MIDDLEWARE = ['auth.session' => 'member'];
 
     /** Middleware that legacy routes gain (never removed or reordered): `deprecated` (optionally with a successor path) and, on admin routes, `throttle:admin`. */
-    private const ADDED_MIDDLEWARE_PREFIXES = ['deprecated', 'throttle:admin'];
+    private const ADDED_MIDDLEWARE_PREFIXES = ['deprecated', 'throttle:admin', 'admin.audit'];
 
     /** @return array<string, array{action: string, middleware: array<int, string>}> */
     private function currentTable(): array

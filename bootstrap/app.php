@@ -2,6 +2,7 @@
 
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\Admin;
+use App\Http\Middleware\AuditAdmin;
 use App\Http\Middleware\AuthSession;
 use App\Http\Middleware\Deprecated;
 use App\Http\Middleware\EnsureErrorEnvelope;
@@ -50,6 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.session' => AuthSession::class,
             'admin' => Admin::class,
+            'admin.audit' => AuditAdmin::class,
             'deprecated' => Deprecated::class,
         ]);
     })

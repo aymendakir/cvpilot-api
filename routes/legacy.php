@@ -95,7 +95,7 @@ Route::middleware(['throttle:api', 'auth.session'])->group(function () {
     Route::post('ai/ats-analysis', [AiController::class, 'atsAnalysis'])->middleware('throttle:10,1,ai-ats-analysis:')->middleware('deprecated:/api/v1/ai/ats-analysis');
     Route::post('ai/cover-letter', [AiController::class, 'coverLetter'])->middleware('throttle:10,1,ai-cover-letter:')->middleware('deprecated:/api/v1/ai/cover-letter');
     Route::post('ats/document', [AtsDocumentController::class, 'analyze'])->middleware('throttle:20,1,ats-document:')->middleware('deprecated:/api/v1/ats/document');
-    Route::prefix('admin')->middleware(['admin', 'throttle:admin'])->group(function () {
+    Route::prefix('admin')->middleware(['admin', 'throttle:admin', 'admin.audit'])->group(function () {
         Route::get('site-settings', [SiteSettingsController::class, 'show'])->middleware('deprecated:/api/v1/admin/site-settings');
         Route::put('site-settings', [SiteSettingsController::class, 'save'])->middleware('deprecated:/api/v1/admin/site-settings');
         Route::get('system', [SiteSettingsController::class, 'system'])->middleware('deprecated:/api/v1/admin/system');
