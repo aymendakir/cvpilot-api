@@ -6,6 +6,7 @@ use App\Models\InterviewSession;
 use App\Services\AdminReview;
 use App\Services\AiGateway;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class InterviewController
 {
@@ -25,14 +26,14 @@ class InterviewController
 
     public function show(Request $r, InterviewSession $session)
     {
-        abort_unless($session->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('view', $session);
 
         return $session;
     }
 
     public function destroy(Request $r, InterviewSession $session)
     {
-        abort_unless($session->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('delete', $session);
         AdminReview::forget('interview', $session->id);
         $session->delete();
 
@@ -41,7 +42,7 @@ class InterviewController
 
     public function reply(Request $r, InterviewSession $session, AiGateway $ai)
     {
-        abort_unless($session->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('update', $session);
         abort_unless($session->status === 'active', 422, 'This interview is already completed.');
         $d = $r->validate(['answer' => 'required|string|min:2|max:6000']);
         $transcript = $session->transcript;
@@ -57,7 +58,7 @@ class InterviewController
 
     public function finish(Request $r, InterviewSession $session, AiGateway $ai)
     {
-        abort_unless($session->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('update', $session);
         if ($session->status === 'completed') {
             return ['feedback' => $session->feedback];
         }$prompt = "Give final mock-interview feedback without a numeric score. Use headings: STRONG ANSWERS, ANSWERS TO IMPROVE, MISSING EVIDENCE, COMMUNICATION FEEDBACK, and NEXT PRACTICE STEPS. Base everything only on this transcript and CV.\nCV:\n{$session->cv_text}\nJOB:\n{$session->job_description}\nTRANSCRIPT:\n".json_encode($session->transcript);

@@ -6,6 +6,7 @@ use App\Models\CvVersion;
 use App\Models\JobWorkspace;
 use App\Services\AdminReview;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class CvVersionController
 {
@@ -29,14 +30,14 @@ class CvVersionController
 
     public function show(Request $r, CvVersion $version)
     {
-        abort_unless($version->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('view', $version);
 
         return $version;
     }
 
     public function update(Request $r, CvVersion $version)
     {
-        abort_unless($version->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('update', $version);
         $d = $r->validate(['name' => 'required|string|max:180', 'content' => 'required|string|min:30|max:50000', 'builder_data' => 'nullable|array']);
         $version->update($d);
         AdminReview::record('cv', $version);
@@ -46,7 +47,7 @@ class CvVersionController
 
     public function destroy(Request $r, CvVersion $version)
     {
-        abort_unless($version->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('delete', $version);
         AdminReview::forget('cv', $version->id);
         $version->delete();
 

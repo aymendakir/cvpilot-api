@@ -7,6 +7,7 @@ use App\Services\AtsScorer;
 use App\Services\DocumentExtractor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 
 class CvController
@@ -43,7 +44,7 @@ class CvController
 
     public function analyze(Request $r, CvDocument $cv, AtsScorer $scorer)
     {
-        abort_unless($cv->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('view', $cv);
         $d = $r->validate(['job_description' => 'required|string|min:60|max:30000']);
         $report = $scorer->score($cv->extracted_text, $d['job_description']);
         $id = DB::table('ats_reports')->insertGetId(['user_id' => $r->user()->id, 'cv_document_id' => $cv->id, 'score' => $report['score'], 'breakdown' => json_encode($report['breakdown']), 'matched_keywords' => json_encode($report['matched_keywords']), 'missing_keywords' => json_encode($report['missing_keywords']), 'suggestions' => json_encode($report['suggestions']), 'provider' => 'local', 'created_at' => now(), 'updated_at' => now()]);
@@ -54,7 +55,7 @@ class CvController
 
     public function destroy(Request $r, CvDocument $cv)
     {
-        abort_unless($cv->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('delete', $cv);
         Storage::disk('local')->delete($cv->disk_path);
         $cv->delete();
 

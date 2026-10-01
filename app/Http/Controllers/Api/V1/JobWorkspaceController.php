@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Models\JobWorkspace;
 use App\Services\AdminReview;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class JobWorkspaceController
 {
@@ -26,7 +27,7 @@ class JobWorkspaceController
 
     public function show(Request $r, JobWorkspace $workspace)
     {
-        abort_unless($workspace->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('view', $workspace);
 
         return $workspace;
     }

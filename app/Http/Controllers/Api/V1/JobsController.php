@@ -10,6 +10,7 @@ use App\Services\JobSearchService;
 use App\Support\Redactor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class JobsController
 {
@@ -157,7 +158,7 @@ class JobsController
 
     public function destroySaved(Request $r, JobSearch $search)
     {
-        abort_unless($search->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('delete', $search);
         $search->delete();
 
         return response()->noContent();

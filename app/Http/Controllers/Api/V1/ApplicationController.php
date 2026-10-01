@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\CvVersion;
 use App\Services\AdminReview;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class ApplicationController
 {
@@ -32,14 +33,14 @@ class ApplicationController
 
     public function show(Request $r, Application $application)
     {
-        abort_unless($application->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('view', $application);
 
         return $application;
     }
 
     public function update(Request $r, Application $application)
     {
-        abort_unless($application->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('update', $application);
         $d = $r->validate(['cv_version_id' => 'nullable|integer', 'status' => 'sometimes|in:saved,prepared,applied,interview,rejected,offer', 'salary' => 'nullable|string|max:120', 'application_date' => 'nullable|date', 'reminder_at' => 'nullable|date', 'follow_up_at' => 'nullable|date', 'notes' => 'nullable|string|max:5000']);
         if (! empty($d['cv_version_id'])) {
             CvVersion::where('user_id', $r->user()->id)->findOrFail($d['cv_version_id']);
@@ -54,7 +55,7 @@ class ApplicationController
 
     public function destroy(Request $r, Application $application)
     {
-        abort_unless($application->user_id === $r->user()->id, 404);
+        Gate::forUser($r->user())->authorize('delete', $application);
         AdminReview::forget('application', $application->id);
         $application->delete();
 
