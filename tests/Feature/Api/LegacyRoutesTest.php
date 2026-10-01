@@ -25,6 +25,34 @@ class LegacyRoutesTest extends TestCase
         'POST api/logout' => 'AuthController@logoutLegacy',
     ];
 
+    /** CareerController was split: old action => new action (one-to-one, behaviour untouched). */
+    private const MOVED_ACTIONS = [
+        'CareerController@dashboard' => 'InsightsController@dashboard',
+        'CareerController@analytics' => 'InsightsController@analytics',
+        'CareerController@library' => 'LibraryController@__invoke',
+        'CareerController@workspaces' => 'JobWorkspaceController@index',
+        'CareerController@storeWorkspace' => 'JobWorkspaceController@store',
+        'CareerController@workspace' => 'JobWorkspaceController@show',
+        'CareerController@versions' => 'CvVersionController@index',
+        'CareerController@storeVersion' => 'CvVersionController@store',
+        'CareerController@version' => 'CvVersionController@show',
+        'CareerController@updateVersion' => 'CvVersionController@update',
+        'CareerController@destroyVersion' => 'CvVersionController@destroy',
+        'CareerController@destroyReport' => 'ReportController@destroy',
+        'CareerController@startInterview' => 'InterviewController@store',
+        'CareerController@interview' => 'InterviewController@show',
+        'CareerController@destroyInterview' => 'InterviewController@destroy',
+        'CareerController@replyInterview' => 'InterviewController@reply',
+        'CareerController@finishInterview' => 'InterviewController@finish',
+        'CareerController@recruiterView' => 'CareerAiController@recruiterView',
+        'CareerController@tailorCv' => 'CareerAiController@tailorCv',
+        'CareerController@applicationPack' => 'CareerAiController@applicationPack',
+        'CareerController@skillGap' => 'CareerAiController@skillGap',
+        'CareerController@portfolio' => 'CareerAiController@portfolio',
+        'CareerController@followUp' => 'CareerAiController@followUp',
+        'CareerController@diagnostic' => 'CareerAiController@diagnostic',
+    ];
+
     /** Middleware that legacy routes gain (never removed or reordered): `deprecated`, optionally with a successor path. */
     private const ADDED_MIDDLEWARE_PREFIX = 'deprecated';
 
@@ -65,7 +93,7 @@ class LegacyRoutesTest extends TestCase
                 continue;
             }
 
-            $expectedAction = self::SHIMS[$key] ?? self::ACTION_CHANGES[$key] ?? $row['action'];
+            $expectedAction = self::SHIMS[$key] ?? self::ACTION_CHANGES[$key] ?? self::MOVED_ACTIONS[$row['action']] ?? $row['action'];
             if ($current[$key]['action'] !== $expectedAction) {
                 $problems[] = "action changed: {$key} {$row['action']} -> {$current[$key]['action']} (expected {$expectedAction})";
             }
