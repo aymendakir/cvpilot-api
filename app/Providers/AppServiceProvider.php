@@ -15,6 +15,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         SessionSecurity::assertSafe($this->app->environment(), config('session.secure'), config('session.same_site'));
+        SessionSecurity::assertSameSiteHosts($this->app->environment(), config('session.same_site'), config('session.domain'), [
+            'APP_URL' => config('app.url'),
+            'FRONTEND_URL' => config('mail.frontend_url'),
+            'SITE_URL' => config('site.url'),
+        ]);
 
         // Responses keep their documented top-level shape (no `data` wrapper around a single resource).
         JsonResource::withoutWrapping();

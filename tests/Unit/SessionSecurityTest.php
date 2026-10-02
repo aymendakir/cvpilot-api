@@ -75,4 +75,65 @@ class SessionSecurityTest extends TestCase
 
         $this->assertTrue(true);
     }
+
+    // API-B decision D2: with lax/strict every signing-in site must share the API's domain.
+
+    private const HOSTS = [
+        'APP_URL' => 'https://api.cvpilottest.online',
+        'FRONTEND_URL' => 'https://app.cvpilottest.online',
+        'SITE_URL' => 'https://cvpilottest.online',
+    ];
+
+    public function test_lax_boots_when_every_host_is_on_the_session_domain(): void
+    {
+        SessionSecurity::assertSameSiteHosts('production', 'lax', '.cvpilottest.online', self::HOSTS);
+        SessionSecurity::assertSameSiteHosts('production', 'lax', null, self::HOSTS);
+        SessionSecurity::assertSameSiteHosts('production', 'strict', 'cvpilottest.online', self::HOSTS + ['SITE_URL' => '']);
+
+        $this->assertTrue(true);
+    }
+
+    public function test_lax_refuses_a_host_on_another_domain_and_names_the_setting(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('FRONTEND_URL (cvpilot.pages.dev) must be on cvpilottest.online');
+
+        SessionSecurity::assertSameSiteHosts('production', 'lax', '.cvpilottest.online', ['FRONTEND_URL' => 'https://cvpilot.pages.dev'] + self::HOSTS);
+    }
+
+    public function test_lax_refuses_a_session_domain_that_does_not_cover_the_api(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('APP_URL (api.cvpilottest.online) must be on cvpilot.example');
+
+        SessionSecurity::assertSameSiteHosts('production', 'lax', '.cvpilot.example', self::HOSTS);
+    }
+
+    public function test_a_lookalike_domain_is_not_on_the_domain(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        SessionSecurity::assertSameSiteHosts('production', 'lax', '.cvpilottest.online', ['SITE_URL' => 'https://evilcvpilottest.online'] + self::HOSTS);
+    }
+
+    public function test_none_and_other_environments_are_not_checked(): void
+    {
+        $split = ['FRONTEND_URL' => 'https://cvpilot.pages.dev'] + self::HOSTS;
+        SessionSecurity::assertSameSiteHosts('production', 'none', null, $split);
+        SessionSecurity::assertSameSiteHosts('local', 'lax', null, $split);
+
+        $this->assertTrue(true);
+    }
+
+    public function test_the_app_boot_runs_the_host_check_in_production(): void
+    {
+        config([
+            'session.secure' => true, 'session.same_site' => 'lax', 'session.domain' => '.cvpilottest.online',
+            'app.url' => 'https://api.cvpilottest.online', 'mail.frontend_url' => 'https://cvpilot.pages.dev', 'site.url' => '',
+        ]);
+        $this->app->detectEnvironment(fn () => 'production');
+
+        $this->expectException(\RuntimeException::class);
+        (new AppServiceProvider($this->app))->boot();
+    }
 }
