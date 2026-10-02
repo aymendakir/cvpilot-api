@@ -475,6 +475,16 @@
         "scope": "public"
     },
     {
+        "method": "POST",
+        "uri": "v1/public/ats/analyses",
+        "scope": "public"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/public/cv/extract",
+        "scope": "public"
+    },
+    {
         "method": "GET",
         "uri": "v1/site-settings",
         "scope": "public"

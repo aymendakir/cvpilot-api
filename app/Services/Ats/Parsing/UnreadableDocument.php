@@ -18,8 +18,11 @@ final class UnreadableDocument extends RuntimeException
 
     public const TIMEOUT = 'timeout';
 
-    public function __construct(public readonly string $reason, string $message = '')
+    /** Text extraction only (DocumentExtractor): the file opened but holds fewer than 30 characters of text. */
+    public const NO_TEXT = 'no_text';
+
+    public function __construct(public readonly string $reason, string $message = '', ?\Throwable $previous = null)
     {
-        parent::__construct($message !== '' ? $message : $reason);
+        parent::__construct($message !== '' ? $message : $reason, 0, $previous);
     }
 }

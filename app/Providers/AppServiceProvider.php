@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\ClientIp;
 use App\Support\SessionSecurity;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -30,6 +31,22 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('otp-send', fn (Request $r) => [
             Limit::perMinute(20)->by('otp-ip:'.$r->ip()),
             Limit::perMinutes(10, 3)->by('otp-email:'.hash('sha256', strtolower(trim((string) $r->input('email'))))),
+        ]);
+        // Anonymous routes (API-A decision D2): per visitor (a keyed hash of the address, never the address
+        // itself) per minute and per day, plus one cap on all anonymous ATS checks per day.
+        RateLimiter::for('public-ats', function (Request $r) {
+            $visitor = ClientIp::hashed($r);
+            $limits = [
+                Limit::perMinute(max(1, (int) config('anonymous.limits.ats_per_minute')))->by('public-ats-minute:'.$visitor),
+                Limit::perDay(max(1, (int) config('anonymous.limits.ats_per_day')))->by('public-ats-day:'.$visitor),
+            ];
+            $global = (int) config('anonymous.limits.ats_global_per_day');
+
+            return $global > 0 ? [...$limits, Limit::perDay($global)->by('public-ats-all')] : $limits;
+        });
+        RateLimiter::for('public-extract', fn (Request $r) => [
+            Limit::perMinute(max(1, (int) config('anonymous.limits.extract_per_minute')))->by('public-extract-minute:'.ClientIp::hashed($r)),
+            Limit::perDay(max(1, (int) config('anonymous.limits.extract_per_day')))->by('public-extract-day:'.ClientIp::hashed($r)),
         ]);
         RateLimiter::for('otp-verify', fn (Request $r) => Limit::perMinute(10)->by('verify:'.$r->ip().'|'.hash('sha256', strtolower(trim((string) $r->input('email'))))));
     }

@@ -102,7 +102,8 @@ class AtsAnalysisPrivacyTest extends TestCase
         $this->assertStringNotContainsString(self::SENTINEL, $all, 'no CV text, job text or file name in the logs');
         $lines = array_values(array_filter($logged, fn ($l) => $l['message'] === 'ats.analysis'));
         $this->assertCount(4, $lines, 'one line per analysis');
-        $this->assertSame(['outcome', 'mode', 'type', 'pages', 'duration_ms'], array_keys($lines[0]['context']));
+        $this->assertSame(['outcome', 'mode', 'type', 'pages', 'duration_ms', 'access'], array_keys($lines[0]['context']));
+        $this->assertSame('account', $lines[0]['context']['access']);
         $this->assertSame(['outcome' => 'refused', 'reason' => 'password_protected'], array_slice($lines[3]['context'], 0, 2));
         foreach ($lines as $line) {
             $this->assertArrayNotHasKey('score', $line['context']);

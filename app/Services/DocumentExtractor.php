@@ -67,10 +67,50 @@ class DocumentExtractor
         }
     }
 
+    /** The signed-in route's messages, unchanged since S6; the public route returns the reason tokens instead. */
+    private const MESSAGES = [
+        UnreadableDocument::UNSUPPORTED_TYPE => 'Unsupported document. Upload a PDF, DOCX or TXT file.',
+        UnreadableDocument::PASSWORD_PROTECTED => 'This PDF is password protected. Upload an unlocked copy.',
+        UnreadableDocument::NO_TEXT => 'No readable CV text found. Scanned PDFs require OCR before upload.',
+    ];
+
+    private const UNREADABLE = 'This document could not be read. Export a fresh text-based PDF or DOCX and try again.';
+
     public function extract(UploadedFile $file): string
     {
+        try {
+            return $this->extractText($file);
+        } catch (UnreadableDocument $e) {
+            abort(422, self::MESSAGES[$e->reason] ?? self::UNREADABLE);
+        }
+    }
+
+    /**
+     * Same as extract() and the temp copy is always deleted, but a file that cannot be read throws
+     * UnreadableDocument with a reason token (the anonymous route, API-A decision D4).
+     *
+     * @throws UnreadableDocument
+     */
+    public function extractTextAndDiscard(UploadedFile $file): string
+    {
+        $path = $file->getRealPath();
+
+        try {
+            return $this->extractText($file);
+        } finally {
+            if ($path && is_file($path)) {
+                @unlink($path);
+            }
+        }
+    }
+
+    /** @throws UnreadableDocument reasons: unsupported_type, password_protected, corrupt, timeout, no_text */
+    private function extractText(UploadedFile $file): string
+    {
         $type = $this->detect($file);
-        abort_if($type === null, 422, 'Unsupported document. Upload a PDF, DOCX or TXT file.');
+        if ($type === null) {
+            throw new UnreadableDocument(UnreadableDocument::UNSUPPORTED_TYPE);
+        }
         try {
             if ($type === 'txt') {
                 $text = (string) file_get_contents($file->getRealPath());
@@ -79,7 +119,7 @@ class DocumentExtractor
                 }
             } elseif ($type === 'pdf') {
                 // poppler, shared with the ATS checker (docs/ats-spike-s0.md). A missing binary is a
-                // server fault (500), not the user's file, so only UnreadableDocument becomes a 422 below.
+                // server fault (500), not the user's file, so only UnreadableDocument becomes a 422.
                 $text = app(PdfParser::class)->parse($file->getRealPath())->text;
             } else {
                 $doc = IOFactory::load($file->getRealPath());
@@ -90,19 +130,23 @@ class DocumentExtractor
                             $parts[] = $element->getText();
                         }
                     }
-                }$text = implode("\n", $parts);
+                }
+                $text = implode("\n", $parts);
             }
         } catch (UnreadableDocument $e) {
-            abort_if($e->reason === UnreadableDocument::PASSWORD_PROTECTED, 422, 'This PDF is password protected. Upload an unlocked copy.');
-            abort(422, 'This document could not be read. Export a fresh text-based PDF or DOCX and try again.');
+            throw $e->reason === UnreadableDocument::PASSWORD_PROTECTED || $e->reason === UnreadableDocument::TIMEOUT
+                ? $e
+                : new UnreadableDocument(UnreadableDocument::CORRUPT, previous: $e);
         } catch (\Throwable $e) {
             if ($type === 'pdf' && ! $e instanceof HttpExceptionInterface) {
                 throw $e;
             }
-            abort(422, 'This document could not be read. Export a fresh text-based PDF or DOCX and try again.');
+            throw new UnreadableDocument(UnreadableDocument::CORRUPT, previous: $e);
         }
         $text = trim(preg_replace('/[ \t]+/', ' ', preg_replace('/\R{3,}/', "\n\n", $text)));
-        abort_if(mb_strlen($text) < 30, 422, 'No readable CV text found. Scanned PDFs require OCR before upload.');
+        if (mb_strlen($text) < 30) {
+            throw new UnreadableDocument(UnreadableDocument::NO_TEXT);
+        }
 
         return mb_substr($text, 0, 100000);
     }

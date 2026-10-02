@@ -1,156 +1,178 @@
-# Implementation Plan: Phase 3, slice S4 — `ats-api`
+# Implementation Plan: Phase 4 API-A — `api-anonymous` (anonymous ATS check and file reading)
 
-Spec: `SPEC-ats.md` §5 (request, response, errors), §8.4 (error, contract, determinism, privacy, performance tests), §14 (boundaries). S3 is merged (`AtsAnalyzer` returns the full §5.2 report in-process). This plan covers **S4 only**.
+Spec: `cv-ai/SPEC.md` §16 (row API-A), §17 items 10 and 18, §18.5 (ATS check from a landing page, the file is never stored); `SPEC-ats.md` §5 (request, response, errors) and §8.4 (privacy tests). The S4 plan is in git history (`tasks/plan.md` at 4028ec7).
 
-Branch: `feature/ats-s4` (from `main`). One PR. Stop after opening it.
+Branch: `feat/api-a-anonymous` (from `main` at 4028ec7). One PR. **Answered: D1–D5 = A.** Build T1–T5, open the PR (after cv-ai #24 is merged: one PR at a time) and stop. Rules: small atomic commits; Pint and the tests before every commit; one PR at a time.
 
-Order from here: **S4 → Phase 4 (frontend) → S5 calibration and S6 prompt envelope** (after or alongside Phase 4; neither changes the API contract).
+## What it adds
 
-## Overview
+Two routes that work **without an account**. They are for the marketing site's inline check (M2) and for reading a CV file without signing in (U10):
 
-S4 puts the engine behind `POST /api/v1/ats/analyses` and pins the contract:
+| Route                                 | Same as (signed-in)        | Returns                                         |
+| ------------------------------------- | -------------------------- | ----------------------------------------------- |
+| `POST /api/v1/public/ats/analyses`    | `POST ats/analyses`        | the same `ats-2.0` report (`SPEC-ats.md` §5.2) |
+| `POST /api/v1/public/cv/extract`      | `POST cv-documents/extract` | `{ "text": "…" }`                               |
 
-- the route, the FormRequest and the Resource;
-- `docs/ats-report.schema.json`, plus a contract test that validates every fixture response against it;
-- the 422 error cases;
-- determinism and privacy tests (no file left behind, no CV text in logs, nothing stored);
-- the time budget.
+- **Same input and output** as the signed-in routes, plus a Turnstile token. Nothing new for the report.
+- **Stateless and private, as today:**
+  - the upload is read in place and deleted, and no database row is written;
+  - no cookie is set (no session, no CSRF);
+  - the logs never contain CV text, the job text, the file name, the score or the IP address;
+  - the throttle key is a hash of the IP address, not the address itself.
+- **Abuse protection, three layers:**
+  1. **Turnstile** (Cloudflare's invisible bot check): the page gets a one-time token, and the API checks it with Cloudflare before reading the file;
+  2. **per-IP limits** in the API (D2);
+  3. **a global daily cap** for anonymous checks (D2) and a Cloudflare rate-limiting rule at the edge (the setup steps below).
+- **Errors:** the same envelope and the same `errors.file` tokens as `ats/analyses`. The anonymous extract route returns tokens too, not sentences (D4). A failed bot check is `422` with `errors.turnstile: ["failed"]`. If Cloudflare cannot be reached, it is `503 upstream_unavailable`.
 
-The legacy `POST /api/v1/ats/document` and `ai/ats-analysis` stay untouched until the legacy-removal PR (§17 answer 6).
+## What I checked (cvpilot-api @ 4028ec7)
 
-**Included fix (your request after S3):** file sizes in the `file_supported` finding use a decimal comma and "Mo" in French ("0,01 Mo"), and "0.01 MB" in English.
+- `Ats\AnalysisController` is already stateless and logs one content-free line. The public route reuses it with a different FormRequest; the engine is unchanged.
+- `CvController::extract` uses `DocumentExtractor::extractAndDiscard`. Its unsupported-type error is a sentence (`abort_if(…, 'Unsupported document…')`); the public route maps it to tokens.
+- **CSRF:** `SPEC.md` §7 item 9 says "no new CSRF exemptions". The public routes run **outside the `web` group**, like the public blog routes, so they have no session and no cookie. CSRF only protects actions that rely on a cookie, so it does not apply here. **This changes the letter of §7 item 9**; D5 asks for your OK.
+- **Client IP behind Cloudflare:** production trusts only the platform proxy (`TRUSTED_PROXIES=*` on Sevalla). Once `api.<domain>` is proxied by Cloudflare, `$request->ip()` becomes a **Cloudflare edge address**, so a per-IP limit would group thousands of visitors together. The fix is to read `CF-Connecting-IP`. That header can be faked if someone reaches the origin directly, so it is read only when `TRUST_CF_CONNECTING_IP=true`. That setting is safe only when the origin accepts Cloudflare traffic alone (D3).
+- **CORS:** `config/cors.php` allows `FRONTEND_URL` (the app). The marketing origin `https://<domain>` must be added for these two routes. API-A adds `MARKETING_URL` to the allowed origins; API-B still handles the shared session cookie and trusted hosts.
+- Laravel's `Http` client is already used (job search), so verifying with Cloudflare needs no new package.
 
-- What main does today: 9 KB gives "0,01 Mo" / "0.01 MB" and 4.8 MB gives "4,8 Mo".
-- The gaps: a file under 5 KB reads "0 Mo", and the format depends on a float cast.
-- The fix: format the size explicitly, per locale, with two decimals and a minimum of 0.01 for a non-empty file. Tests pin both locales.
+## Decisions (answered: all A)
 
-## What I checked before planning
+**D1 — Route shape.**
 
-- **Conventions to follow (Phase 2):**
-  - routes in `routes/api.php` inside the authenticated v1 group;
-  - per-user throttles `throttle:N,1,<name>:`;
-  - FormRequests extend `ApiFormRequest`;
-  - Resources without a `data` wrapper (`JsonResource::withoutWrapping()`);
-  - the error envelope `{message, code, errors?, request_id}` from `docs/ERRORS.md`, where clients map `code` and never show `message`;
-  - the route contract test plus `docs/ROUTES.md` (regenerated with `UPDATE_ROUTE_DOCS=1`).
-- **Upload limits:** the Dockerfile sets `upload_max_filesize=16M` and `post_max_size=20M`. The §5.1 limit is 15 MB, so a 16 MB file is rejected by validation (422). A body over 20 MB is rejected earlier as `413 payload_too_large` (existing behaviour).
-- **Unreadable files:** `UnreadableDocument` already carries a reason: `password_protected`, `corrupt`, `unsupported_type` or `timeout`. `DocumentTypeDetector` decides the type from the content: `.doc`, a renamed `.exe` and a `.txt` upload are not PDF/DOCX.
-- **No JSON Schema validator** is installed (see decision 28).
+- **A (recommended):** a separate `public/` prefix, as in the table. The signed-in routes stay exactly as they are; the public routes have their own limits and Turnstile, and are easy to block at the edge.
+- B: let the existing routes accept visitors without an account. This mixes two security models in one route.
+
+**D2 — Limits (all in `.env`, so you can change them without a deploy).**
+
+| Limit                               | Recommended                    | Why                                                                          |
+| ----------------------------------- | ------------------------------ | ---------------------------------------------------------------------------- |
+| Anonymous ATS check, per IP         | **5 a minute, 30 a day**       | a person checks a few versions of a CV; a script hits the daily cap quickly |
+| Anonymous file reading, per IP      | **10 a minute, 60 a day**      | the builder import reads one file at a time                                  |
+| All anonymous ATS checks, per day   | **5 000** (`0` = no cap)       | protects the server's CPU (PDF reading) if Turnstile is bypassed            |
+
+When a limit is reached, the response is `429 too_many_requests` with `Retry-After`; the frontend already shows a countdown.
+
+**D3 — Trust `CF-Connecting-IP`?**
+
+- **A (recommended):** yes, with `TRUST_CF_CONNECTING_IP=true` in production, once `api.<domain>` is proxied by Cloudflare. The origin must then accept Cloudflare traffic only; on Sevalla that means allowing only Cloudflare's IP ranges, or using a Cloudflare Tunnel. I check what Sevalla allows and write the exact steps into `docs/DEPLOYMENT.md`.
+- B: no. The per-IP limits then count by Cloudflare edge address, which is weak; Turnstile and the global cap remain.
+
+**D4 — Error tokens on the anonymous file-reading route.**
+
+- **A (recommended):** the same `errors.file` tokens as the ATS route (`unsupported_type`, `password_protected`, `corrupt`, `timeout`, …), so the frontend uses one error table (built in U2). The signed-in extract route is unchanged.
+- B: keep the current sentences.
+
+**D5 — No session and no CSRF on the two public routes** (the exception to `SPEC.md` §7 item 9 explained above).
+
+- **A (recommended):** yes. They set and read no cookie; Turnstile and the limits protect them. The §7 item 9 text gets a line for this case.
+- B: keep them in the `web` group with CSRF. The marketing page would then have to fetch a CSRF token first, which creates a session cookie for every visitor (a database row each, on Sevalla).
 
 ## Design
 
 ```text
-routes/api.php                         POST ats/analyses → Api\V1\Ats\AnalysisController (throttle 20/min/user)
-app/Http/Requests/Ats/StoreAtsAnalysisRequest.php
-app/Http/Controllers/Api/V1/Ats/AnalysisController.php
-app/Http/Resources/AtsReportResource.php   wraps AtsReport::toArray() (no data wrapper)
-docs/ats-report.schema.json            JSON Schema (draft 2020-12) of §5.2
-docs/ROUTES.md, docs/ERRORS.md         regenerated / ATS file reasons documented
+routes/api.php                         public group: withoutMiddleware('web'), throttle by hashed IP, turnstile
+app/Http/Middleware/VerifyTurnstile.php reads `cf-turnstile-response` (form field or header), calls siteverify once,
+                                        checks success + hostname; 422 errors.turnstile ["missing"|"failed"]; 503 if unreachable
+app/Support/ClientIp.php               CF-Connecting-IP when TRUST_CF_CONNECTING_IP, else $request->ip()
+app/Providers/AppServiceProvider.php   RateLimiter 'public-ats', 'public-extract' (minute + day per hashed IP, global day cap)
+app/Http/Requests/Ats/StorePublicAtsAnalysisRequest.php   = StoreAtsAnalysisRequest + no auth
+app/Http/Requests/Cv/PublicExtractRequest.php             tokens in errors.file (D4 = A)
+app/Http/Controllers/Api/V1/Ats/AnalysisController.php    unchanged engine; log line gains `access: public|account`
+app/Http/Controllers/Api/V1/PublicExtractController.php   extractAndDiscard + UnreadableDocument → tokens
+config/services.php                    turnstile: secret, allowed hostnames, timeout; required outside local/testing
+config/cors.php                        + MARKETING_URL
 ```
 
-### Request (§5.1)
-
-| Field | Rule |
-| --- | --- |
-| `file` | `file`, ≤ 15 MB; exactly one of `file` / `cv_text` (`required_without` + `prohibits`) |
-| `cv_text` | string, 30–30 000 characters |
-| `job_description` | optional string, 60–30 000 characters → `mode: "job_match"` |
-| `locale` | optional `en` \| `fr` |
-| `include_text` | optional boolean |
-
-- The type is decided from the content, after validation, by `DocumentTypeDetector`. A PDF or DOCX passes; anything else (`.doc`, `.exe`, `.txt`, images) → 422 `errors.file`.
-- `UnreadableDocument` → 422 `validation_failed` with `errors.file` (decision 29).
-- The uploaded file is read in place from PHP's temp upload; nothing is copied. A missing poppler binary stays a 500 (S1 behaviour).
-
-### Response
-
-`200` with the §5.2 body, exactly as `AtsAnalyzer` builds it. The Resource adds nothing and reorders nothing.
+- **Turnstile token:** read from the `cf-turnstile-response` form field. That is the widget's own field name, so the no-JavaScript form of §18.5 step 3 works unchanged. A `CF-Turnstile-Response` header is accepted for JavaScript calls.
+- **Verification:**
+  - one POST to `https://challenges.cloudflare.com/turnstile/v0/siteverify` with the secret, the token and the client IP;
+  - a 5-second timeout;
+  - `success` must be true and `hostname` must be in `TURNSTILE_HOSTNAMES`.
+  - Tokens are single-use and expire after 5 minutes (Cloudflare's rule), so the frontend gets a fresh one for each check.
+- **Without a secret:**
+  - in `local` and `testing`, verification is skipped, with a warning in the log at boot;
+  - in production, the routes refuse with `503`, so a missing secret never leaves them open.
+- **Order:** throttle → Turnstile → validation → work. A blocked or rate-limited request never reaches the PDF reader.
 
 ## Tasks
 
-### T1 — File size format (requested fix)
+### T1 — Routes, requests, client IP and limits
 
-- Locale-aware size formatting in `MessageCatalog`:
-  - EN: `0.01 MB`, `4.80 MB`;
-  - FR: `0,01 Mo`, `4,80 Mo`;
-  - two decimals, minimum 0.01 for a non-empty file.
-- **Acceptance:** unit tests for 3 KB, 9 KB, 4.8 MB and 12.35 MB in both locales. The S3 fixture text still resolves with no placeholders.
+- The public group, both FormRequests, `ClientIp`, the rate limiters (D2), `MARKETING_URL` in CORS.
+- **Tests:**
+  - both routes work without a session and set no cookie (no `Set-Cookie`);
+  - the per-IP minute and day limits, and the global cap, with `Retry-After`;
+  - the limit is per `CF-Connecting-IP` only when trusted (a forged header is ignored otherwise);
+  - the signed-in routes are unchanged;
+  - `tests/fixtures/routes-v1.json` is updated.
 
-### T2 — Route, request, controller, Resource
+### T2 — Turnstile
 
-- **Acceptance:**
-  - A feature test posts every fixture (file, or `cv_text` for F9) with and without a job description, as a signed-in user.
-  - The `200` body equals `AtsAnalyzer` output for the same input, except `generated_at`. Golden score, grade, caps and top suggestions hold.
-  - `include_text` and `locale` work.
-  - `401` when signed out; `429` after 20 requests a minute.
-  - `docs/ROUTES.md` is regenerated and the route contract test passes.
+- The middleware and its config.
+- **Tests** (Cloudflare faked with `Http::fake`):
+  - a missing token → 422; a failed token → 422; a wrong hostname → 422;
+  - Cloudflare unreachable → 503;
+  - success → the report;
+  - the secret is never logged;
+  - production without a secret → 503;
+  - the file is not read before the check passes.
 
-### T3 — Error cases (§8.4)
+### T3 — Errors and privacy
 
-- **Acceptance:** each case gives `422 validation_failed` with the right field in `errors`, and no stack trace, path or class name in the body.
-  - `invalid/encrypted.pdf`, `invalid/corrupt.pdf`, `invalid/legacy.doc`, `invalid/renamed-exe.pdf`, a `.txt` upload, and a 16 MB file (generated in the test's temp dir and deleted) → `errors.file`.
-  - Both or neither of `file`/`cv_text`; `cv_text` < 30 or > 30 000 characters → `errors.cv_text`.
-  - `job_description` < 60 characters → `errors.job_description`.
-  - `locale: "de"` → `errors.locale`.
-- `docs/ERRORS.md` documents the ATS `errors.file` reasons.
+- `errors.file` tokens on the public extract route (D4 = A).
+- **Tests:** the `AtsAnalysisPrivacyTest` cases run on the public route too (same body for the same input; no file left behind; no row written; no CV text, job text, file name, score or IP in the logs); the error-token cases on both public routes.
 
-### Checkpoint A
+### T4 — Docs
 
-- [ ] You review the request rules, the error-reason format (decision 29) and the schema approach (decision 28) on real responses before the contract and privacy tests.
+- `docs/ROUTES.md`, `docs/ERRORS.md` (`errors.turnstile`), `SPEC.md` §7 item 9 (D5), `SPEC-ats.md` §5 (the public route) and `docs/DEPLOYMENT.md`:
+  - the new environment variables;
+  - the Cloudflare steps below;
+  - how to let only Cloudflare reach the origin on Sevalla (D3).
 
-### T4 — JSON Schema and contract test
+### T5 — Checks, PR, STOP
 
-- `docs/ats-report.schema.json`, written from the §5.2 types:
-  - every enum;
-  - integer score from 0 to 100 or null;
-  - evidence ≤ 3 items of ≤ 200 characters;
-  - keyword items ≤ 40;
-  - `additionalProperties: false` on every object, so a stray field fails.
-- **Acceptance:**
-  - Every fixture response (both modes, both locales, pasted text, unreadable) validates.
-  - Ranks are 1..n; `impact_points` is ≥ 0 or null only when `score` is null.
-  - Σ earned / Σ max reproduces `raw_score`.
-  - A deliberately broken body (missing field, wrong enum) fails validation, so the test can fail.
+- Pint, the full test suite, the route list and the PR. The PR lists the environment variables you need to set. **STOP.**
 
-### T5 — Determinism, privacy, performance
+## Cloudflare steps (you do these in the dashboard; they also go into `docs/DEPLOYMENT.md`)
 
-- **Acceptance:**
-  - **Determinism:** the same request twice gives identical bodies except `generated_at`.
-  - **No files left:** after requests (including failing ones), no new file remains in the temp dir or `storage/`.
-  - **No CV text in logs:** a sentinel string in the CV and in the job description never appears in the log output (log channel captured in the test).
-  - **Nothing stored:** no row is added to any table.
-  - **Time:** F1/F2 ≤ 1.5 s over HTTP; a ~15 MB worst-case PDF (generated at test time, many pages of text plus a large image) ≤ 10 s (§8.4).
+**Turnstile widget** (needed before M2 goes live; the API works locally without it):
 
-### T6 — Spec, docs, PR, STOP
+1. In the Cloudflare dashboard, choose **Turnstile** in the left menu, then **Add widget**.
+2. **Widget name:** `CVPilot anonymous check`.
+3. **Hostnames:** `cvpilottest.online` and `app.cvpilottest.online`. Add the real domain later, when you buy it.
+4. **Widget mode:** **Managed** (Cloudflare shows a checkbox only when it is unsure). **Pre-clearance:** No.
+5. **Create.** Copy the **Site key** and the **Secret key**.
+6. **API host (Sevalla environment):**
+   - `TURNSTILE_SECRET_KEY` = the secret key;
+   - `TURNSTILE_HOSTNAMES=cvpilottest.online,app.cvpilottest.online`.
+7. **Frontend (Cloudflare Worker variables, used from M2):** `NEXT_PUBLIC_TURNSTILE_SITE_KEY` = the site key. The site key is public; the secret key never goes into the frontend.
 
-- `SPEC-ats.md` §5 as built (error reasons, rules) and decisions 28–30; `tasks/todo.md`.
-- Run the full suite, the legacy scripts, `pint --test`, `composer audit` and a fresh-clone check.
-- Open the PR, with a post-merge smoke check for you, and stop.
+**Rate-limiting rule at the edge** (extra protection in front of the API):
 
-### Checkpoint B (final)
+1. Choose the `cvpilottest.online` zone, then **Security → WAF → Rate limiting rules → Create rule**.
+2. **Name:** `Anonymous ATS`.
+3. **If incoming requests match:** Hostname equals `api.cvpilottest.online` **and** URI Path starts with `/api/v1/public/`.
+4. **Characteristics:** IP. **Rate:** 20 requests per 1 minute. **Action:** Block for 1 minute.
+5. Some plans offer fewer period and duration choices, for example 10 seconds on the Free plan. If so, pick the closest values (for example 5 requests per 10 seconds) and tell me which you chose.
 
-- [ ] PR opened; Phase 4 (frontend) spec after merge.
+**Testing before the widget exists:** Cloudflare publishes test keys. The secret `1x0000000000000000000000000000000AA` always passes and `2x0000000000000000000000000000000AA` always fails; the tests and local development use them.
+
+## Acceptance
+
+- Both routes work without an account and return exactly what the signed-in routes return for the same input.
+- No cookie is set, no row is written, no file is left behind, and no CV text, job text, file name, score or IP appears in the logs.
+- Turnstile is checked before any file is read; production without a secret refuses (`503`).
+- The minute, day and global limits answer `429` with `Retry-After`.
+- The signed-in routes and every existing test are unchanged.
 
 ## Risks
 
-| Risk | Mitigation |
-| --- | --- |
-| Big or hostile PDFs slow the request | poppler timeouts (10 s per call, S1) → 422 `timeout`; the 15 MB limit; per-user throttle; the worst-case timing test |
-| The schema drifts from the code | the contract test runs on every fixture; `additionalProperties: false`; Phase 4 generates its TS types from the same file |
-| CV content leaking into logs | sentinel test; the existing redaction stays; the controller logs nothing about content |
-| A frontend cannot tell why a file was refused | stable reason tokens in `errors.file` (decision 29) |
-
-## Decisions needed (recommendation first)
-
-28. **JSON Schema validator:** add `opis/json-schema` (draft 2020-12, maintained, no other dependencies) as a **dev** dependency, used only by the contract test. *Recommended.* Alternative: a small hand-written validator for the subset we use (more code to trust, no new package).
-29. **`errors.file` content for unreadable files:**
-    - one stable reason token per refusal: `password_protected`, `corrupt`, `unsupported_type`, `timeout`, `too_large`;
-    - the frontend maps it to EN/FR text, as `docs/ERRORS.md` already asks clients to do for `code`;
-    - Laravel's own messages stay for the other fields;
-    - the reasons are documented in `docs/ERRORS.md`.
-    *Recommended.*
-30. **Analysis log line:** log one line per analysis (status, mode, type, page count, duration in ms, `request_id`), **no** text, file name or score. This gives production visibility without content. *Recommended.* Alternative: no logging.
+| Risk                                                 | Mitigation                                                                                         |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Per-IP limits count Cloudflare edges, not visitors    | `CF-Connecting-IP` behind `TRUST_CF_CONNECTING_IP`, plus origin locked to Cloudflare (D3)          |
+| Turnstile bypassed by a solver service               | Per-IP limits, the global daily cap and the edge rule; the cap is in `.env`                        |
+| Rate-limit counters in the database cache (Sevalla)  | One small row per hashed IP and window; expired rows were never cleaned, so the hourly retention run now deletes them |
+| PDF reading is CPU-heavy                             | The existing poppler timeout and the 15 MB limit apply; the global cap bounds the daily total      |
 
 ## Out of scope
 
-The UI (Phase 4); calibration and `docs/ats-scoring.md` (S5); the prompt envelope (S6); the keyword-source choice (S5); removal of the legacy ATS endpoints (separate PR after Phase 4).
+Anonymous AI routes (after S6), the shared session cookie and trusted hosts (API-B), the frontend use of these routes (U5, M2, U10), removal of the legacy ATS engine.

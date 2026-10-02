@@ -92,6 +92,13 @@ Errors (Phase 2 envelope): `422` validation (both/neither of `file`/`cv_text`, b
 
 **As built (S4).** Route `POST /api/v1/ats/analyses` (`v1.ats.analyses.store`), signed-in members, 20 analyses a minute per user. The file type is decided from the content (a `.txt` upload is refused: plain text goes in `cv_text`). `errors.file` holds one stable reason token instead of a sentence: `missing`, `both_given`, `upload_failed`, `too_large`, `unsupported_type`, `password_protected`, `corrupt`, `timeout` (listed in `docs/ERRORS.md`); other fields keep Laravel's messages. A scanned PDF is not refused (`200`, `score_status: "unreadable"`); a body over 20 MB is `413`. The upload is read in place and nothing is stored. With `LOG_LEVEL=info`, one content-free `ats.analysis` log line per analysis (outcome, mode, type, pages, duration). The response is validated by `docs/ats-report.schema.json` in the contract test.
 
+**Anonymous route (Phase 4 API-A).** `POST /api/v1/public/ats/analyses` (`v1.public.ats.analyses.store`) takes the same fields and returns the same report, without an account. Differences only:
+- no session, cookie or CSRF;
+- Cloudflare Turnstile first (`cf-turnstile-response` field or `CF-Turnstile-Response` header; `errors.turnstile`);
+- per-visitor limits (5 a minute, 30 a day) and a global cap (5 000 a day), all in `config/anonymous.php`.
+
+The log line carries `access: "public"` (`"account"` on the signed-in route). Its twin `POST /api/v1/public/cv/extract` reads a file to text with `errors.file` tokens (`docs/ERRORS.md`).
+
 ### 5.2 Response (`200`) — TypeScript contract
 
 ```ts

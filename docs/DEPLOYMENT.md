@@ -66,6 +66,11 @@ fixes for poppler arrive with each rebuild. A custom host that does not use this
 | `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | the owner account | Used by `php artisan db:seed --force`. |
 | `MAIL_*` | optional fallback | SMTP is normally saved in Dashboard > Settings > Email. |
 | `ATS_POPPLER_TIMEOUT` | unset (10 s) | Seconds per poppler call when reading a PDF; a timeout rejects the file instead of hanging the request. |
+| `MARKETING_URL` | `https://<domain>` (test: `https://cvpilottest.online`) | The marketing site cannot call the anonymous routes (CORS). |
+| `TURNSTILE_SECRET_KEY` | the widget's **secret** key (section 10) | Unset: the anonymous routes answer `503` (they never run unprotected outside local/testing). |
+| `TURNSTILE_HOSTNAMES` | `cvpilottest.online,app.cvpilottest.online` (add the real domain later) | A token from another site is refused; empty accepts any hostname Cloudflare reports. |
+| `TRUST_CF_CONNECTING_IP` | `true` only once the origin is reachable through Cloudflare alone (section 10) | `false` behind Cloudflare: every visitor shares a Cloudflare address, so the per-visitor limits group them. `true` while the origin is open: anyone can fake their address. |
+| `PUBLIC_ATS_PER_MINUTE`, `PUBLIC_ATS_PER_DAY`, `PUBLIC_ATS_GLOBAL_PER_DAY`, `PUBLIC_EXTRACT_PER_MINUTE`, `PUBLIC_EXTRACT_PER_DAY` | unset (5, 30, 5000, 10, 60) | Limits of the anonymous routes; `PUBLIC_ATS_GLOBAL_PER_DAY=0` removes the global cap. |
 
 ### Frontend
 
@@ -133,9 +138,40 @@ Logs go to stderr (`LOG_CHANNEL=stderr`); read them in the platform's log view. 
 - One API instance. Sessions and cache are in the database, so more instances work in principle, but the scheduler would then run once per instance: set `RUN_SCHEDULER=true` on exactly one of them.
 - File-free: do not add features that write to `storage/` and expect it to survive.
 
+## 10. Anonymous routes: Cloudflare setup (API-A)
+
+The anonymous ATS check and file reading (`/api/v1/public/…`) need three things in Cloudflare. You do them in the dashboard.
+
+**Turnstile widget**
+1. Open https://dash.cloudflare.com/?to=/:account/turnstile and choose **Add widget**.
+2. **Name:** `CVPilot anonymous check`.
+3. **Hostnames:** `cvpilottest.online`, `app.cvpilottest.online`.
+4. **Widget mode:** Managed. **Pre-clearance:** No.
+5. **Create**, then copy both keys:
+   - the **secret key** goes into this API as `TURNSTILE_SECRET_KEY`;
+   - the **site key** goes into the frontend as `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (used from M2).
+6. Set `TURNSTILE_HOSTNAMES` (section 3).
+
+**Rate-limiting rule (edge)**
+1. Open the zone, then **Security → WAF → Rate limiting rules → Create rule**.
+2. **Name:** `Anonymous ATS`.
+3. **Match:** Hostname equals `api.<domain>` **and** URI Path starts with `/api/v1/public/`.
+4. **Counting:** by IP. **Rate:** 20 requests per minute. **Action:** Block for 1 minute.
+5. On plans with fewer choices (for example, 10-second periods), pick the closest values.
+
+**Real visitor address (`TRUST_CF_CONNECTING_IP`)**
+Behind Cloudflare, the API sees Cloudflare's address, not the visitor's. Cloudflare sends the visitor's address in `CF-Connecting-IP`, but anyone who reaches the origin directly can fake that header. Set `TRUST_CF_CONNECTING_IP=true` only when the origin accepts traffic from Cloudflare alone. Two ways:
+- **Cloudflare Tunnel:** the container connects out to Cloudflare, so the origin has no public address.
+- **Sevalla inbound restriction:** allow only Cloudflare's IP ranges (https://www.cloudflare.com/ips/), if your Sevalla plan offers it. Check its networking settings before relying on it.
+
+Until one of these is in place, leave it `false`: Turnstile and the global cap still protect the routes.
+
+**Testing without a widget:** Cloudflare's test secret `1x0000000000000000000000000000000AA` always passes and `2x0000000000000000000000000000000AA` always fails. Local and testing environments without a secret skip the check.
+
 ## Privacy: what is stored
 
 - **Uploaded CVs:** the original file is **never stored**. The upload is processed from PHP's temporary file, its text is extracted, and the temporary file is deleted immediately (also when the file is rejected). Only the extracted text and metadata (name, type, size, dates) are kept, for 48 hours.
+- **Anonymous routes (API-A):** nothing is kept at all, not even the text. No session or cookie; rate-limit counters hold a keyed hash of the visitor's address (never the address) and are deleted when they expire.
 - Admins cannot read user CV text (S3); admin copies of CV-bearing records are not written (S4).
 - Provider keys are encrypted at rest and redacted from logs and errors.
 - Releases before S6 stored the original under `storage/`; the S6 migration deletes any that remain and clears the path.
