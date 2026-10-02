@@ -2,7 +2,7 @@
 
 Spec: `cv-ai/SPEC.md` §16 (row API-B) and §18.1 (hosts, session, CORS, edge caching); `docs/DEPLOYMENT.md` §6 (runbook from `SameSite=none` to `lax`). The API-A plan is in git history (`tasks/plan.md` at 7358a0c).
 
-Branch: `feat/api-b-hosts` (from `main` at d1295e5, after #28). One PR. **Stop now for your answers to D1–D3**, then build T1–T4, open the PR and stop.
+Branch: `feat/api-b-hosts` (from `main` at d1295e5, after #28). One PR. **Answered: D1–D3 = A.** Build T1–T4, open the PR and stop.
 
 ## Goal
 
@@ -34,13 +34,13 @@ One domain, three hosts, one sign-in that works everywhere:
    - a foreign `Host` refused.
 4. **Docs:** the runbook for `cvpilottest.online` with three hosts (the Sevalla custom domain for `api.`, Cloudflare DNS records), and the order of the switch.
 
-## Decisions (your call; recommendation first)
+## Decisions (answered: all A)
 
 **D1 — Which hosts the API accepts.**
 
 - **A (recommended):** a `TRUSTED_HOSTS` setting, defaulting to the host of `APP_URL` (`api.cvpilottest.online`).
   - Enforced only in production, so local and test setups are unaffected.
-  - Any other host gets `400`.
+  - Any other host gets `400 bad_request`; `/up` answers on any host (the platform's health check may use the container address).
 - B: no host check (as today).
 
 **D2 — What happens when production is set up inconsistently.** That means `SameSite=lax` or `strict` while the app's or site's address is not under `SESSION_DOMAIN`, or `SESSION_DOMAIN` does not cover `APP_URL`.
