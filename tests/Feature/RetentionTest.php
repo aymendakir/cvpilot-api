@@ -12,6 +12,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesUsers;
 use Tests\TestCase;
@@ -122,6 +123,20 @@ class RetentionTest extends TestCase
         $this->runScheduledPrune();
 
         $this->assertEqualsWithDelta(now()->timestamp, strtotime((string) Cache::get('retention:last_run_at')), 5);
+    }
+
+    public function test_expired_cache_rows_are_removed_with_the_database_store(): void
+    {
+        config(['cache.default' => 'database']);
+        Cache::store('database')->put('keep-me', 1, 3600);
+        Cache::store('database')->put('old-counter', 1, 1);
+        $this->travel(5)->seconds();
+
+        $this->runScheduledPrune();
+
+        $keys = DB::table('cache')->pluck('key')->all();
+        $this->assertContains('cvpilotkeep-me', $keys);
+        $this->assertNotContains('cvpilotold-counter', $keys);
     }
 
     public function test_the_command_exists_and_the_scheduler_lists_it(): void
