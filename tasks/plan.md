@@ -2,7 +2,7 @@
 
 Spec: `cv-ai/SPEC.md` §16 (row API-A), §17 items 10 and 18, §18.5 (ATS check from a landing page, the file is never stored); `SPEC-ats.md` §5 (request, response, errors) and §8.4 (privacy tests). The S4 plan is in git history (`tasks/plan.md` at 4028ec7).
 
-Branch: `feat/api-a-anonymous` (from `main` at 4028ec7). One PR. **Stop now for your answers to D1–D5**, then build T1–T5, open the PR and stop. Rules: small atomic commits; Pint and the tests before every commit; one PR at a time.
+Branch: `feat/api-a-anonymous` (from `main` at 4028ec7). One PR. **Answered: D1–D5 = A.** Build T1–T5, open the PR (after cv-ai #24 is merged: one PR at a time) and stop. Rules: small atomic commits; Pint and the tests before every commit; one PR at a time.
 
 ## What it adds
 
@@ -34,7 +34,7 @@ Two routes that work **without an account**. They are for the marketing site's i
 - **CORS:** `config/cors.php` allows `FRONTEND_URL` (the app). The marketing origin `https://<domain>` must be added for these two routes. API-A adds `MARKETING_URL` to the allowed origins; API-B still handles the shared session cookie and trusted hosts.
 - Laravel's `Http` client is already used (job search), so verifying with Cloudflare needs no new package.
 
-## Decisions (your call; recommendation first)
+## Decisions (answered: all A)
 
 **D1 — Route shape.**
 
@@ -170,7 +170,7 @@ config/cors.php                        + MARKETING_URL
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Per-IP limits count Cloudflare edges, not visitors    | `CF-Connecting-IP` behind `TRUST_CF_CONNECTING_IP`, plus origin locked to Cloudflare (D3)          |
 | Turnstile bypassed by a solver service               | Per-IP limits, the global daily cap and the edge rule; the cap is in `.env`                        |
-| Rate-limit counters in the database cache (Sevalla)  | One small row per hashed IP and window; I check whether expired cache rows are cleaned today and add a scheduled prune if not |
+| Rate-limit counters in the database cache (Sevalla)  | One small row per hashed IP and window; expired rows were never cleaned, so the hourly retention run now deletes them |
 | PDF reading is CPU-heavy                             | The existing poppler timeout and the 15 MB limit apply; the global cap bounds the daily total      |
 
 ## Out of scope

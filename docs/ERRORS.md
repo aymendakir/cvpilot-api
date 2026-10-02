@@ -91,3 +91,22 @@ Add it to `App\Exceptions\ErrorCode` (status and standard message), to the table
 
 A scanned PDF is **not** refused: it returns `200` with `score_status: "unreadable"`. A request body over 20 MB is refused before validation with `413 payload_too_large`.
 
+## Anonymous routes (API-A): `errors.file` and `errors.turnstile`
+
+`POST /api/v1/public/ats/analyses` returns exactly the tokens above. `POST /api/v1/public/cv/extract` (reading a CV file without an account) returns `missing`, `upload_failed`, `too_large`, `unsupported_type`, `password_protected`, `corrupt`, `timeout`, plus:
+
+| Token     | Meaning                                                                                   |
+| --------- | ----------------------------------------------------------------------------------------- |
+| `no_text` | the file opened but holds no readable text (fewer than 30 characters; a scanned PDF, for example) |
+
+It accepts PDF, DOCX and plain text. The signed-in `cv-documents/extract` keeps its sentences.
+
+Both anonymous routes check Cloudflare Turnstile first. A refused check is `422 validation_failed` with one token in `errors.turnstile`:
+
+| Token     | Meaning                                                                    | Client                                  |
+| --------- | -------------------------------------------------------------------------- | --------------------------------------- |
+| `missing` | no `cf-turnstile-response` field or `CF-Turnstile-Response` header          | render the widget, then send its token   |
+| `failed`  | Cloudflare rejected the token (expired, reused, wrong site)                | reset the widget and ask again           |
+
+Cloudflare unreachable, or the API has no Turnstile secret outside local/testing: `503 upstream_unavailable`. The per-visitor and global limits answer `429 too_many_requests` with `Retry-After`.
+
