@@ -11,6 +11,7 @@ Written for **Sevalla** (a container host with a managed database and **no persi
 
 | Hostname | What | Notes |
 | --- | --- | --- |
+| `<domain>` | Marketing site (same frontend project, another host) | Calls the anonymous routes, and `me` with credentials for its header. |
 | `app.<domain>` | Frontend (Next.js) | Browsers talk to the API with credentials (cookies). |
 | `api.<domain>` | This API (one container) | Behind the platform's TLS proxy. MySQL is private. |
 
@@ -51,7 +52,7 @@ fixes for poppler arrive with each rebuild. A custom host that does not use this
 | `APP_URL` | `https://api.<domain>` (no `/api`) | Wrong CORS origin and wrong Microsoft OAuth redirect URI (section 7). |
 | `FRONTEND_URL` | `https://app.<domain>` | CORS only allows this origin (plus `FRONTEND_URL_LOCAL`, `APP_URL`). Exact origin, no trailing slash. |
 | `FRONTEND_URL_LOCAL` | empty | Optional second allowed origin. |
-| `SITE_URL`, `SUPPORT_EMAIL` | public site URL, support address | Used in public site settings. |
+| `SITE_URL`, `SUPPORT_EMAIL` | `https://<domain>` (test: `https://cvpilottest.online`), support address | The public site address in site settings, **and the marketing site's CORS origin** (anonymous routes, `me`). Wrong or empty: the marketing site cannot call the API. |
 | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | from the managed database | The container retries migrations for about a minute, then exits. |
 | `SESSION_DRIVER` | `database` | `file` loses every session at each deploy (everyone signed out). |
 | `CACHE_STORE` | `database` | `file` loses OTP codes and rate-limit counters at each deploy. |
@@ -61,12 +62,12 @@ fixes for poppler arrive with each rebuild. A custom host that does not use this
 | `SESSION_SAME_SITE` | `none` until the shared domain is live, then `lax` (section 6) | `lax` across different sites: nobody can sign in. |
 | `SESSION_DOMAIN` | empty until the shared domain is live, then `.<domain>` | Wrong value = cookie not sent. |
 | `TRUSTED_PROXIES` | `*` on Sevalla | No HSTS and HTTP URLs behind the TLS proxy. |
+| `TRUSTED_HOSTS` | empty (= the host of `APP_URL`), or a comma list such as `api.cvpilottest.online,api.<domain>` | Production answers only these host names (`400 bad_request` otherwise); `/up` answers on any host for the health check. A wrong value takes the API offline, so check it right after a deploy. |
 | `RUN_SCHEDULER` | `true` (single container) | Without a scheduler nothing is ever deleted (section 4). |
 | `RUN_MIGRATIONS` | unset | Web containers migrate by default; set `false` on any extra container that shares the image. |
 | `ADMIN_NAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | the owner account | Used by `php artisan db:seed --force`. |
 | `MAIL_*` | optional fallback | SMTP is normally saved in Dashboard > Settings > Email. |
 | `ATS_POPPLER_TIMEOUT` | unset (10 s) | Seconds per poppler call when reading a PDF; a timeout rejects the file instead of hanging the request. |
-| `MARKETING_URL` | `https://<domain>` (test: `https://cvpilottest.online`) | The marketing site cannot call the anonymous routes (CORS). |
 | `TURNSTILE_SECRET_KEY` | the widget's **secret** key (section 10) | Unset: the anonymous routes answer `503` (they never run unprotected outside local/testing). |
 | `TURNSTILE_HOSTNAMES` | `cvpilottest.online,app.cvpilottest.online` (add the real domain later) | A token from another site is refused; empty accepts any hostname Cloudflare reports. |
 | `TRUST_CF_CONNECTING_IP` | `true` only once the origin is reachable through Cloudflare alone (section 10) | `false` behind Cloudflare: every visitor shares a Cloudflare address, so the per-visitor limits group them. `true` while the origin is open: anyone can fake their address. |
@@ -106,21 +107,39 @@ The container applies pending migrations on start (web role only). It retries **
 | --- | --- |
 | Anything under `storage/` (nothing important lives there any more) | Database: accounts, CV text, applications, sessions, cache, settings, audit log |
 
-## 6. Runbook: from `SameSite=none` to `lax`
+## 6. Runbook: from `SameSite=none` to `lax` (one domain for the site, the app and the API)
 
-Production runs `SESSION_SAME_SITE=none` (set explicitly) while the frontend and API are on different registrable domains.
-Move to `lax` only when **both** hostnames are live.
+Production runs `SESSION_SAME_SITE=none` (set explicitly) while the frontend and API are on different registrable domains. Move to `lax`
+only when **all three** hostnames are live on one domain. Example with the test domain `cvpilottest.online`:
 
-**Preconditions:** `app.<domain>` and `api.<domain>` resolve and serve HTTPS; the frontend already calls `https://api.<domain>`;
-the Microsoft redirect URI is registered (section 7).
+**1. DNS (Cloudflare, zone `cvpilottest.online`)**
+- `cvpilottest.online` and `app.cvpilottest.online` → the frontend Worker (Workers → your Worker → Settings → Domains & Routes → add both as custom domains).
+- `api.cvpilottest.online` → the API: add it as a custom domain in Sevalla first (the app → Domains), then create the DNS record Sevalla shows (usually a CNAME), proxied.
+- `www.cvpilottest.online` → redirect rule to `https://cvpilottest.online` (the frontend's M0 guide).
 
-1. Set the API variables: `APP_URL=https://api.<domain>`, `FRONTEND_URL=https://app.<domain>`.
-2. Set the frontend variable `NEXT_PUBLIC_BACKEND_URL=https://api.<domain>` and redeploy the frontend.
-3. Set `SESSION_DOMAIN=.<domain>` and `SESSION_SAME_SITE=lax` (keep `SESSION_SECURE_COOKIE=true`), restart the API.
-4. **Verify with a real login** from `https://app.<domain>`: sign in, reload, open the admin panel, sign out. In the browser's network panel the
-   session cookie must show `Secure`, `HttpOnly`, `SameSite=Lax`, domain `.<domain>`.
-5. Everyone is signed out once (the cookie name/domain changed). That is expected.
-6. **Rollback** (login fails): set `SESSION_SAME_SITE=none`, clear `SESSION_DOMAIN`, restart. The old hostnames keep working while DNS for the new ones is repaired.
+**2. Check each host answers over HTTPS** before changing any session setting: `https://api.cvpilottest.online/up` returns OK.
+
+**3. API settings (Sevalla), then restart**
+- `APP_URL=https://api.cvpilottest.online`
+- `FRONTEND_URL=https://app.cvpilottest.online`
+- `SITE_URL=https://cvpilottest.online`
+- `TRUSTED_HOSTS` empty (it follows `APP_URL`), or list the old host too while both are in use.
+- Keep `SESSION_SAME_SITE=none` for now.
+
+**4. Frontend settings,** then redeploy: `NEXT_PUBLIC_BACKEND_URL=https://api.cvpilottest.online`.
+
+**5. The switch:** set `SESSION_DOMAIN=.cvpilottest.online` and `SESSION_SAME_SITE=lax` (keep `SESSION_SECURE_COOKIE=true`), restart.
+- The API **refuses to boot** if `APP_URL`, `FRONTEND_URL` or `SITE_URL` is not on `SESSION_DOMAIN` (or, without `SESSION_DOMAIN`, on the
+  parent of the API host). The message names the setting to fix. Sevalla keeps the previous version running when a new one does not start.
+
+**6. Verify with a real sign-in:**
+- From `https://app.cvpilottest.online`: sign in, reload, open the admin panel, sign out.
+- In the browser's network panel the session cookie must show `Secure`, `HttpOnly`, `SameSite=Lax`, domain `.cvpilottest.online`.
+- From `https://cvpilottest.online`, a request to `https://api.cvpilottest.online/api/v1/me` carries the cookie (the header shows "Open the app" once M1 ships).
+
+**7. Expected:** everyone is signed out once (the cookie domain changed).
+
+**Rollback** (sign-in fails): set `SESSION_SAME_SITE=none`, clear `SESSION_DOMAIN`, restart. The old hostnames keep working while DNS for the new ones is repaired.
 
 `SESSION_DOMAIN=.<domain>` shares the cookie with every subdomain; do not host untrusted sites on other subdomains.
 

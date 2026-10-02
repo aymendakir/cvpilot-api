@@ -384,3 +384,10 @@ final class ApplicationController
 11. **Delivery:** one branch and PR per slice S0–S7; the maintainer merges each before the next starts.
 12. **Provider connection failures (S3 decision, recorded in S1):** `IntegrationController::test` and `MailSettingsController` keep `422` in S1 (the S1 safety net tags them `validation_failed`). In S3 they use only existing codes: provider answered with an error → `502 upstream_invalid_response`; provider unreachable or timed out → `503 upstream_unavailable`. No new codes.
 13. **Phase 2b localization:** see §10 (map `code` to FR/EN text; never show `message`).
+14. **Phase 4 API-A (anonymous routes):** `public/ats/analyses` and `public/cv/extract` without an account; Turnstile, per-visitor and global limits, no session or CSRF (§7 item 9), `errors.file` and `errors.turnstile` tokens. See `docs/DEPLOYMENT.md` §10.
+15. **Phase 4 API-B (one domain):**
+    - production answers only `TRUSTED_HOSTS` (default: the host of `APP_URL`; `/up` excepted);
+    - with `SameSite=lax`/`strict`, production refuses to boot unless `APP_URL`, `FRONTEND_URL` and `SITE_URL` are on `SESSION_DOMAIN`;
+    - `SITE_URL` is the marketing site's CORS origin (`MARKETING_URL` removed).
+
+    Runbook: `docs/DEPLOYMENT.md` §6.
