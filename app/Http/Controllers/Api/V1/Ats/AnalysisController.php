@@ -10,8 +10,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
- * POST /api/v1/ats/analyses (SPEC-ats.md §5). Stateless: the upload is read in place from PHP's temp
- * file and nothing is stored. One log line per analysis without any CV content (S4 decision 30).
+ * POST /api/v1/ats/analyses (SPEC-ats.md §5) and its anonymous twin POST /api/v1/public/ats/analyses
+ * (API-A). Stateless: the upload is read in place from PHP's temp file and nothing is stored. One log
+ * line per analysis without any CV content (S4 decision 30); `access` says which route.
  */
 class AnalysisController
 {
@@ -22,13 +23,14 @@ class AnalysisController
         $job = $input['job_description'] ?? null;
         $locale = $input['locale'] ?? null;
         $includeText = (bool) ($input['include_text'] ?? false);
+        $access = $request->routeIs('v1.public.*') ? 'public' : 'account';
 
         try {
             $report = $request->hasFile('file')
                 ? $analyzer->analyzeFile((string) $request->file('file')->getRealPath(), (string) $request->file('file')->getClientOriginalName(), $job, $locale, $includeText)
                 : $analyzer->analyzeText($input['cv_text'], $job, $locale, $includeText);
         } catch (UnreadableDocument $e) {
-            Log::info('ats.analysis', ['outcome' => 'refused', 'reason' => $e->reason, 'duration_ms' => $this->elapsed($started)]);
+            Log::info('ats.analysis', ['outcome' => 'refused', 'reason' => $e->reason, 'duration_ms' => $this->elapsed($started), 'access' => $access]);
 
             throw ValidationException::withMessages(['file' => [$e->reason]]);
         }
@@ -40,6 +42,7 @@ class AnalysisController
             'type' => $body['document']['type'],
             'pages' => $body['document']['pages'],
             'duration_ms' => $this->elapsed($started),
+            'access' => $access,
         ]);
 
         return new AtsReportResource($report);

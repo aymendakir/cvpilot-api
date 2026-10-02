@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\V1\InterviewController;
 use App\Http\Controllers\Api\V1\JobsController;
 use App\Http\Controllers\Api\V1\JobWorkspaceController;
 use App\Http\Controllers\Api\V1\LibraryController;
+use App\Http\Controllers\Api\V1\PublicAccess\ExtractController as PublicExtractController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SiteSettingsController;
 use App\Http\Controllers\Api\V1\SupportController;
@@ -51,6 +52,13 @@ Route::get('cv-templates', [CvTemplateController::class, 'published'])->middlewa
 Route::withoutMiddleware('web')->middleware('throttle:60,1,blog:')->group(function () {
     Route::get('blog', [BlogController::class, 'index'])->name('blog.index');
     Route::get('blog/{slug}', [BlogController::class, 'show'])->where('slug', BlogPost::SLUG_PATTERN)->name('blog.show');
+});
+
+// Anonymous ATS check and file reading (API-A, cv-ai SPEC.md §18.5): no session, no cookie and no CSRF
+// (decision D5); per-IP limits run first, then Turnstile, before the upload is read.
+Route::prefix('public')->name('public.')->withoutMiddleware('web')->group(function () {
+    Route::post('ats/analyses', [AtsAnalysisController::class, 'store'])->middleware(['throttle:public-ats', 'turnstile'])->name('ats.analyses.store');
+    Route::post('cv/extract', PublicExtractController::class)->middleware(['throttle:public-extract', 'turnstile'])->name('cv.extract');
 });
 
 // Authentication
