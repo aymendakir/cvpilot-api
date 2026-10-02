@@ -9,6 +9,7 @@ use App\Http\Middleware\ForceJsonResponses;
 use App\Http\Middleware\RejectMalformedJson;
 use App\Http\Middleware\RequestId;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\TrustHosts;
 use App\Http\Middleware\VerifyTurnstile;
 use App\Support\TrustedProxies;
 use Illuminate\Foundation\Application;
@@ -30,7 +31,8 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->prepend([RequestId::class, ForceJsonResponses::class, RejectMalformedJson::class]);
+        // TrustHosts first: nothing may read the Host header before it is checked (API-B).
+        $middleware->prepend([TrustHosts::class, RequestId::class, ForceJsonResponses::class, RejectMalformedJson::class]);
         // Behind a TLS proxy (Sevalla, Cloudflare, Caddy) the proxy's forwarded headers must be trusted for HTTPS detection and HSTS.
         $middleware->trustProxies(at: TrustedProxies::parse(env('TRUSTED_PROXIES')));
         $middleware->validateCsrfTokens(except: ['api/v1/analytics/events', 'api/v1/contact-messages']);
