@@ -9,16 +9,17 @@ use App\Http\Requests\Ai\CoverLetterRequest;
 use App\Models\CareerReport;
 use App\Services\AdminReview;
 use App\Services\AiGateway;
+use App\Services\Prompts\AssistantPrompts;
 use App\Services\ResumeAudit;
 use App\Services\ResumeLanguage;
 use Illuminate\Support\Facades\Log;
 
 class AiController
 {
-    public function chat(ChatRequest $r, AiGateway $ai)
+    public function chat(ChatRequest $r, AiGateway $ai, AssistantPrompts $prompts)
     {
         $d = $r->validated();
-        $prompt = "User question:\n{$d['message']}".(! empty($d['context']) ? "\n\nContext:\n{$d['context']}" : '');
+        $prompt = $prompts->chat($d);
 
         return $ai->chat($prompt, 'assistant', $r->user()->id, $d['provider'] ?? null);
     }
@@ -82,7 +83,7 @@ PROMPT;
         return ['review' => $review];
     }
 
-    public function coverLetter(CoverLetterRequest $r, AiGateway $ai)
+    public function coverLetter(CoverLetterRequest $r, AiGateway $ai, AssistantPrompts $prompts)
     {
         $d = $r->validated();
         $name = trim($d['name'] ?? '') ?: '[Your name]';
@@ -90,8 +91,7 @@ PROMPT;
         $position = trim($d['position'] ?? '') ?: 'the advertised position';
         $language = $d['language'] ?? 'English';
         $tone = $d['tone'] ?? 'Professional';
-        $interest = trim($d['interest'] ?? '');
-        $prompt = "Write a tailored cover letter in {$language} with a {$tone} tone. Address the {$position} role at {$company}. Use only facts explicitly present in the CV or the candidate's interest note. Never invent achievements, years, metrics, employers, degrees, or skills. Connect the strongest relevant CV evidence to the job requirements. Keep it between 250 and 400 words, natural and specific, with a greeting, 3-4 short paragraphs, and a closing signed {$name}. Return only the finished letter with no markdown, commentary, or placeholders except the supplied name.\n\nCANDIDATE INTEREST NOTE:\n{$interest}\n\nCV:\n{$d['cv_text']}\n\nJOB DESCRIPTION:\n{$d['job_description']}";
+        $prompt = $prompts->coverLetter($d);
         $res = $ai->chat($prompt, 'cover_letter', $r->user()->id);
         $rep = CareerReport::create(['user_id' => $r->user()->id, 'type' => 'cover_letter', 'input' => ['title' => $position, 'company' => $company, 'name' => $name, 'language' => $language, 'tone' => $tone], 'output' => $res['answer']]);
         AdminReview::record('report', $rep);
