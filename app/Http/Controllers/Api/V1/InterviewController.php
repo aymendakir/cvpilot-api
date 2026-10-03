@@ -8,6 +8,7 @@ use App\Http\Resources\InterviewSessionResource;
 use App\Models\InterviewSession;
 use App\Services\AdminReview;
 use App\Services\AiGateway;
+use App\Services\OutputLanguage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
@@ -18,9 +19,9 @@ class InterviewController
     public function store(DocumentsWithIdentityRequest $r, AiGateway $ai)
     {
         $d = $r->validated();
-        $prompt = "Act as a structured interviewer for {$d['title']} at ".(($d['company'] ?? '') ?: 'the company').". Read the CV and job. Ask exactly one relevant interview question. Do not score. Return only the question.\nCV:\n{$d['cv_text']}\nJOB:\n{$d['job_description']}";
+        $prompt = "Act as a structured interviewer for {$d['title']} at ".(($d['company'] ?? '') ?: 'the company').". Read the CV and job. Ask exactly one relevant interview question. Do not score. Return only the question.\nCV:\n{$d['cv_text']}\nJOB:\n{$d['job_description']}".OutputLanguage::instruction($d['language'] ?? null);
         $result = $ai->chat($prompt, 'interview', $r->user()->id);
-        $session = InterviewSession::create(['user_id' => $r->user()->id, 'title' => $d['title'], 'company' => $d['company'] ?? null, 'cv_text' => $d['cv_text'], 'job_description' => $d['job_description'], 'transcript' => [['role' => 'assistant', 'content' => $result['answer']]]]);
+        $session = InterviewSession::create(['user_id' => $r->user()->id, 'title' => $d['title'], 'company' => $d['company'] ?? null, 'cv_text' => $d['cv_text'], 'job_description' => $d['job_description'], 'language' => $d['language'] ?? null, 'transcript' => [['role' => 'assistant', 'content' => $result['answer']]]]);
         AdminReview::record('interview', $session);
         AuthController::audit($r, 'interview_started', $r->user()->id);
 
@@ -49,7 +50,7 @@ class InterviewController
         $d = $r->validated();
         $transcript = $session->transcript;
         $transcript[] = ['role' => 'user', 'content' => $d['answer']];
-        $prompt = "Continue this mock interview. Give brief useful feedback on the candidate's last answer without a numeric score, then ask exactly one new question. Return with headings FEEDBACK and NEXT QUESTION. Never invent facts.\nCV:\n{$session->cv_text}\nJOB:\n{$session->job_description}\nTRANSCRIPT:\n".json_encode($transcript);
+        $prompt = "Continue this mock interview. Give brief useful feedback on the candidate's last answer without a numeric score, then ask exactly one new question. Return with headings FEEDBACK and NEXT QUESTION. Never invent facts.\nCV:\n{$session->cv_text}\nJOB:\n{$session->job_description}\nTRANSCRIPT:\n".json_encode($transcript).OutputLanguage::instruction($session->language);
         $result = $ai->chat($prompt, 'interview', $r->user()->id);
         $transcript[] = ['role' => 'assistant', 'content' => $result['answer']];
         $session->update(['transcript' => $transcript]);
@@ -63,7 +64,7 @@ class InterviewController
         Gate::forUser($r->user())->authorize('update', $session);
         if ($session->status === 'completed') {
             return ['feedback' => $session->feedback];
-        }$prompt = "Give final mock-interview feedback without a numeric score. Use headings: STRONG ANSWERS, ANSWERS TO IMPROVE, MISSING EVIDENCE, COMMUNICATION FEEDBACK, and NEXT PRACTICE STEPS. Base everything only on this transcript and CV.\nCV:\n{$session->cv_text}\nJOB:\n{$session->job_description}\nTRANSCRIPT:\n".json_encode($session->transcript);
+        }$prompt = "Give final mock-interview feedback without a numeric score. Use headings: STRONG ANSWERS, ANSWERS TO IMPROVE, MISSING EVIDENCE, COMMUNICATION FEEDBACK, and NEXT PRACTICE STEPS. Base everything only on this transcript and CV.\nCV:\n{$session->cv_text}\nJOB:\n{$session->job_description}\nTRANSCRIPT:\n".json_encode($session->transcript).OutputLanguage::instruction($session->language);
         $result = $ai->chat($prompt, 'interview', $r->user()->id);
         $session->update(['feedback' => $result['answer'], 'status' => 'completed']);
         AdminReview::record('interview', $session);
