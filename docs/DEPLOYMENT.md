@@ -72,6 +72,7 @@ fixes for poppler arrive with each rebuild. A custom host that does not use this
 | `TURNSTILE_HOSTNAMES` | `cvpilottest.online,app.cvpilottest.online` (add the real domain later) | A token from another site is refused; empty accepts any hostname Cloudflare reports. |
 | `TRUST_CF_CONNECTING_IP` | `true` only once the origin is reachable through Cloudflare alone (section 10) | `false` behind Cloudflare: every visitor shares a Cloudflare address, so the per-visitor limits group them. `true` while the origin is open: anyone can fake their address. |
 | `PUBLIC_ATS_PER_MINUTE`, `PUBLIC_ATS_PER_DAY`, `PUBLIC_ATS_GLOBAL_PER_DAY`, `PUBLIC_EXTRACT_PER_MINUTE`, `PUBLIC_EXTRACT_PER_DAY` | unset (5, 30, 5000, 10, 60) | Limits of the anonymous routes; `PUBLIC_ATS_GLOBAL_PER_DAY=0` removes the global cap. |
+| `AI_PROMPT_ENVELOPE` | unset (`false`) until the evaluation is accepted, then `true` (section 11) | `true` keeps the text people paste (CV, job ad, notes) out of the AI instructions, so a job ad cannot give the model orders. Changes the prompts, so the answers may read differently. |
 
 ### Frontend
 
@@ -186,6 +187,17 @@ Behind Cloudflare, the API sees Cloudflare's address, not the visitor's. Cloudfl
 Until one of these is in place, leave it `false`: Turnstile and the global cap still protect the routes.
 
 **Testing without a widget:** Cloudflare's test secret `1x0000000000000000000000000000000AA` always passes and `2x0000000000000000000000000000000AA` always fails. Local and testing environments without a secret skip the check.
+
+## 11. Turning on the prompt envelope (S6)
+
+`SPEC-ats.md` §16.1: no AI prompt changes before the maintainer has compared the answers. The envelope moves the text people supply (CV, job ad, notes, names, interview answers) out of the instructions into one data block that the model is told never to obey. It is off until this check is done:
+
+1. On the production container (it has the AI keys): `php artisan cvpilot:prompt-eval --dry-run --only=tailor_cv` prints both prompts without calling a model. `--list` shows the 16 cases.
+2. `php artisan cvpilot:prompt-eval` runs every case twice (32 model calls on the first enabled provider; `--provider=openai` picks one) and writes `storage/app/prompt-eval/<time>.md`. The inputs are fictional (`resources/prompt-eval`); the usage is logged under the feature `prompt_eval` with no user.
+3. Read the file. For each case the envelope's answer should be as useful, in the same language and with no invented facts. In the two `_injection` cases the job ad contains a planted order: the current prompt may follow it, the envelope must not.
+4. When the comparison is accepted, set `AI_PROMPT_ENVELOPE=true` and redeploy. Setting it back to `false` restores the old prompts at once.
+
+The file stays on the container; delete it once read (`rm -r storage/app/prompt-eval`).
 
 ## Privacy: what is stored
 
