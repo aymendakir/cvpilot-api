@@ -7,4 +7,8 @@
 
 return [
     'prompt_envelope' => (bool) env('AI_PROMPT_ENVELOPE', false),
+
+    // OpenRouter reserves the model's whole output window when a request sets no limit (65 536 tokens for
+    // gpt-oss), and refuses with 402 when the credits cannot cover it. Other providers are not capped here.
+    'openrouter_max_tokens' => (int) env('AI_OPENROUTER_MAX_TOKENS', 8192),
 ];

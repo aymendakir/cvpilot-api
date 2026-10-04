@@ -157,14 +157,18 @@ class AiGateway
         ];
 
         $endpoint = $urls[$c->provider] ?? $urls['openai'];
-        $r = Http::timeout(45)->withToken($key)->post($endpoint, [
+        $body = [
             'model' => $model,
             'messages' => [
                 ['role' => 'system', 'content' => 'You are CVPilot, a concise career assistant. Never invent candidate experience.'],
                 ['role' => 'user', 'content' => $prompt],
             ],
             'temperature' => 0.3,
-        ]);
+        ];
+        if ($c->provider === 'openrouter') {
+            $body['max_tokens'] = config('ai.openrouter_max_tokens');
+        }
+        $r = Http::timeout(45)->withToken($key)->post($endpoint, $body);
         $r->throw();
 
         return (string) data_get($r->json(), 'choices.0.message.content');
