@@ -8,6 +8,7 @@ use App\Services\Prompts\PromptEnvelope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 /** `php artisan cvpilot:prompt-eval` (S6, `SPEC-ats.md` §16.1): the comparison the maintainer reads before turning the envelope on. */
@@ -22,6 +23,7 @@ class PromptEvalCommandTest extends TestCase
         parent::setUp();
         $this->dir = storage_path('app/prompt-eval');
         File::deleteDirectory($this->dir);
+        Sleep::fake();
         Integration::create(['provider' => 'openai', 'type' => 'ai', 'secret' => 'sk-test-secret-value', 'model' => 'gpt-4o-mini', 'enabled' => true, 'priority' => 1]);
     }
 
@@ -94,6 +96,9 @@ class PromptEvalCommandTest extends TestCase
 
         $report = File::get(File::files($this->dir)[0]->getPathname());
         $this->assertSame(2, substr_count($report, '**Failed:**'));
+        // Each call was tried twice, a minute apart.
+        Http::assertSentCount(4);
+        Sleep::assertSleptTimes(2);
         $this->assertStringNotContainsString('sk-test-secret-value', $report);
     }
 
@@ -103,5 +108,50 @@ class PromptEvalCommandTest extends TestCase
         foreach (AssistantPrompts::NAMES as $name) {
             $this->artisan('cvpilot:prompt-eval', ['--dry-run' => true, '--only' => [$name]])->assertSuccessful();
         }
+    }
+
+    public function test_calls_are_spaced_by_the_pause(): void
+    {
+        $this->fakeModel();
+        $this->artisan('cvpilot:prompt-eval', ['--only' => ['chat', 'skill_gap'], '--pause' => 30])->assertSuccessful();
+
+        Http::assertSentCount(4);
+        // No wait before the first call, then one before each of the three others.
+        Sleep::assertSequence([Sleep::for(30)->seconds(), Sleep::for(30)->seconds(), Sleep::for(30)->seconds()]);
+    }
+
+    public function test_a_rate_limited_call_is_tried_again_after_the_wait(): void
+    {
+        Http::fakeSequence()
+            ->push(['error' => ['message' => 'Rate limit reached']], 429)
+            ->push(['choices' => [['message' => ['content' => 'Second try']]]])
+            ->push(['choices' => [['message' => ['content' => 'Envelope answer']]]]);
+
+        $this->artisan('cvpilot:prompt-eval', ['--only' => ['chat'], '--retry-wait' => 45])
+            ->expectsOutputToContain('trying again in 45 s')
+            ->assertSuccessful();
+
+        $report = File::get(File::files($this->dir)[0]->getPathname());
+        $this->assertStringContainsString('Second try', $report);
+        $this->assertStringContainsString('Envelope answer', $report);
+        $this->assertStringNotContainsString('**Failed:**', $report);
+        Sleep::assertSequence([Sleep::for(45)->seconds()]);
+    }
+
+    public function test_answers_from_different_models_are_flagged(): void
+    {
+        Integration::create(['provider' => 'groq', 'type' => 'ai', 'secret' => 'gsk-test-secret-value', 'model' => 'openai/gpt-oss-120b', 'enabled' => true, 'priority' => 0]);
+        Http::fake([
+            'api.groq.com/*' => Http::sequence()
+                ->push(['choices' => [['message' => ['content' => 'From Groq']]]])
+                ->push(['error' => ['message' => 'Rate limit reached']], 429),
+            '*' => Http::response(['choices' => [['message' => ['content' => 'From OpenAI']]]]),
+        ]);
+
+        $this->artisan('cvpilot:prompt-eval', ['--only' => ['chat'], '--retry-wait' => 0])->assertSuccessful();
+
+        $report = File::get(File::files($this->dir)[0]->getPathname());
+        $this->assertStringContainsString('**Not comparable:**', $report);
+        $this->assertStringContainsString('groq / openai/gpt-oss-120b, openai / gpt-4o-mini', $report);
     }
 }
