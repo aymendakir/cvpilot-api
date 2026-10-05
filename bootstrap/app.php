@@ -5,6 +5,7 @@ use App\Http\Middleware\Admin;
 use App\Http\Middleware\AuditAdmin;
 use App\Http\Middleware\AuthSession;
 use App\Http\Middleware\EnsureErrorEnvelope;
+use App\Http\Middleware\EnsurePublicAiEnabled;
 use App\Http\Middleware\ForceJsonResponses;
 use App\Http\Middleware\RejectMalformedJson;
 use App\Http\Middleware\RequestId;
@@ -46,6 +47,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => Admin::class,
             'admin.audit' => AuditAdmin::class,
             'turnstile' => VerifyTurnstile::class,
+            'public-ai' => EnsurePublicAiEnabled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
