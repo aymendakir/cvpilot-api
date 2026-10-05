@@ -72,6 +72,8 @@ fixes for poppler arrive with each rebuild. A custom host that does not use this
 | `TURNSTILE_HOSTNAMES` | `cvpilottest.online,app.cvpilottest.online` (add the real domain later) | A token from another site is refused; empty accepts any hostname Cloudflare reports. |
 | `TRUST_CF_CONNECTING_IP` | `true` only once the origin is reachable through Cloudflare alone (section 10) | `false` behind Cloudflare: every visitor shares a Cloudflare address, so the per-visitor limits group them. `true` while the origin is open: anyone can fake their address. |
 | `PUBLIC_ATS_PER_MINUTE`, `PUBLIC_ATS_PER_DAY`, `PUBLIC_ATS_GLOBAL_PER_DAY`, `PUBLIC_EXTRACT_PER_MINUTE`, `PUBLIC_EXTRACT_PER_DAY` | unset (5, 30, 5000, 10, 60) | Limits of the anonymous routes; `PUBLIC_ATS_GLOBAL_PER_DAY=0` removes the global cap. |
+| `PUBLIC_AI_PER_MINUTE`, `PUBLIC_AI_PER_DAY`, `PUBLIC_AI_GLOBAL_PER_DAY` | unset (3, 10, 300) | Budget of the four anonymous AI tools, shared between them: per visitor per minute and per day, and all visitors together per day (the cost ceiling; `0` removes it). |
+| `PUBLIC_AI_ENABLED` | unset (`true`) | `false` switches the anonymous AI tools off at once (`503`), without a frontend deploy. |
 | `AI_PROMPT_ENVELOPE` | unset (`false`) until the evaluation is accepted, then `true` (section 11) | `true` keeps the text people paste (CV, job ad, notes) out of the AI instructions, so a job ad cannot give the model orders. Changes the prompts, so the answers may read differently. |
 | `AI_OPENROUTER_MAX_TOKENS` | unset (8192) | Output limit sent to OpenRouter. Without a limit OpenRouter reserves the model's whole window (65 536 tokens) and answers `402` when the credits cannot cover it. |
 
@@ -186,6 +188,9 @@ Behind Cloudflare, the API sees Cloudflare's address, not the visitor's. Cloudfl
 - **Sevalla inbound restriction:** allow only Cloudflare's IP ranges (https://www.cloudflare.com/ips/), if your Sevalla plan offers it. Check its networking settings before relying on it.
 
 Until one of these is in place, leave it `false`: Turnstile and the global cap still protect the routes.
+
+**Anonymous AI tools (API-D)**
+`/api/v1/public/ai/cover-letter`, `recruiter-view`, `skill-gap` and `follow-up` use the same widget and the same edge rule. Every answer is a paid model call, so they have their own budget (section 3): 10 answers per visitor per day and 300 for everyone together by default. While `TRUST_CF_CONNECTING_IP=false`, every visitor behind Cloudflare shares a few addresses, so the per-visitor budget is shared too: watch the `ai_usage` table (features `public_*`; the admin dashboard shows the 7-day total) and raise `PUBLIC_AI_PER_DAY` if real visitors hit it. To stop them at once, set `PUBLIC_AI_ENABLED=false`.
 
 **Testing without a widget:** Cloudflare's test secret `1x0000000000000000000000000000000AA` always passes and `2x0000000000000000000000000000000AA` always fails. Local and testing environments without a secret skip the check.
 

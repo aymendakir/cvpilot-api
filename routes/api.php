@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\V1\InterviewController;
 use App\Http\Controllers\Api\V1\JobsController;
 use App\Http\Controllers\Api\V1\JobWorkspaceController;
 use App\Http\Controllers\Api\V1\LibraryController;
+use App\Http\Controllers\Api\V1\PublicAccess\AiController as PublicAiController;
 use App\Http\Controllers\Api\V1\PublicAccess\ExtractController as PublicExtractController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\SiteSettingsController;
@@ -59,6 +60,13 @@ Route::withoutMiddleware('web')->middleware('throttle:60,1,blog:')->group(functi
 Route::prefix('public')->name('public.')->withoutMiddleware('web')->group(function () {
     Route::post('ats/analyses', [AtsAnalysisController::class, 'store'])->middleware(['throttle:public-ats', 'turnstile'])->name('ats.analyses.store');
     Route::post('cv/extract', PublicExtractController::class)->middleware(['throttle:public-extract', 'turnstile'])->name('cv.extract');
+    // Anonymous AI tools (API-D): one shared budget per visitor and a global daily cap; always the S6 envelope.
+    Route::prefix('ai')->name('ai.')->middleware(['public-ai', 'throttle:public-ai', 'turnstile'])->group(function () {
+        Route::post('cover-letter', [PublicAiController::class, 'coverLetter'])->name('cover-letter');
+        Route::post('recruiter-view', [PublicAiController::class, 'recruiterView'])->name('recruiter-view');
+        Route::post('skill-gap', [PublicAiController::class, 'skillGap'])->name('skill-gap');
+        Route::post('follow-up', [PublicAiController::class, 'followUp'])->name('follow-up');
+    });
 });
 
 // Authentication

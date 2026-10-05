@@ -18,6 +18,10 @@ All paths are relative to the API origin. Errors use the envelope in [ERRORS.md]
 | public | POST | `/api/v1/contact-messages` | `3,10,contact:` | `v1.contact-messages.store` |
 | public | GET | `/api/v1/csrf` | shared `api` limiter | `v1.csrf` |
 | public | GET | `/api/v1/cv-templates` | `60,1,cv-templates:` | `v1.cv-templates.index` |
+| public | POST | `/api/v1/public/ai/cover-letter` | `public-ai` | `v1.public.ai.cover-letter` |
+| public | POST | `/api/v1/public/ai/follow-up` | `public-ai` | `v1.public.ai.follow-up` |
+| public | POST | `/api/v1/public/ai/recruiter-view` | `public-ai` | `v1.public.ai.recruiter-view` |
+| public | POST | `/api/v1/public/ai/skill-gap` | `public-ai` | `v1.public.ai.skill-gap` |
 | public | POST | `/api/v1/public/ats/analyses` | `public-ats` | `v1.public.ats.analyses.store` |
 | public | POST | `/api/v1/public/cv/extract` | `public-extract` | `v1.public.cv.extract` |
 | public | GET | `/api/v1/site-settings` | shared `api` limiter | `v1.site-settings.show` |

@@ -28,5 +28,13 @@ return [
         'ats_global_per_day' => (int) env('PUBLIC_ATS_GLOBAL_PER_DAY', 5000),
         'extract_per_minute' => (int) env('PUBLIC_EXTRACT_PER_MINUTE', 10),
         'extract_per_day' => (int) env('PUBLIC_EXTRACT_PER_DAY', 60),
+        // The four anonymous AI tools share one budget per visitor (API-D).
+        'ai_per_minute' => (int) env('PUBLIC_AI_PER_MINUTE', 3),
+        'ai_per_day' => (int) env('PUBLIC_AI_PER_DAY', 10),
+        // All anonymous AI answers together, the daily cost ceiling; 0 = no cap.
+        'ai_global_per_day' => (int) env('PUBLIC_AI_GLOBAL_PER_DAY', 300),
     ],
+
+    // false: the anonymous AI routes answer 503 (switch them off without touching the frontend).
+    'ai_enabled' => (bool) env('PUBLIC_AI_ENABLED', true),
 ];

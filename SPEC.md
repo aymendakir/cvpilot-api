@@ -391,3 +391,4 @@ final class ApplicationController
     - `SITE_URL` is the marketing site's CORS origin (`MARKETING_URL` removed).
 
     Runbook: `docs/DEPLOYMENT.md` §6.
+16. **Phase 4 API-D (anonymous AI tools):** `public/ai/cover-letter`, `public/ai/recruiter-view`, `public/ai/skill-gap` and `public/ai/follow-up` without an account, for the inline tools of the landing pages (`cv-ai/SPEC.md` §18.3). The input rules are those of the signed-in routes. The answer is `{answer}` only. The prompt always uses the S6 envelope. The limits are one `public-ai` budget per visitor shared by the four tools, plus a global daily cap. `PUBLIC_AI_ENABLED=false` answers `503`. Nothing is stored except the content-free `ai_usage` line. See `docs/DEPLOYMENT.md` §10.
