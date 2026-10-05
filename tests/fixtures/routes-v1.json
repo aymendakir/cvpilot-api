@@ -476,6 +476,26 @@
     },
     {
         "method": "POST",
+        "uri": "v1/public/ai/cover-letter",
+        "scope": "public"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/public/ai/follow-up",
+        "scope": "public"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/public/ai/recruiter-view",
+        "scope": "public"
+    },
+    {
+        "method": "POST",
+        "uri": "v1/public/ai/skill-gap",
+        "scope": "public"
+    },
+    {
+        "method": "POST",
         "uri": "v1/public/ats/analyses",
         "scope": "public"
     },
